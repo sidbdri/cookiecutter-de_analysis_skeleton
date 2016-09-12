@@ -1,5 +1,7 @@
 {
     "project_name": "newproject",
+    "rnaseq_samples_dir": "",
+    "rnaseq_samples": "",
     "projects_base": "/home/odando/projects",
     "virtualenv_home": "/home/odando/.virtualenvs"
 }

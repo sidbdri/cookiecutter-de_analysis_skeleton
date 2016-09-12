@@ -24,8 +24,10 @@ for sample in ${SAMPLES}; do
     output_dir=${QC_DIR}/${sample}
     mkdir -p ${output_dir}
 
-    (zcat ${RNASEQ_DIR}/${sample}/*.sanfastq.gz | fastqc --outdir=${output_dir} stdin &)
+    (zcat ${RNASEQ_DIR}/${sample}/*.sanfastq.gz | fastqc --outdir=${output_dir} stdin) &
 done
+
+wait
 
 # Gather all QC data
 multiqc -d -f -m featureCounts -m star -m fastqc results

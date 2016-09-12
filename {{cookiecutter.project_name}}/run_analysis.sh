@@ -37,7 +37,7 @@ wait
 mkdir -p ${MAPPING_DIR}
 
 for sample in ${SAMPLES}; do
-    map_reads ${sample} ${GTF_FILE} ${NUM_THREADS} $(listFiles , ${RNASEQ_DIR}/${sample}/*_1.sanfastq.gz) $(listFiles , ${RNASEQ_DIR}/${sample}/*_2.sanfastq.gz) ${MAPPING_DIR}
+    map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS} $(listFiles , ${RNASEQ_DIR}/${sample}/*_1.sanfastq.gz) $(listFiles , ${RNASEQ_DIR}/${sample}/*_2.sanfastq.gz) ${MAPPING_DIR}
 done
 
 # Gather all QC data

@@ -16,6 +16,7 @@ RESULTS_DIR=${MAIN_DIR}/results
 
 QC_DIR=${RESULTS_DIR}/fastqc
 MAPPING_DIR=${RESULTS_DIR}/mapped_reads
+COUNTS_DIR=${RESULTS_DIR}/read_counts
 
 NUM_THREADS=16
 
@@ -38,6 +39,13 @@ mkdir -p ${MAPPING_DIR}
 
 for sample in ${SAMPLES}; do
     map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS} $(listFiles , ${RNASEQ_DIR}/${sample}/*_1.sanfastq.gz) $(listFiles , ${RNASEQ_DIR}/${sample}/*_2.sanfastq.gz) ${MAPPING_DIR}
+done
+
+# Count mapped reads
+mkdir -p ${COUNTS_DIR}
+
+for sample in ${SAMPLES}; do
+    count_reads_for_features ${NUM_THREADS} ${GTF_FILE} ${MAPPING_DIR}/${sample}.bam ${COUNTS_DIR}/${sample}.counts
 done
 
 # Gather all QC data

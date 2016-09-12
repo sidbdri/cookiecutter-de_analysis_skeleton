@@ -10,7 +10,7 @@ pip install multiqc
 
 RNASEQ_DIR=data/rnaseq
 GENOME_DATA_DIR=/srv/data/genome/{{cookiecutter.species}}/ensembl-{{cookiecutter.ensembl_version}}
-ENSEMBL_DIR=data/{{cookiecutter.species}}_ensemble_{{cookiecutter.ensembl_version}}
+ENSEMBL_DIR=data/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_version}}
 
 mkdir -p ${RNASEQ_DIR}
 

@@ -9,7 +9,7 @@ source functions.sh
 MAIN_DIR={{cookiecutter.projects_base}}/{{cookiecutter.project_name}}
 DATA_DIR=${MAIN_DIR}/data
 RNASEQ_DIR=${DATA_DIR}/rnaseq
-ENSEMBL_DIR=${DATA_DIR}/{{cookiecutter.species}}_ensemble_{{cookiecutter.ensembl_version}}
+ENSEMBL_DIR=${DATA_DIR}/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_version}}
 STAR_INDEX=${ENSEMBL_DIR}/{{cookiecutter.assembly_name}}
 GTF_FILE=${ENSEMBL_DIR}/{{cookiecutter.gtf_file}}
 RESULTS_DIR=${MAIN_DIR}/results

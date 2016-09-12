@@ -1,4 +1,5 @@
 {
+    "project_name": "newproject",
     "projects_base": "/home/odando/projects",
-    "project_name": "newproject"
+    "virtualenv_home": "/home/odando/.virtualenvs"
 }

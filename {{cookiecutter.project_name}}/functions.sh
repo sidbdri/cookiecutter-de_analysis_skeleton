@@ -42,3 +42,9 @@ function count_reads_for_features {
     rm ${counts_tmp}
     mv ${counts_tmp}.summary ${COUNTS_OUTPUT_FILE}.summary
 }
+
+function clean_de_results {
+    DE_RESULTS_FILE=$1
+
+    sed -i "s/-Inf/'-Inf/g;s/,NA,/,,/g;s/,NA,/,,/g;s/,NA$/,/g" ${DE_RESULTS_FILE}
+}

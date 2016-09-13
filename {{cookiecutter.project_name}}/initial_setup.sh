@@ -7,6 +7,7 @@ source /usr/local/bin/virtualenvwrapper.sh
 mkproject -f {{cookiecutter.project_name}}
 
 pip install multiqc
+pip install git+https://github.com/lweasel/transcript_utils.git
 
 RNASEQ_DIR=data/rnaseq
 GENOME_DATA_DIR=/srv/data/genome/{{cookiecutter.species}}/ensembl-{{cookiecutter.ensembl_version}}
@@ -22,3 +23,4 @@ mkdir -p ${ENSEMBL_DIR}
 
 ln -s ${GENOME_DATA_DIR}/STAR_indices/{{cookiecutter.assembly_name}} ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.gtf_file}} ${ENSEMBL_DIR}
+ln -s ${GENOME_DATA_DIR}/genes.tsv ${ENSEMBL_DIR}

@@ -17,6 +17,7 @@ RESULTS_DIR=${MAIN_DIR}/results
 QC_DIR=${RESULTS_DIR}/fastqc
 MAPPING_DIR=${RESULTS_DIR}/mapped_reads
 COUNTS_DIR=${RESULTS_DIR}/read_counts
+DIFF_EXPR_DIR=${RESULTS_DIR}/differential_expression
 
 NUM_THREADS=16
 
@@ -50,3 +51,13 @@ done
 
 # Gather all QC data
 multiqc -d -f -m featureCounts -m star -m fastqc results
+
+# Perform differential expression
+mkdir -p ${DIFF_EXPR_DIR}
+
+get_gene_lengths ${GTF_FILE} > ${RESULTS_DIR}/gene_lengths.csv
+
+Rscript diff_expr.R
+
+clean_de_results ${DIFF_EXPR_DIR}/deseq2_results.csv
+clean_de_results ${DIFF_EXPR_DIR}/deseq2_results_fpkm.csv

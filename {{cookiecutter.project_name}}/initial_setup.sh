@@ -24,3 +24,5 @@ mkdir -p ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/STAR_indices/{{cookiecutter.assembly_name}} ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.gtf_file}} ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/genes.tsv ${ENSEMBL_DIR}
+ln -s ${GENOME_DATA_DIR}/{{cookiecutter.salmon_index}} ${ENSEMBL_DIR}
+ln -s ${GENOME_DATA_DIR}/{{cookiecutter.kallisto_index}} ${ENSEMBL_DIR}

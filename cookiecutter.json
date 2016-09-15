@@ -6,6 +6,8 @@
     "species": "mouse",
     "assembly_name": "primary_assembly",
     "gtf_file": "Mus_musculus.GRCm38.84.gtf",
+    "salmon_index": "salmon_index",
+    "kallisto_index": "kallisto_index",
     "projects_base": "/home/odando/projects",
     "virtualenv_home": "/home/odando/.virtualenvs"
 }

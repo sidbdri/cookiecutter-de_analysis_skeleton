@@ -3,10 +3,10 @@ library(dplyr)
 library(gplots)
 library(ggplot2)
 library(magrittr)
-#library(purrr)
 library(RColorBrewer)
 library(readr)
 library(stringr)
+library(tximport)
 
 ##### FUNCTIONS
 
@@ -125,6 +125,27 @@ get_total_dds <- function() {
   return(total_dds)
 }
 
+get_total_dds_tximport <- function(quant_method, quant_file) {
+  tx2gene <- read_delim("results/tx2gene.tsv", " ", col_names=c("transcript", "gene"))
+
+  sample_data <- data.frame(
+    condition=c(),
+    sample=c(),
+    filename=c(),
+    row.names=c("<SAMPLE1>", "<SAMPLE2>", etc)
+  )
+
+  quant_files <- str_c("results/", quant_method, "_quant/", sample_data$filename, "/", quant_file)
+  names(quant_files) <- sample_data$filename
+
+  txi <- tximport(quant_files, type=quant_method, tx2gene=tx2gene, reader=read_tsv)
+
+  total_dds <- DESeqDataSetFromTxImport(txi, sample_data, ~genotype)
+  total_dds <- DESeq(dds)
+
+  return(total_dds)
+}
+
 get_condition_res <- function() {
   count_data <- 
     read_counts("<SAMPLE1>") %>%
@@ -159,6 +180,37 @@ get_condition_res <- function() {
   return(results)
 }
   
+get_condition_res_tximport <- function(quant_method, quant_file) {
+  tx2gene <- read_delim("results/tx2gene.tsv", " ", col_names=c("transcript", "gene"))
+
+  sample_data <- data.frame(
+    condition=c(),
+    sample=c(),
+    filename=c(),
+    row.names=c("<SAMPLE1>", "<SAMPLE2>", etc)
+  )
+
+  quant_files <- str_c("results/", quant_method, "_quant/", sample_data$filename, "/", quant_file)
+  names(quant_files) <- sample_data$filename
+
+  txi <- tximport(quant_files, type=quant_method, tx2gene=tx2gene, reader=read_tsv)
+
+  dds <- DESeqDataSetFromTxImport(txi, sample_data, ~genotype)
+  dds <- dds[rowSums(counts(dds)) > 1, ]
+  dds <- DESeq(dds)
+
+  results <- get_deseq2_results(dds, "genotype", "KO", "WT")
+  
+  l2fc <- get_count_data(dds) %>%
+    mutate(l2fc=log2(() / ()) %>%
+    select(gene, l2fc)
+    
+  results %<>% left_join(l2fc)
+  
+  return(results)
+
+}
+
 #####
 
 gene_info <- get_gene_info()
@@ -196,3 +248,57 @@ results %>%
          dplyr::contains("_fpkm"), 
          etc.)
   write_csv("results/differential_expression/deseq2_results_fpkm.csv")
+
+#####
+
+# TODO - look up quant file name
+results_salmon <- get_total_dds_tximport("salmon", "quant.genes.sf") %>% 
+  get_count_data() 
+
+# TODO - read in accurate TPMs from quant files
+#fpkms <- results %>% 
+#  get_fpkms(gene_lengths, colnames(results) %>% tail(-1), "_fpkm")
+
+results %<>% 
+  inner_join(tpms) %>%
+  inner_join(gene_info) %>% 
+  inner_join(gene_lengths)
+
+results %<>% 
+  left_join(get_condition_res_tximport("salmon", "quant.genes.sf"), by="gene") %>%
+  dplyr::rename(l2fc=log2FoldChange,
+         raw_l2fc=l2fc,
+         pval=pvalue,
+         padj=padj)
+
+results %>% 
+  dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
+                everything(), -dplyr::contains("_tpm")) %>%
+  write_csv("results/differential_expression/deseq2_salmon_results.csv")
+
+#####
+
+# TODO - look up quant file name
+results_kallisto <- get_total_dds_tximport("kallisto", "abundance.tsv") %>% 
+  get_count_data() 
+
+# TODO - read in accurate TPMs from quant files
+#fpkms <- results %>% 
+#  get_fpkms(gene_lengths, colnames(results) %>% tail(-1), "_fpkm")
+
+results %<>% 
+  inner_join(tpms) %>%
+  inner_join(gene_info) %>% 
+  inner_join(gene_lengths)
+
+results %<>% 
+  left_join(get_condition_res_tximport("kallisto", "abundance.tsv"), by="gene") %>%
+  dplyr::rename(l2fc=log2FoldChange,
+         raw_l2fc=l2fc,
+         pval=pvalue,
+         padj=padj)
+
+results %>% 
+  dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
+                everything(), -dplyr::contains("_tpm")) %>%
+  write_csv("results/differential_expression/deseq2_kallisto_results.csv")

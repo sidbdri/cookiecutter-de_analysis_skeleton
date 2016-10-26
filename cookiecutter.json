@@ -3,6 +3,8 @@
     "rnaseq_samples_dir": "",
     "rnaseq_samples": "",
     "fastq_suffix": "fastq.gz",
+    "read1_identifier": "_1",
+    "read2_identifier": "{{ cookiecutter.read1_identifier|replace('1', '2') }}",
     "ensembl_version": "84",
     "species": "mouse",
     "assembly_name": "primary_assembly",

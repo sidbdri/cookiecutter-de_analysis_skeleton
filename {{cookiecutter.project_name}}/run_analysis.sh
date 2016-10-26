@@ -43,7 +43,7 @@ wait
 mkdir -p ${MAPPING_DIR}
 
 for sample in ${SAMPLES}; do
-    map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS} $(listFiles , ${RNASEQ_DIR}/${sample}/*_1.{{cookiecutter.fastq_suffix}}) $(listFiles , ${RNASEQ_DIR}/${sample}/*_2.{{cookiecutter.fastq_suffix}}) ${MAPPING_DIR}
+    map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS} $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) ${MAPPING_DIR}
 done
 
 ##### Count mapped reads
@@ -57,14 +57,14 @@ done
 mkdir -p ${SALMON_QUANT_DIR}
 
 for sample in ${SAMPLES}; do
-    salmon quant -i ${SALMON_INDEX} -l A -1 $(listFiles , ${RNASEQ_DIR}/${sample}/*_1.{{cookiecutter.fastq_suffix}}) -2 $(listFiles , ${RNASEQ_DIR}/${sample}/*_2.{{cookiecutter.fastq_suffix}}) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS} -g ${GTF_FILE}
+    salmon quant -i ${SALMON_INDEX} -l A -1 $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) -2 $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS} -g ${GTF_FILE}
 done
 
 ##### Quantify transcript expression with Kallisto
 mkdir -p ${KALLISTO_QUANT_DIR}
 
 for sample in ${SAMPLES}; do
-    kallisto quant -i ${KALLISTO_INDEX} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --rf-stranded -t ${NUM_THREADS} $(ls -1 ${RNASEQ_DIR}/${sample}/*_1.{{cookiecutter.fastq_suffix}} | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*)_1.{{cookiecutter.fastq_suffix}}/\1_2.{{cookiecutter.fastq_suffix}}/' | tr '\n' ' ')
+    kallisto quant -i ${KALLISTO_INDEX} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --rf-stranded -t ${NUM_THREADS} $(ls -1 ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}} | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*){{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}/\1{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}/' | tr '\n' ' ')
 done
 
 ##### Gather all QC data

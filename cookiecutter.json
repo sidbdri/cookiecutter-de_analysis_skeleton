@@ -2,6 +2,7 @@
     "project_name": "newproject",
     "rnaseq_samples_dir": "",
     "rnaseq_samples": "",
+    "fastq_suffix": "fastq.gz",
     "ensembl_version": "84",
     "species": "mouse",
     "assembly_name": "primary_assembly",

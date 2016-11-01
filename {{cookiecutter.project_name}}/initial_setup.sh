@@ -26,3 +26,6 @@ ln -s ${GENOME_DATA_DIR}/{{cookiecutter.gtf_file}} ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/genes.tsv ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.salmon_index}} ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.kallisto_index}} ${ENSEMBL_DIR}
+
+git init
+mv gitignore .gitignore

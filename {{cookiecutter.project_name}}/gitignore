@@ -1,0 +1,6 @@
+.R*
+*.Rproj
+data
+results
+multiqc*
+nohup.out

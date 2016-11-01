@@ -73,7 +73,7 @@ multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto results
 ##### Perform differential expression
 mkdir -p ${DIFF_EXPR_DIR}
 
-get_gene_lengths ${GTF_FILE} > ${RESULTS_DIR}/gene_lengths.csv
+get_gene_lengths <(tail -n +6 ${GTF_FILE}) > ${RESULTS_DIR}/gene_lengths.csv
 
 # Construct transcript->gene mapping file for tximport
 awk '$3=="transcript" {print $14, $10}' ${GTF_FILE} | sed 's/"//g;s/;//g' > ${RESULTS_DIR}/tx2gene.tsv

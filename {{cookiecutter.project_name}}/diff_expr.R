@@ -167,7 +167,7 @@ get_condition_res <- function() {
   
   vst <- varianceStabilizingTransformation(dds)
   
-  plotPCA(vst, intgroup=c("condition"))
+  print(plotPCA(vst, intgroup=c("condition")))
   plot_heat_map(vst, sample_data)
   
   results <- get_deseq2_results(dds, "condition", "<cond2>", "<cond1>")

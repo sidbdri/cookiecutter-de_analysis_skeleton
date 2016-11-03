@@ -3,6 +3,7 @@ library(dplyr)
 library(gplots)
 library(ggplot2)
 library(magrittr)
+library(purrr)
 library(RColorBrewer)
 library(readr)
 library(stringr)
@@ -66,8 +67,8 @@ get_count_data <- function(dds, norm=T) {
   return(counts)
 }
 
-plot_heat_map <- function(rld, sample_data) {
-  distsRL <- dist(t(assay(rld)))
+plot_heat_map <- function(vst, sample_data) {
+  distsRL <- dist(t(assay(vst)))
   mat <- as.matrix(distsRL)
   rownames(mat) <- colnames(mat) <- row.names(sample_data)
   hc <- hclust(distsRL)
@@ -78,7 +79,7 @@ plot_heat_map <- function(rld, sample_data) {
 }
 
 get_gene_info <- function() {
-  gene_info <- read_tsv(str_c("data/{{cookiecutter.species}}_ensembl-{{cookiecutter.ensembl_version}}/genes.tsv"),
+  gene_info <- read_tsv(str_c("data/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_version}}/genes.tsv"),
                         col_names = c("gene", "description", "chromosome", "gene_name"),
                         col_types = list(chromosome = col_character()))
   
@@ -106,7 +107,7 @@ get_total_dds <- function() {
   # Collate count data
   total_count_data <- 
     read_counts("<SAMPLE1>") %>%
-    inner_join(read_counts("<SAMPLE2>") %>%
+    inner_join(read_counts("<SAMPLE2>")) %>%
     etc. %>%
     remove_gene_column()
     
@@ -120,9 +121,9 @@ get_total_dds <- function() {
   
   total_dds <- get_deseq2_dataset(
     total_count_data, total_sample_data,
-    filter_low_counts=FALSE, design_formula=~genotype)
+    filter_low_counts=FALSE, design_formula=~condition)
   
-  return(total_dds)
+  return(list(total_sample_data, total_dds))
 }
 
 get_total_dds_tximport <- function(quant_method, quant_file) {
@@ -162,17 +163,17 @@ get_condition_res <- function() {
   #sample_data$genotype %<>% relevel("WT")
   
   dds <- get_deseq2_dataset(
-    count_data, sample_data, design_formula=~genotype)
+    count_data, sample_data, design_formula=~condition)
   
-  rld <- rlog(dds)
+  vst <- varianceStabilizingTransformation(dds)
   
-  plotPCA(rld, intgroup=c("genotype"))
-  plot_heat_map(rld, sample_data)
+  plotPCA(vst, intgroup=c("condition"))
+  plot_heat_map(vst, sample_data)
   
-  results <- get_deseq2_results(dds, "genotype", "KO", "WT")
+  results <- get_deseq2_results(dds, "condition", "<cond2>", "<cond1>")
   
   l2fc <- get_count_data(dds) %>%
-    mutate(l2fc=log2(() / ()) %>%
+    mutate(l2fc=log2(() / ())) %>%
     select(gene, l2fc)
     
   results %<>% left_join(l2fc)
@@ -213,10 +214,21 @@ get_condition_res_tximport <- function(quant_method, quant_file) {
 
 #####
 
+total_dds_data <- get_total_dds()
+total_sample_data <- total_dds_data[[1]]
+total_dds <- total_dds_data[[2]]
+
+total_vst <- varianceStabilizingTransformation(total_dds)
+
+plotPCA(total_vst, intgroup=c("condition"))
+plot_heat_map(total_vst, total_sample_data)
+
+#####
+
 gene_info <- get_gene_info()
 gene_lengths <- read_csv("results/gene_lengths.csv")
 
-results <- get_total_dds() %>% get_count_data() 
+results <- total_dds %>% get_count_data() 
 
 fpkms <- results %>% 
   get_fpkms(gene_lengths, colnames(results) %>% tail(-1), "_fpkm")
@@ -233,10 +245,10 @@ results %<>%
 
 results %<>% 
   left_join(get_condition_res(), by="gene") %>%
-  dplyr::rename(l2fc=log2FoldChange,
-         raw_l2fc=l2fc,
-         pval=pvalue,
-         padj=padj)
+  dplyr::rename(condition.l2fc=log2FoldChange,
+         condition.raw_l2fc=l2fc,
+         condition.pval=pvalue,
+         condition.padj=padj)
 
 results %>% 
   dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
@@ -246,7 +258,7 @@ results %>%
 results %>% 
   dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
          dplyr::contains("_fpkm"), 
-         etc.)
+         starts_with(condition), etc.)
   write_csv("results/differential_expression/deseq2_results_fpkm.csv")
 
 #####

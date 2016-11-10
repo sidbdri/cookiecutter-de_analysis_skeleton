@@ -1,0 +1,12 @@
+library(DESeq2)
+library(dplyr)
+library(gplots)
+library(ggplot2)
+library(magrittr)
+library(purrr)
+library(RColorBrewer)
+library(readr)
+library(stringr)
+library(tximport)
+
+sessionInfo()

@@ -27,6 +27,19 @@ NUM_THREADS=16
 
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
 
+##### Record software version information
+
+README=${MAIN_DIR}/README
+echo "Software versions:" > ${README}
+fastqc --version >> ${README}
+STAR --version >> ${README}
+featureCounts -v >> ${README}
+echo "Salmon $(salmon --version 2>&1)" >> ${README}
+kallisto version >> ${README}
+multiqc --version >> ${README}
+get_gene_lengths --version >> ${README}
+Rscript load_packages.R 2>&1 | sed -n '/R version/,$p' >> ${README}
+
 ##### Perform QC on raw reads
 mkdir -p ${QC_DIR}
 

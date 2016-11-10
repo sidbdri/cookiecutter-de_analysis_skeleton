@@ -43,6 +43,23 @@ function count_reads_for_features {
     mv ${counts_tmp}.summary ${COUNTS_OUTPUT_FILE}.summary
 }
 
+function count_reads_for_features_strand_test {
+    NUM_THREADS=$1
+    FEATURES_GTF=$2
+    BAM_FILE=$3
+    COUNTS_OUTPUT_FILE=$4
+
+    counts_tmp=.counts_tmp
+
+    for i in 0 1 2; do
+        featureCounts -T ${NUM_THREADS} -p -a ${FEATURES_GTF} -o ${counts_tmp} -s $i ${BAM_FILE}
+        tail -n +3 ${counts_tmp} | cut -f 1,7 > ${COUNTS_OUTPUT_FILE}.$i
+
+        rm ${counts_tmp}
+        mv ${counts_tmp}.summary ${COUNTS_OUTPUT_FILE}.$i.summary
+    done
+}
+
 function clean_de_results {
     DE_RESULTS_FILE=$1
 

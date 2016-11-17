@@ -127,8 +127,8 @@ get_total_dds_tximport <- function(quant_method, quant_file) {
 
   txi <- tximport(quant_files, type=quant_method, tx2gene=tx2gene, reader=read_tsv)
 
-  total_dds <- DESeqDataSetFromTxImport(txi, sample_data, ~genotype)
-  total_dds <- DESeq(dds)
+  total_dds <- DESeqDataSetFromTximport(txi, sample_data, ~genotype)
+  total_dds <- DESeq(total_dds)
 
   return(total_dds)
 }
@@ -178,7 +178,7 @@ get_condition_res_tximport <- function(quant_method, quant_file) {
 
   txi <- tximport(quant_files, type=quant_method, tx2gene=tx2gene, reader=read_tsv)
 
-  dds <- DESeqDataSetFromTxImport(txi, sample_data, ~genotype)
+  dds <- DESeqDataSetFromTximport(txi, sample_data, ~genotype)
   dds <- dds[rowSums(counts(dds)) > 1, ]
   dds <- DESeq(dds)
 

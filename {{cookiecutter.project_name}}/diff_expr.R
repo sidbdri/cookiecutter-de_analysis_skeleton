@@ -246,25 +246,31 @@ results_salmon <- get_total_dds_tximport("salmon", "quant.genes.sf") %>%
   get_count_data() 
 
 # TODO - read in accurate TPMs from quant files
-#fpkms <- results %>% 
-#  get_fpkms(gene_lengths, colnames(results) %>% tail(-1), "_fpkm")
+fpkms <- results %>% 
+  get_fpkms(gene_lengths, colnames(results) %>% tail(-1), "_fpkm")
 
-results %<>% 
-  inner_join(tpms) %>%
+results_salmon %<>% 
+  inner_join(fpkms) %>%
   inner_join(gene_info) %>% 
   inner_join(gene_lengths)
 
-results %<>% 
+results_salmon %<>% 
   left_join(get_condition_res_tximport("salmon", "quant.genes.sf"), by="gene") %>%
   dplyr::rename(l2fc=log2FoldChange,
          raw_l2fc=l2fc,
          pval=pvalue,
          padj=padj)
 
-results %>% 
+results_salmon %>% 
   dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
-                everything(), -dplyr::contains("_tpm")) %>%
+                everything(), -dplyr::contains("_fpkm")) %>%
   write_csv("results/differential_expression/deseq2_salmon_results.csv")
+           
+results_salmon %>% 
+  dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
+         dplyr::contains("_fpkm"), 
+         starts_with(condition), etc.)
+  write_csv("results/differential_expression/deseq2_salmon_results_fpkm.csv")
 
 #####
 
@@ -276,19 +282,25 @@ results_kallisto <- get_total_dds_tximport("kallisto", "abundance.tsv") %>%
 #fpkms <- results %>% 
 #  get_fpkms(gene_lengths, colnames(results) %>% tail(-1), "_fpkm")
 
-results %<>% 
+results_kallisto %<>% 
   inner_join(tpms) %>%
   inner_join(gene_info) %>% 
   inner_join(gene_lengths)
 
-results %<>% 
+results_kallisto %<>% 
   left_join(get_condition_res_tximport("kallisto", "abundance.tsv"), by="gene") %>%
   dplyr::rename(l2fc=log2FoldChange,
          raw_l2fc=l2fc,
          pval=pvalue,
          padj=padj)
 
-results %>% 
+results_kallisto %>% 
   dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
-                everything(), -dplyr::contains("_tpm")) %>%
+                everything(), -dplyr::contains("_fpkm")) %>%
   write_csv("results/differential_expression/deseq2_kallisto_results.csv")
+           
+results_kallisto %>% 
+  dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
+         dplyr::contains("_fpkm"), 
+         starts_with(condition), etc.)
+  write_csv("results/differential_expression/deseq2_kallisto_results_fpkm.csv")

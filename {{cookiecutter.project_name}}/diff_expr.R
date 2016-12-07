@@ -236,7 +236,7 @@ results %>%
 results %>% 
   dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
          dplyr::contains("_fpkm"), 
-         starts_with(condition), etc.)
+         starts_with(condition), etc.) %>% 
   write_csv("results/differential_expression/deseq2_results_fpkm.csv")
 
 #####
@@ -269,7 +269,7 @@ results_salmon %>%
 results_salmon %>% 
   dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
          dplyr::contains("_fpkm"), 
-         starts_with(condition), etc.)
+         starts_with(condition), etc.) %>% 
   write_csv("results/differential_expression/deseq2_salmon_results_fpkm.csv")
 
 #####
@@ -302,5 +302,5 @@ results_kallisto %>%
 results_kallisto %>% 
   dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
          dplyr::contains("_fpkm"), 
-         starts_with(condition), etc.)
+         starts_with(condition), etc.) %>% 
   write_csv("results/differential_expression/deseq2_kallisto_results_fpkm.csv")

@@ -50,7 +50,7 @@ get_count_data <- function(dds, norm=T) {
 }
 
 plot_heat_map <- function(vst, sample_data) {
-  distsRL <- rld %>% assay %>% t %>% dist
+  distsRL <- vst %>% assay %>% t %>% dist
 
   mat <- distsRL %>% as.matrix()
   rownames(mat) <- colnames(mat) <- sample_data %>% row.names

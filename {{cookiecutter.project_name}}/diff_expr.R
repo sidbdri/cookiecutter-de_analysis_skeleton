@@ -151,7 +151,7 @@ get_condition_res <- function() {
     count_data, sample_data, design_formula=~condition)
   
   vst <- dds %>% varianceStabilizingTransformation
-  vst %>% plotPCA(vst, intgroup=c("condition")) %>% print
+  vst %>% plotPCA(intgroup=c("condition")) %>% print
   vst %>% plot_heat_map(sample_data)
   
   results <- dds %>% get_deseq2_results("condition", "<cond2>", "<cond1>")

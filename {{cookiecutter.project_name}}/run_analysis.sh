@@ -77,7 +77,7 @@ done
 mkdir -p ${SALMON_QUANT_DIR}
 
 for sample in ${SAMPLES}; do
-    salmon quant -i ${SALMON_INDEX} -l A -1 $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) -2 $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS} -g ${GTF_FILE}
+    salmon quant -i ${SALMON_INDEX} -l A -1 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) -2 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS} -g ${GTF_FILE}
 done
 
 ##### Quantify transcript expression with Kallisto

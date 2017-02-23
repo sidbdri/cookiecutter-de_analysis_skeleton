@@ -67,7 +67,7 @@ first_sample="TRUE"
 for sample in ${SAMPLES}; do
     [[ "${first_sample}" == "FALSE" ]] || {
         first_sample="FALSE"
-        count_reads_for_features_strand_test ${NUM_THREADS} ${GTF_FILE} ${MAPPING_DIR}/mtrna.${sample}.bam ${COUNTS_DIR}/mtrna.${sample}.counts
+        count_reads_for_features_strand_test ${NUM_THREADS} ${GTF_FILE} ${MAPPING_DIR}/${sample}.bam ${COUNTS_DIR}/strand_test.${sample}.counts
     }
 
     count_reads_for_features ${NUM_THREADS} ${GTF_FILE} ${MAPPING_DIR}/${sample}.bam ${COUNTS_DIR}/${sample}.counts

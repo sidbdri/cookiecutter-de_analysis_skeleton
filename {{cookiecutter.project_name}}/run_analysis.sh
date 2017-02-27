@@ -102,3 +102,7 @@ Rscript diff_expr.R
 
 clean_de_results ${DIFF_EXPR_DIR}/deseq2_results.csv
 clean_de_results ${DIFF_EXPR_DIR}/deseq2_results_fpkm.csv
+clean_de_results ${DIFF_EXPR_DIR}/deseq2_salmon_results.csv
+clean_de_results ${DIFF_EXPR_DIR}/deseq2_salmon_results_fpkm.csv
+clean_de_results ${DIFF_EXPR_DIR}/deseq2_kallisto_results.csv
+clean_de_results ${DIFF_EXPR_DIR}/deseq2_kallisto_results_fpkm.csv

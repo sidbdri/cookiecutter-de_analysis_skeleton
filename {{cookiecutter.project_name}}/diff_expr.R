@@ -62,6 +62,21 @@ plot_heat_map <- function(vst, sample_data) {
             col = hmcol %>% rev, margin=c(10, 10))
 }
 
+plot_count_distribution <- function(dds, norm=T) {
+  counts <- dds %>% 
+    get_count_data(norm=norm) %>% 
+    melt(id.vars=c("gene"), variable.name="sample", value.name="count") 
+  
+  p <- ggplot(counts, aes(sample, 1 + count)) + 
+    geom_violin(aes(fill=sample), scale="width") + 
+    geom_boxplot(width=.1, outlier.shape=NA) + 
+    coord_trans(y = "log10") + 
+    scale_y_continuous(breaks=c(1, 10, 100, 1000, 10000, 100000, 1000000)) +
+    guides(fill=FALSE)
+  
+  print(p)
+}
+
 get_gene_info <- function() {
   read_tsv(str_c("data/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_version}}/genes.tsv"),
     col_names = c("gene", "description", "chromosome", "gene_name"),
@@ -200,6 +215,9 @@ total_dds_data <- get_total_dds()
 total_vst <- total_dds_data %>% extract2(2) %>% varianceStabilizingTransformation
 total_vst %>% plotPCA(intgroup=c("condition"))
 total_vst %>% plot_heat_map(total_dds_data %>% extract2(1))
+
+plot_count_distribution(total_dds_data %>% extract2(2), norm=F)
+plot_count_distribution(total_dds_data %>% extract2(2), norm=T)
 
 #####
 

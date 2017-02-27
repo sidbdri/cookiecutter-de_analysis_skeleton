@@ -77,6 +77,17 @@ plot_count_distribution <- function(dds, norm=T) {
   print(p)
 }
 
+plot_pvalue_distribution <- function(results, pvalue_column) {
+  pvals <- results %>% 
+    filter_(str_c("!is.na(", pvalue_column, ")")) %>% 
+    select_(pvalue_column)
+  
+  p <- ggplot(pvals, aes_string("condition.pval")) + 
+    geom_histogram(binwidth=0.025) 
+  
+  print(p)
+}
+
 get_gene_info <- function() {
   read_tsv(str_c("data/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_version}}/genes.tsv"),
     col_names = c("gene", "description", "chromosome", "gene_name"),
@@ -245,6 +256,8 @@ results %<>%
          condition.raw_l2fc=l2fc,
          condition.pval=pvalue,
          condition.padj=padj)
+
+plot_pvalue_distribution(results, "condition.pval")
 
 results %>% 
   dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,

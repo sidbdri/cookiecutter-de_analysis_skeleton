@@ -29,7 +29,9 @@ SAMPLES="{{cookiecutter.rnaseq_samples}}"
 
 ##### Record software version information
 
-README=${MAIN_DIR}/README
+mkdir -p ${RESULTS_DIR}
+
+README=${RESULTS_DIR}/README
 echo "Software versions:" > ${README}
 fastqc --version >> ${README}
 STAR --version >> ${README}

@@ -32,7 +32,8 @@ SAMPLES="{{cookiecutter.rnaseq_samples}}"
 mkdir -p ${RESULTS_DIR}
 
 README=${RESULTS_DIR}/README
-echo "Software versions:" > ${README}
+echo "Ensembl version: {{cookiecutter.ensembl_version}}" > ${README}
+echo "Software versions:" >> ${README}
 fastqc --version >> ${README}
 STAR --version >> ${README}
 featureCounts -v >> ${README}

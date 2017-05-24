@@ -146,6 +146,50 @@ get_kallisto_tpms <- function(sample) {
     rename_(.dots = setNames(names(.), c("gene", str_c(sample, "_tpm"))))
 }
 
+get_significant_genes <- function(term, GOdata, gene_info) {
+  genes_for_term <- GOdata %>% genesInTerm(term) %>% extract2(1)
+  significant_genes <- GOdata %>% sigGenes
+  significant_genes_for_term <- genes_for_term %>% intersect(significant_genes)
+  
+  gene_info %>% 
+    filter(gene %in% significant_genes_for_term) %>% 
+    dplyr::select(gene_name) %>% 
+    extract2(1) %>% 
+    paste(collapse=", ")
+}
+
+perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP") {
+  gene_list <- (gene_universe$gene %in% significant_genes$gene) %>% as.integer %>% factor
+  names(gene_list) <- gene_universe$gene
+  
+  mapping <- switch("{{cookiecutter.species}}",
+         mouse = "org.Mm.eg.db",
+         rat = "org.Rn.eg.db",
+         human = "org.Hs.eg.db")
+  
+  go_data <- new("topGOdata", ontology=ontology, allGenes=gene_list,
+                 annot=annFUN.org, mapping=mapping, ID="Ensembl")
+  
+  result_fisher <- go_data %>% runTest(algorithm="weight01", statistic="fisher")
+  result_fisher %>% print
+  
+  go_results <- go_data %>% GenTable(weight_fisher=result_fisher, orderBy="weight_fisher", topNodes=150)
+  
+  go_results$Genes <- sapply(go_results[,c('GO.ID')], 
+                             function(x) get_significant_genes(x, go_data, get_gene_info("rat")))
+  
+  go_results
+}
+
+perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix) {
+  c("BP", "MF", "CC") %>% walk(
+    function(x) {
+      perform_go_analysis(expressed_genes, significant_genes, x) %>%
+        write_csv(str_c("results/differential_expression/go/{{cookiecutter.species}}_", file_prefix, "_go_", x %>% tolower, ".csv"))      
+    }
+  )
+}
+
 #####
 
 SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
@@ -304,9 +348,14 @@ results %>%
          starts_with(condition), etc.) %>% 
   write_csv("results/differential_expression/deseq2_results_fpkm.csv")
 
-#####
+##### GO analyses
 
-# TODO - look up quant file name
+results %>% 
+  filter(padj < 0.1) %>%
+  perform_go_analyses(expressed_genes, "<condition_comparison>")
+
+##### Salmon/tximport analysis
+
 results_salmon <- get_total_dds_tximport("salmon") %>% 
   get_count_data()
 
@@ -337,9 +386,8 @@ results_salmon %>%
          starts_with(condition), etc.) %>% 
   write_csv("results/differential_expression/deseq2_salmon_results_fpkm.csv")
 
-#####
+##### Kallisto/tximport analysis
 
-# TODO - look up quant file name
 results_kallisto <- get_total_dds_tximport("kallisto") %>% 
   get_count_data() 
 

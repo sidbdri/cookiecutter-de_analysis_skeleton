@@ -94,6 +94,7 @@ multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto results
 
 ##### Perform differential expression
 mkdir -p ${DIFF_EXPR_DIR}
+mkdir -p ${DIFF_EXPR_DIR}/go
 
 get_gene_lengths <(tail -n +6 ${GTF_FILE}) > ${RESULTS_DIR}/gene_lengths.csv
 
@@ -102,9 +103,6 @@ awk '$3=="transcript" {print $14, $10}' ${GTF_FILE} | sed 's/"//g;s/;//g' > ${RE
 
 Rscript diff_expr.R
 
-clean_de_results ${DIFF_EXPR_DIR}/deseq2_results.csv
-clean_de_results ${DIFF_EXPR_DIR}/deseq2_results_fpkm.csv
-clean_de_results ${DIFF_EXPR_DIR}/deseq2_salmon_results.csv
-clean_de_results ${DIFF_EXPR_DIR}/deseq2_salmon_results_fpkm.csv
-clean_de_results ${DIFF_EXPR_DIR}/deseq2_kallisto_results.csv
-clean_de_results ${DIFF_EXPR_DIR}/deseq2_kallisto_results_fpkm.csv
+for de_results in ${DIFF_EXPR_DIR}/*.csv; do
+    clean_de_results ${de_results}
+done

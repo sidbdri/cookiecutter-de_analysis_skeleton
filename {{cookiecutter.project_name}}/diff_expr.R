@@ -12,7 +12,7 @@ read_counts <- function(sample) {
 
 remove_gene_column <- function(count_data) {
   row.names(count_data) <- count_data$gene
-  count_data %>% select(-gene)
+  count_data %>% dplyr::select(-gene)
 }
 
 get_deseq2_dataset <- function(count_data, sample_data, filter_low_counts=TRUE, 
@@ -33,7 +33,7 @@ get_deseq2_results <- function(dds, comparison, condition, condition_base) {
   
   res %>% as.data.frame() %>%
     tibble::rownames_to_column(var="gene") %>%
-    select(-baseMean, -lfcSE, -stat)
+    dplyr::select(-baseMean, -lfcSE, -stat)
 }
 
 get_deseq2_results_name <- function(dds, name) {
@@ -42,7 +42,7 @@ get_deseq2_results_name <- function(dds, name) {
   
   res %>% as.data.frame() %>%
     tibble::rownames_to_column(var="gene") %>%
-    select(-baseMean, -lfcSE, -stat)
+    dplyr::select(-baseMean, -lfcSE, -stat)
 }
 
 get_count_data <- function(dds, norm=T) {
@@ -83,7 +83,7 @@ plot_count_distribution <- function(dds, norm=T) {
 plot_pvalue_distribution <- function(results, pvalue_column) {
   pvals <- results %>% 
     filter_(str_c("!is.na(", pvalue_column, ")")) %>% 
-    select_(pvalue_column)
+    dplyr::select_(pvalue_column)
   
   p <- ggplot(pvals, aes_string("condition.pval")) + 
     geom_histogram(binwidth=0.025) 
@@ -264,7 +264,7 @@ get_condition_res <- function() {
   
   l2fc <- dds %>% get_count_data %>%
     mutate(l2fc=log2(() / ())) %>%
-    select(gene, l2fc)
+    dplyr::select(gene, l2fc)
     
   results %>% left_join(l2fc)
 }
@@ -291,7 +291,7 @@ get_condition_res_tximport <- function(quant_method) {
   
   l2fc <- get_count_data(dds) %>%
     mutate(l2fc=log2(() / ()) %>%
-    select(gene, l2fc)
+    dplyr::select(gene, l2fc)
     
   results %<>% left_join(l2fc)
   

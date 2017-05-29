@@ -85,7 +85,7 @@ plot_pvalue_distribution <- function(results, pvalue_column) {
     filter_(str_c("!is.na(", pvalue_column, ")")) %>% 
     dplyr::select_(pvalue_column)
   
-  p <- ggplot(pvals, aes_string("condition.pval")) + 
+  p <- ggplot(pvals, aes_string(pvalue_column)) + 
     geom_histogram(binwidth=0.025) 
   
   print(p)

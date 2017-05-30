@@ -92,9 +92,12 @@ plot_pvalue_distribution <- function(results, pvalue_column) {
 }
 
 get_gene_info <- function() {
-  read_tsv(str_c("data/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_version}}/genes.tsv"),
-    col_names = c("gene", "description", "chromosome", "gene_name"),
-    col_types = list(chromosome = col_character()))
+  "data/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_version}}/genes.tsv" %>% 
+    read_tsv(col_names = c("gene", "description", "chromosome", "gene_name"),
+             col_types = list(chromosome = col_character())) %>% 
+    group_by(gene) %>% 
+    filter(row_number()==1) %>% 
+    ungroup
 }
 
 get_fpkms <- function(all_counts, gene_lengths, samples, col_suffix) {

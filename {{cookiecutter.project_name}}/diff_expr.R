@@ -178,8 +178,9 @@ perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP")
   
   go_results <- go_data %>% GenTable(weight_fisher=result_fisher, orderBy="weight_fisher", topNodes=150)
   
+  gene_info <- get_gene_info()
   go_results$Genes <- sapply(go_results[,c('GO.ID')], 
-                             function(x) get_significant_genes(x, go_data, get_gene_info()))
+                             function(x) get_significant_genes(x, go_data, gene_info))
   
   go_results
 }

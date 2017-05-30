@@ -5,6 +5,13 @@ SALMON <- "salmon"
 
 ##### FUNCTIONS
 
+filter_with_rownames <- function(.data, ...) {
+  .data %>%
+    tibble::rownames_to_column(var = "tmp_row_names") %>%
+    filter_(.dots = lazyeval::lazy_dots(...)) %>%
+    tibble::column_to_rownames(var = "tmp_row_names")
+}
+
 read_counts <- function(sample) {
   counts_file_name <- str_c("results/read_counts/", sample, ".counts")
   counts_file_name %>% read_tsv(col_names=c("gene", str_c(sample)))
@@ -34,6 +41,24 @@ get_deseq2_results <- function(dds, comparison, condition, condition_base) {
   res %>% as.data.frame() %>%
     tibble::rownames_to_column(var="gene") %>%
     dplyr::select(-baseMean, -lfcSE, -stat)
+}
+
+get_raw_l2fc <- function(dds, sample_data, ...) {
+  sample_data %<>% tibble::rownames_to_column(var="tmp_sample_name")
+  
+  all_samples <- sample_data %>% extract2("tmp_sample_name") %>% as.vector
+  
+  comparison_sample_data <- filter_(sample_data, .dots=lazyeval::lazy_dots(...))
+  comparison_samples <- comparison_sample_data %>% extract2("tmp_sample_name") %>% as.vector
+  
+  base_samples = all_samples %>% setdiff(comparison_samples)
+  
+  dds %>% 
+    get_count_data %>% 
+    mutate(comparison_mean=rowMeans(.[comparison_samples]),
+           base_mean=rowMeans(.[base_samples]),
+           raw_l2fc=log2(comparison_mean / base_mean)) %>%
+    dplyr::select(gene, raw_l2fc)
 }
 
 get_deseq2_results_name <- function(dds, name) {
@@ -201,26 +226,22 @@ SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
   t %>%
   as.vector
 
-get_total_dds <- function() {
+SAMPLE_DATA <- data.frame(
+  condition=...,
+  row.names=SAMPLE_NAMES
+)
+
+get_total_dds <- function(filter_low_counts=FALSE) {
   # Collate count data
-  total_count_data <- SAMPLE_NAMES %>%
+  total_count_data <- SAMPLE_DATA %>% 
+    row.names() %>% 
     map(read_counts) %>%
     reduce(inner_join) %>%
     remove_gene_column()
     
-  total_sample_data <- data.frame(
-    condition=c(),
-    sample=c(),
-    row.names=c("<SAMPLE1>", "<SAMPLE2>", etc)
-  )
-  
-  #total_sample_data$genotype %<>% relevel("WT")
-  
-  total_dds <- get_deseq2_dataset(
-    total_count_data, total_sample_data,
-    filter_low_counts=FALSE, design_formula=~condition)
-  
-  list(total_sample_data, total_dds)
+  get_deseq2_dataset(
+    total_count_data, SAMPLE_DATA,
+    filter_low_counts=filter_low_counts, design_formula=~condition)
 }
 
 get_total_dds_tximport <- function(quant_method) {
@@ -244,33 +265,19 @@ get_total_dds_tximport <- function(quant_method) {
 }
 
 get_condition_res <- function() {
-  count_data <- SAMPLE_NAMES %>%
-    map(read_counts) %>%
-    reduce(inner_join) %>%
-    remove_gene_column()
-    
-  sample_data <- data.frame(
-    condition=c(),
-    sample=c(),
-    row.names=c("<SAMPLE1>", "<SAMPLE2>", etc)
-  )
-  
-  #sample_data$genotype %<>% relevel("WT")
-  
-  dds <- get_deseq2_dataset(
-    count_data, sample_data, design_formula=~condition)
-  
-  vst <- dds %>% varianceStabilizingTransformation
-  vst %>% plotPCA(intgroup=c("condition")) %>% print
-  vst %>% plot_heat_map(sample_data)
-  
-  results <- dds %>% get_deseq2_results("condition", "<cond2>", "<cond1>")
-  
-  l2fc <- dds %>% get_count_data %>%
-    mutate(l2fc=log2(() / ())) %>%
-    dplyr::select(gene, l2fc)
-    
-  results %>% left_join(l2fc)
+  sample_data <- SAMPLE_DATA %>% 
+    filter_with_rownames(...)
+
+  dds <- sample_data %>% 
+    row.names() %>% 
+    map(read_counts) %>% 
+    reduce(inner_join) %>% 
+    remove_gene_column() %>% 
+    get_deseq2_dataset(sample_data, design_formula=~condition)
+
+  dds %>% 
+    get_deseq2_results("<condition>", "<cond2>", "<cond1>") %>% 
+    left_join(dds %>% get_raw_l2fc(sample_data, condition="<cond2>")
 }
   
 get_condition_res_tximport <- function(quant_method) {
@@ -305,19 +312,19 @@ get_condition_res_tximport <- function(quant_method) {
 #####
 
 total_dds_data <- get_total_dds()
-total_vst <- total_dds_data %>% extract2(2) %>% varianceStabilizingTransformation
+total_vst <- total_dds_data %>% varianceStabilizingTransformation
 total_vst %>% plotPCA(intgroup=c("condition"))
-total_vst %>% plot_heat_map(total_dds_data %>% extract2(1))
+total_vst %>% plot_heat_map(total_dds_data)
 
-plot_count_distribution(total_dds_data %>% extract2(2), norm=F)
-plot_count_distribution(total_dds_data %>% extract2(2), norm=T)
+plot_count_distribution(total_dds_data, norm=F)
+plot_count_distribution(total_dds_data, norm=T)
 
 #####
 
 gene_info <- get_gene_info()
 gene_lengths <- read_csv("results/gene_lengths.csv")
 
-results <- total_dds_data %>% extract2(2) %>% get_count_data() 
+results <- total_dds_data %>% get_count_data() 
 
 fpkms <- results %>% 
   get_fpkms(gene_lengths, colnames(results) %>% tail(-1), "_fpkm")
@@ -353,6 +360,8 @@ results %>%
   write_csv("results/differential_expression/deseq2_results_fpkm.csv")
 
 ##### GO analyses
+
+expressed_genes <- get_total_dss(TRUE) %>% get_count_data()
 
 results %>% 
   filter(padj < 0.1) %>%

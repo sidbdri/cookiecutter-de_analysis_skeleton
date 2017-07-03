@@ -118,7 +118,7 @@ plot_pvalue_distribution <- function(results, pvalue_column) {
 
 get_gene_info <- function() {
   "data/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_version}}/genes.tsv" %>% 
-    read_tsv(col_names = c("gene", "description", "chromosome", "gene_name"),
+    read_tsv(col_names = c("gene", "description", "chromosome", "gene_name", "entrez_id"),
              col_types = list(chromosome = col_character())) %>% 
     group_by(gene) %>% 
     filter(row_number()==1) %>% 
@@ -349,19 +349,21 @@ results %<>%
 plot_pvalue_distribution(results, "condition.pval")
 
 results %>% 
-  dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
+  dplyr::select(gene, gene_name, chromosome, description, entrez_id,
+                gene_length, max_transcript_length,
                 everything(), -dplyr::contains("_fpkm")) %>%
   write_csv("results/differential_expression/deseq2_results.csv")
 
 results %>% 
-  dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
+  dplyr::select(gene, gene_name, chromosome, description, entrez_id,
+                gene_length, max_transcript_length,
          dplyr::contains("_fpkm"), 
          starts_with(condition), etc.) %>% 
   write_csv("results/differential_expression/deseq2_results_fpkm.csv")
 
 ##### GO analyses
 
-expressed_genes <- get_total_dss(TRUE) %>% get_count_data()
+expressed_genes <- get_total_dds(TRUE) %>% get_count_data()
 
 results %>% 
   filter(padj < 0.1) %>%

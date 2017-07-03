@@ -209,6 +209,10 @@ perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP")
 }
 
 perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix) {
+  if (significant_genes %>% nrow == 0) {
+    stop("No significant genes supplied.")
+  }
+  
   c("BP", "MF", "CC") %>% walk(
     function(x) {
       perform_go_analysis(expressed_genes, significant_genes, x) %>%

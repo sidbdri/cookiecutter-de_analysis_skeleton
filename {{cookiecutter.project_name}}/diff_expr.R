@@ -31,7 +31,7 @@ get_deseq2_dataset <- function(count_data, sample_data, filter_low_counts=TRUE,
     dds <- dds[rowSums(counts(dds)) > 1, ]
   }
   
-  dds %>% DESeq
+  dds %>% DESeq(betaPrior=TRUE)
 }
 
 get_deseq2_results <- function(dds, comparison, condition, condition_base) {

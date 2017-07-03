@@ -219,6 +219,16 @@ perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix)
   )
 }
 
+read_de_results <- function(filename, num_samples, num_conditions, num_comparisons, extra_columns="") {
+  col_types_string <- str_c(
+    "ccccii",
+    strrep("d", num_samples + num_conditions + num_comparisons * 4),
+    extra_columns)
+  print(nchar(col_types_string))
+  
+  read_csv(filename, col_types=col_types_string)
+}
+
 #####
 
 SAMPLE_NAMES <- c(condition1, condition2, etc) %>%

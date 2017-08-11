@@ -57,7 +57,7 @@ get_condition_res <- function() {
 
   dds %>% 
     get_deseq2_results("<condition>", "<cond2>", "<cond1>") %>% 
-    left_join(dds %>% get_raw_l2fc(sample_data, condition="<cond2>")
+    left_join(dds %>% get_raw_l2fc(sample_data, condition="<cond2>"))
 }
   
 get_condition_res_tximport <- function(quant_method) {

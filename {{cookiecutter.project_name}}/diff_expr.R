@@ -138,7 +138,7 @@ results %>%
   dplyr::select(gene, gene_name, chromosome, description, entrez_id,
                 gene_length, max_transcript_length,
          dplyr::contains("_fpkm"), 
-         starts_with(condition), etc.) %>% 
+         starts_with(comparison), etc.) %>% 
   write_csv("results/differential_expression/deseq2_results_fpkm.csv")
 
 ##### GO analyses

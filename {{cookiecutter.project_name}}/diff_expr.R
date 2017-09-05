@@ -122,7 +122,7 @@ results %<>%
 results %<>% 
   left_join(get_condition_res(), by="gene") %>%
   dplyr::rename(condition.l2fc=log2FoldChange,
-         condition.raw_l2fc=l2fc,
+         condition.raw_l2fc=raw_l2fc,
          condition.pval=pvalue,
          condition.padj=padj)
 

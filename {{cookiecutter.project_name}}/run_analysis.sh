@@ -36,7 +36,7 @@ echo "Ensembl version: {{cookiecutter.ensembl_version}}" > ${README}
 echo "Software versions:" >> ${README}
 fastqc --version >> ${README}
 STAR --version >> ${README}
-featureCounts -v >> ${README}
+echo $(featureCounts -v 2>&1) >> ${README}
 echo "Salmon $(salmon --version 2>&1)" >> ${README}
 kallisto version >> ${README}
 multiqc --version >> ${README}

@@ -3,6 +3,7 @@
     "rnaseq_samples_dir": "",
     "rnaseq_samples": "",
     "fastq_suffix": "fastq.gz",
+    "paired_end_read": "yes",
     "read1_identifier": "_1",
     "read2_identifier": "{{ cookiecutter.read1_identifier|replace('1', '2') }}",
     "ensembl_version": "84",

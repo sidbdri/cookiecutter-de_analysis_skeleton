@@ -6,12 +6,20 @@
     "paired_end_read": "yes",
     "read1_identifier": "_1",
     "read2_identifier": "{{ cookiecutter.read1_identifier|replace('1', '2') }}",
-    "ensembl_version": "84",
-    "species": "mouse",
-    "assembly_name": "primary_assembly",
-    "gtf_file": "Mus_musculus.GRCm38.84.gtf",
+    "ensembl_version": "90",
+    "species": ["mouse", "rat", "human"],
     "salmon_index": "salmon_index",
     "kallisto_index": "kallisto_index",
     "projects_base": "/home/odando/projects",
-    "virtualenv_home": "/home/odando/.virtualenvs"
+    "virtualenv_home": "/home/odando/.virtualenvs",
+    "gtf_files": {
+        "mouse": "Mus_musculus.GRCm38.{{ cookiecutter.ensembl_version }}.gtf",
+        "human": "Homo_sapiens.GRCh38.{{ cookiecutter.ensembl_version }}.gtf",
+        "rat": "Rattus_norvegicus.Rnor_6.0.{{ cookiecutter.ensembl_version }}.gtf"
+    },
+    "assembly_names": {
+        "mouse": "primary_assembly",
+        "human": "primary_assembly",
+        "rat": "toplevel"
+    }
 }

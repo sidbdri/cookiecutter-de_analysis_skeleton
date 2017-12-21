@@ -26,6 +26,7 @@ DIFF_EXPR_DIR=${RESULTS_DIR}/differential_expression
 NUM_THREADS=16
 
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
+PAIRED_END_READ="{{cookiecutter.paired_end_read}}"
 
 ##### Record software version information
 
@@ -59,7 +60,11 @@ wait
 mkdir -p ${MAPPING_DIR}
 
 for sample in ${SAMPLES}; do
-    map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS} $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) ${MAPPING_DIR}
+    if [ $PAIRED_END_READ = "yes" ]; then
+        map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS} $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) ${MAPPING_DIR}
+    else
+        map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS} $(listFiles , ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}}) "" ${MAPPING_DIR}
+    fi
 done
 
 ##### Count mapped reads
@@ -79,15 +84,24 @@ done
 ##### Quantify transcript expression with Salmon
 mkdir -p ${SALMON_QUANT_DIR}
 
+
 for sample in ${SAMPLES}; do
-    salmon quant -i ${SALMON_INDEX} -l A -1 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) -2 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS} -g ${GTF_FILE}
+    if [ $PAIRED_END_READ = "yes" ]; then
+        salmon quant -i ${SALMON_INDEX} -l A -1 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) -2 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS} -g ${GTF_FILE}
+    else
+        salmon quant -i ${SALMON_INDEX} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}}) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS} -g ${GTF_FILE}
+   fi
 done
 
 ##### Quantify transcript expression with Kallisto
 mkdir -p ${KALLISTO_QUANT_DIR}
 
 for sample in ${SAMPLES}; do
-    kallisto quant -i ${KALLISTO_INDEX} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --rf-stranded -t ${NUM_THREADS} $(ls -1 ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}} | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*){{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}/\1{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}/' | tr '\n' ' ')
+    if [ $PAIRED_END_READ = "yes" ]; then
+        kallisto quant -i ${KALLISTO_INDEX} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --rf-stranded -t ${NUM_THREADS} $(ls -1 ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}} | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*){{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}/\1{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}/' | tr '\n' ' ')
+    else
+        kallisto quant -i ${KALLISTO_INDEX} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --single -t ${NUM_THREADS} $(ls -1 ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}} )
+    fi
 done
 
 ##### Gather all QC data

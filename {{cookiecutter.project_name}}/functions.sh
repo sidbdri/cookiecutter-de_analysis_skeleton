@@ -65,7 +65,7 @@ function count_reads_for_features_strand_test {
         tail -n +3 ${counts_tmp} | cut -f 1,7 > ${COUNTS_OUTPUT_FILE}.$i
 
         rm ${counts_tmp}
-        mv ${counts_tmp}.summary ${COUNTS_OUTPUT_FILE}.$i.summary
+        mv ${counts_tmp}.summary ${COUNTS_OUTPUT_FILE}.$i.testsummary
     done
 }
 

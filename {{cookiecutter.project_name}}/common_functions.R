@@ -98,7 +98,8 @@ plot_count_distribution <- function(dds, norm=T) {
     geom_boxplot(width=.1, outlier.shape=NA) + 
     coord_trans(y = "log10") + 
     scale_y_continuous(breaks=c(1, 10, 100, 1000, 10000, 100000, 1000000)) +
-    guides(fill=FALSE)
+    guides(fill=FALSE) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
   
   print(p)
 }

@@ -116,7 +116,7 @@ plot_pvalue_distribution <- function(results, pvalue_column) {
 
 get_gene_info <- function() {
   "data/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_version}}/genes.tsv" %>% 
-    read_tsv(col_names = c("gene", "description", "chromosome", "gene_name", "entrez_id"),
+    read_tsv(col_names = c("gene", "description", "chromosome", "gene_name", "entrez_id", "gene_type"),
              col_types = list(chromosome = col_character())) %>% 
     group_by(gene) %>% 
     filter(row_number()==1) %>% 

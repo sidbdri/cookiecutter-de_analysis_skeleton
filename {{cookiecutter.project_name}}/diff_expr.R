@@ -129,13 +129,13 @@ results %<>%
 plot_pvalue_distribution(results, "condition.pval")
 
 results %>% 
-  dplyr::select(gene, gene_name, chromosome, description, entrez_id,
+  dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
                 gene_length, max_transcript_length,
                 everything(), -dplyr::contains("_fpkm")) %>%
   write_csv("results/differential_expression/deseq2_results.csv")
 
 results %>% 
-  dplyr::select(gene, gene_name, chromosome, description, entrez_id,
+  dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
                 gene_length, max_transcript_length,
          dplyr::contains("_fpkm"), 
          starts_with(comparison), etc.) %>% 
@@ -171,12 +171,14 @@ results_salmon %<>%
                 condition.padj=padj)
 
 results_salmon %>% 
-  dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
+  dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
+                gene_length, max_transcript_length,
                 everything(), -dplyr::contains("_tpm")) %>%
   write_csv("results/differential_expression/deseq2_salmon_results.csv")
            
 results_salmon %>% 
-  dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
+  dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
+                gene_length, max_transcript_length,
          dplyr::contains("_tpm"), 
          starts_with(condition), etc.) %>% 
   write_csv("results/differential_expression/deseq2_salmon_results_fpkm.csv")
@@ -203,12 +205,14 @@ results_kallisto %<>%
                 condition.padj=padj)
 
 results_kallisto %>% 
-  dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
+  dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
+                gene_length, max_transcript_length,
                 everything(), -dplyr::contains("_tpm")) %>%
   write_csv("results/differential_expression/deseq2_kallisto_results.csv")
            
 results_kallisto %>% 
-  dplyr::select(gene, gene_name, chromosome, description, gene_length, max_transcript_length,
+  dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
+                gene_length, max_transcript_length,
          dplyr::contains("_tpm"), 
          starts_with(condition), etc.) %>% 
   write_csv("results/differential_expression/deseq2_kallisto_results_fpkm.csv")

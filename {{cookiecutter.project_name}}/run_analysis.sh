@@ -34,6 +34,7 @@ mkdir -p ${RESULTS_DIR}
 
 README=${RESULTS_DIR}/README
 echo "Ensembl version: {{cookiecutter.ensembl_version}}" > ${README}
+echo "Git commit: $(git log --pretty=format:'%H' -n 1)" >> ${README}
 echo "Software versions:" >> ${README}
 fastqc --version >> ${README}
 STAR --version >> ${README}

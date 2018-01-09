@@ -28,23 +28,6 @@ NUM_THREADS=16
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
 PAIRED_END_READ="{{cookiecutter.paired_end_read}}"
 
-##### Record software version information
-
-mkdir -p ${RESULTS_DIR}
-
-README=${RESULTS_DIR}/README
-echo "Ensembl version: {{cookiecutter.ensembl_version}}" > ${README}
-echo "Git commit: $(git log --pretty=format:'%H' -n 1)" >> ${README}
-echo "Software versions:" >> ${README}
-fastqc --version >> ${README}
-STAR --version >> ${README}
-echo $(featureCounts -v 2>&1) >> ${README}
-echo "Salmon $(salmon --version 2>&1)" >> ${README}
-kallisto version >> ${README}
-multiqc --version >> ${README}
-get_gene_lengths --version >> ${README}
-Rscript load_packages.R 2>&1 | sed -n '/R version/,$p' >> ${README}
-
 ##### Perform QC on raw reads
 mkdir -p ${QC_DIR}
 

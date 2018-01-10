@@ -32,8 +32,8 @@ get_deseq2_dataset <- function(count_data, sample_data, filter_low_counts=TRUE,
   dds %>% DESeq(betaPrior=TRUE)
 }
 
-get_deseq2_results <- function(dds, comparison, condition, condition_base) {
-  res <- dds %>% results(c(comparison, condition, condition_base))
+get_deseq2_results <- function(dds, comparison, condition, condition_base, alpha=0.05) {
+  res <- dds %>% results(c(comparison, condition, condition_base), alpha=alpha)
   res %>% summary %>% print
   
   res %>% as.data.frame() %>%
@@ -59,8 +59,8 @@ get_raw_l2fc <- function(dds, sample_data, ...) {
     dplyr::select(gene, raw_l2fc)
 }
 
-get_deseq2_results_name <- function(dds, name) {
-  res <- dds %>% results(name=name)
+get_deseq2_results_name <- function(dds, name, alpha=0.05) {
+  res <- dds %>% results(name=name, alpha=alpha)
   res %>% summary %>% print
   
   res %>% as.data.frame() %>%

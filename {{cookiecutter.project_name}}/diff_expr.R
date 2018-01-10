@@ -93,8 +93,10 @@ get_condition_res_tximport <- function(quant_method) {
 
 total_dds_data <- get_total_dds()
 total_vst <- total_dds_data %>% varianceStabilizingTransformation
-total_vst %>% plotPCA(intgroup=c("condition"))
-total_vst %>% plot_heat_map(SAMPLE_DATA)
+total_vst %>% plot_pca_with_labels(intgroup=c("condition"))
+total_vst %>% plot_heat_map(SAMPLE_DATA %>% 
+                              mutate(sample_info=str_c(condition, ..., sep=":")) %>% 
+                              extract2("sample_info"))
 
 plot_count_distribution(total_dds_data, norm=F)
 plot_count_distribution(total_dds_data, norm=T)

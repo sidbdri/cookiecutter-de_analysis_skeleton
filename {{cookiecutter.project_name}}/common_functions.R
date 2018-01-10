@@ -75,11 +75,35 @@ get_count_data <- function(dds, norm=T) {
     tibble::rownames_to_column(var="gene")
 }
 
-plot_heat_map <- function(vst, sample_data) {
+plot_pca_with_labels <- function(vst, intgroup=c("condition")) {
+  pca_data <- vst %>% plotPCA(intgroup=intgroup, returnData=TRUE)
+  
+  percent_var <- round(100 * attr(pca_data, "percentVar"))
+  
+  intgroup.df <- as.data.frame(colData(vst)[, intgroup, drop = FALSE])
+  group <- if (length(intgroup) > 1) {
+    factor(apply(intgroup.df, 1, paste, collapse = " : "))
+  }
+  else {
+    colData(vst)[[intgroup]]
+  } 
+  
+  pca_data %>% 
+    ggplot(aes(PC1, PC2, color=group)) +
+    geom_point(size=3) +
+    geom_text(aes(label = name), 
+              colour="darkgrey", 
+              position=position_nudge(y = 1), size=3) + 
+    xlab(str_c("PC1: ", percent_var[1], "% variance")) +
+    ylab(str_c("PC2: ", percent_var[2], "% variance")) + 
+    theme(legend.position="none")
+}
+
+plot_heat_map <- function(vst, sample_names) {
   distsRL <- vst %>% assay %>% t %>% dist
   
   mat <- distsRL %>% as.matrix()
-  rownames(mat) <- colnames(mat) <- sample_data %>% row.names
+  rownames(mat) <- colnames(mat) <- sample_names
   
   hc <- distsRL %>% hclust
   hmcol <- colorRampPalette(brewer.pal(9, "GnBu"))(100)

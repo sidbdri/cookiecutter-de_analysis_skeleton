@@ -7,7 +7,7 @@ source /usr/local/bin/virtualenvwrapper.sh
 mkproject -f {{cookiecutter.project_name}}
 
 pip install multiqc
-pip install git+https://github.com/lweasel/transcript_utils.git
+pip install git+https://github.com/sidbdri/transcript-utils.git
 
 RNASEQ_DIR=data/rnaseq
 GENOME_DATA_DIR=/srv/data/genome/{{cookiecutter.species}}/ensembl-{{cookiecutter.ensembl_version}}

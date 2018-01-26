@@ -9,7 +9,7 @@
     "ensembl_version": "90",
     "species": ["mouse", "rat", "human"],
     "star_version": "2.5.3a",
-    "featurecounts_version": "1.5.2"
+    "featurecounts_version": "1.5.2",
     "salmon_index": "salmon_index",
     "kallisto_index": "kallisto_index",
     "projects_base": "/home/odando/projects",

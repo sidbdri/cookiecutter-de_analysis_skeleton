@@ -20,17 +20,18 @@ function map_reads {
     star_tmp=${SAMPLE}.tmp
     mkdir ${star_tmp}
 
-
     if [ -z "$READ_2_FILES" ]
     then
         #if read_2 files is empty, the input is single end read
-        STAR --runThreadN ${NUM_THREADS} --genomeDir ${INDEX_DIR} --readFilesIn ${READ_1_FILES} --outFileNamePrefix ${star_tmp}/star --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate --readFilesCommand zcat
+        read_files_opt="--readFilesIn ${READ_1_FILES}"
     else
-        STAR --runThreadN ${NUM_THREADS} --genomeDir ${INDEX_DIR} --readFilesIn ${READ_1_FILES} ${READ_2_FILES} --outFileNamePrefix ${star_tmp}/star --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate --readFilesCommand zcat
-
+        read_files_opt="--readFilesIn ${READ_1_FILES} ${READ_2_FILES}"
     fi
+    
+    STAR --runThreadN ${NUM_THREADS} --genomeDir ${INDEX_DIR} --outFileNamePrefix ${star_tmp}/star --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat ${read_files_opt}
 
-    mv ${star_tmp}/starAligned.sortedByCoord.out.bam ${OUTPUT_DIR}/${SAMPLE}.bam
+    mv ${star_tmp}/starAligned.out.bam ${OUTPUT_DIR}/${SAMPLE}.bam
+    mv ${star_tmp}/starAligned.sortedByCoord.out.bam ${OUTPUT_DIR}/${SAMPLE}.sorted.bam
     mv ${star_tmp}/starLog.final.out ${OUTPUT_DIR}/${SAMPLE}.log.out
 
     rm -rf ${star_tmp}

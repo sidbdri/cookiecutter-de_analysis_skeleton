@@ -55,9 +55,11 @@ get_condition_res <- function() {
     remove_gene_column() %>% 
     get_deseq2_dataset(sample_data, design_formula=~condition)
 
-  dds %>% 
+  res <- dds %>% 
     get_deseq2_results("<condition>", "<cond2>", "<cond1>") %>% 
     left_join(dds %>% get_raw_l2fc(sample_data, condition="<cond2>"))
+
+  list(res, dds %<>% varianceStabilizingTransformation)
 }
   
 get_condition_res_tximport <- function(quant_method) {
@@ -121,10 +123,13 @@ results %<>%
   inner_join(gene_info) %>% 
   inner_join(gene_lengths)
 
+condition_res <- get_condition_res()
+
 results %<>% 
-  left_join(get_condition_res(), by="gene") %>%
+  left_join(condition_res[[1]], by="gene") %>%
   dplyr::rename(condition.l2fc=log2FoldChange,
          condition.raw_l2fc=raw_l2fc,
+         condition.stat=stat,
          condition.pval=pvalue,
          condition.padj=padj)
 
@@ -133,14 +138,15 @@ plot_pvalue_distribution(results, "condition.pval")
 results %>% 
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
                 gene_length, max_transcript_length,
-                everything(), -dplyr::contains("_fpkm")) %>%
+                everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat")) %>%
   write_csv("results/differential_expression/deseq2_results.csv")
 
 results %>% 
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
                 gene_length, max_transcript_length,
          dplyr::contains("_fpkm"), 
-         starts_with(comparison), etc.) %>% 
+         starts_with(comparison), etc., 
+         -dplyr::ends_with(".stat")) %>% 
   write_csv("results/differential_expression/deseq2_results_fpkm.csv")
 
 ##### GO analyses
@@ -150,6 +156,25 @@ expressed_genes <- get_total_dds(TRUE) %>% get_count_data()
 results %>% 
   filter(padj < 0.1) %>%
   perform_go_analyses(expressed_genes, "<condition_comparison>")
+
+##### Gene set enrichment analysis
+
+gene_set_categories <- list("CURATED", "MOTIF", "GO")
+
+gene_sets <- gene_set_categories %>% 
+  map(function(x) get_gene_sets("{{cookiecutter.species}}", x))
+
+condition_camera_results <- gene_sets %>% 
+  map(function(x) get_camera_results(condition_res[[2]], x, gene_info, ~condition))
+
+for (category in seq(1:length(gene_set_categories))) {
+  write_camera_results(
+    gene_set_categories[[category]], gene_sets[[category]], "condition",
+    condition_results, condition_camera_results[[category]])
+}
+
+# condition_results %>% plot_gene_set(c5_{{cookiecutter.species}}, "GO_<go_term>", "condition.stat")
+# condition_results %>% get_gene_set_results(c5_{{cookiecutter.species}}, "GO_<go_term>", "condition.pval") %>% head
 
 ##### Salmon/tximport analysis
 

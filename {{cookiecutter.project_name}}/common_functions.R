@@ -38,7 +38,7 @@ get_deseq2_results <- function(dds, comparison, condition, condition_base, alpha
   
   res %>% as.data.frame() %>%
     tibble::rownames_to_column(var="gene") %>%
-    dplyr::select(-baseMean, -lfcSE, -stat)
+    dplyr::select(-baseMean, -lfcSE)
 }
 
 get_raw_l2fc <- function(dds, sample_data, ...) {
@@ -163,6 +163,18 @@ get_fpkms <- function(all_counts, gene_lengths, samples, col_suffix) {
   all_counts %>% dplyr::select(gene, dplyr::contains(col_suffix))
 }
 
+read_de_results <- function(filename, num_samples, num_conditions, num_comparisons, extra_columns="") {
+  col_types_string <- str_c(
+    "ccccii",
+    strrep("d", num_samples + num_conditions + num_comparisons * 4),
+    extra_columns)
+  print(nchar(col_types_string))
+  
+  read_csv(filename, col_types=col_types_string)
+}
+
+##### Transcript-level D. E. analyses
+
 get_transcripts_to_genes <- function() {
   read_delim("results/tx2gene.tsv", " ", col_names=c("transcript", "gene"))
 }
@@ -196,6 +208,8 @@ get_kallisto_tpms <- function(sample) {
     summarise(tpm = sum(tpm)) %>%
     rename_(.dots = setNames(names(.), c("gene", str_c(sample, "_tpm"))))
 }
+
+##### Gene ontology enrichment analyses
 
 get_significant_genes <- function(term, GOdata, gene_info) {
   genes_for_term <- GOdata %>% genesInTerm(term) %>% extract2(1)
@@ -246,12 +260,127 @@ perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix)
   )
 }
 
-read_de_results <- function(filename, num_samples, num_conditions, num_comparisons, extra_columns="") {
-  col_types_string <- str_c(
-    "ccccii",
-    strrep("d", num_samples + num_conditions + num_comparisons * 4),
-    extra_columns)
-  print(nchar(col_types_string))
+##### Camera gene set enrichment analysis
+
+get_human_vs_species_ortholog_info <- function(species) {
+  orthologs <- species %>% 
+    str_c("data/", ., "_ensembl_{{cookiecutter.ensembl_version}}/human_orthologs.tsv") %>% 
+    read_tsv(col_names=c("species_gene", "human_gene", "type"))
   
-  read_csv(filename, col_types=col_types_string)
+  species_genes <- get_gene_info(species)
+  human_genes <- get_gene_info("human")
+  
+  orthologs_entrez <- orthologs %>% 
+    left_join(species_genes %>% 
+                dplyr::select(gene, entrez_id) %>% 
+                rename(species_gene=gene, species_entrez_id=entrez_id)) %>% 
+    left_join(human_genes %>% 
+                dplyr::select(gene, entrez_id) %>% 
+                rename(human_gene=gene, human_entrez_id=entrez_id)) %>% 
+    dplyr::select(species_entrez_id, human_entrez_id) %>% 
+    filter(!is.na(species_entrez_id) & !is.na(human_entrez_id)) %>% 
+    distinct()
+  
+  same_name_entrez <- (species_genes %>% 
+                         mutate(gene_name=tolower(gene_name)) %>% 
+                         dplyr::select(gene_name, entrez_id) %>% 
+                         filter(!is.na(entrez_id)) %>% 
+                         rename(species_entrez_id=entrez_id)) %>% 
+    inner_join(human_genes %>% 
+                 mutate(gene_name=tolower(gene_name)) %>% 
+                 dplyr::select(gene_name, entrez_id) %>% 
+                 filter(!is.na(entrez_id)) %>% 
+                 rename(human_entrez_id=entrez_id)) %>% 
+    dplyr::select(-gene_name) %>% 
+    distinct()
+  
+  human_species_entrez_mappings <- orthologs_entrez %>% 
+    rbind(same_name_entrez) %>% 
+    distinct
+}
+
+get_gene_sets <- function(species, gene_set_name) {
+  msigdb_data <- str_c("data/msigdb/v5.2/", gene_set_name, ".all.v5.2.entrez.gmt.txt") %>% 
+    read_lines()
+  
+  gene_set_names <- map_chr(msigdb_data, function(x) {str_split(x, "\t")[[1]][1]})
+  gene_sets <- map(msigdb_data, function(x) {str_split(str_split(x, "\t", n=3)[[1]][3], "\t")[[1]]})
+  
+  names(gene_sets) <- gene_set_names
+  
+  if (species == "human") {
+    return(gene_sets)
+  }
+  
+  pb <- txtProgressBar(max=length(gene_sets), style=3)
+  count <- 0
+  
+  ortholog_info <- get_human_vs_species_ortholog_info(species)
+  
+  ret <- gene_sets %>% map(function(y) {
+    count <<- count + 1
+    setTxtProgressBar(pb, count)
+    ortholog_info[which(ortholog_info$human_entrez_id %in% y),]$species_entrez_id
+  }) 
+  
+  close(pb)
+  
+  ret
+}
+
+get_camera_results <- function(vst, gene_sets, gene_info, design_formula) {
+  expression_data <- vst %>% assay
+  
+  ids <- expression_data %>% 
+    as.data.frame %>% 
+    tibble::rownames_to_column(var="gene") %>% 
+    inner_join(gene_info) 
+  
+  idx <- gene_sets %>% ids2indices(id=ids$entrez_id)
+  
+  design_matrix <- model.matrix(design_formula, vst %>% colData)
+  
+  expression_data %>% camera(idx, design_matrix)
+}
+
+plot_gene_set <- function(results, gene_sets, gene_set_name, stat) {
+  idx <- gene_sets %>% 
+    ids2indices(id=results$entrez_id) %>%
+    extract2(gene_set_name)
+  
+  results %>% pull(stat) %>% barcodeplot(index=idx)
+}
+
+get_gene_set_results <- function(results, gene_sets, gene_set_name, pvalue) {
+  idx <- gene_sets %>% 
+    extract2(gene_set_name) %>% 
+    match(results$entrez_id) %>% 
+    na.omit
+  
+  results %>% extract(idx, ) %>% arrange_(pvalue)
+}
+
+write_camera_results <- function(gene_set_collection_name, gene_set_collection, comparison_name, de_results, camera_results) {
+  camera_results %<>% 
+    tibble::rownames_to_column(var="GeneSet") %>% 
+    filter(FDR < 0.1)
+  
+  if ((camera_results %>% nrow) == 0) {
+    return()
+  }
+  
+  top_dir <- str_c("results/differential_expression/gsa/", comparison_name)
+  dir.create(top_dir)
+  
+  camera_results %>% write_csv(str_c(top_dir, "/", gene_set_collection_name, "_enriched_sets.csv"))
+  
+  sub_dir <- str_c(top_dir, "/", gene_set_collection_name)
+  dir.create(sub_dir)
+  
+  camera_results %>% 
+    extract2("GeneSet") %>% 
+    walk(function(x) {
+      gene_set_results <- de_results %>% get_gene_set_results(gene_set_collection, x, str_c(comparison_name, ".pval"))
+      gene_set_results %>% write_csv(str_c(sub_dir, "/", x, ".csv"))
+    })
 }

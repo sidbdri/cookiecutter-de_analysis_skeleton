@@ -94,6 +94,7 @@ multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto results
 ##### Perform differential expression
 mkdir -p ${DIFF_EXPR_DIR}/go
 mkdir -p ${DIFF_EXPR_DIR}/graphs
+mkdir -p ${DIFF_EXPR_DIR}/gsa
 
 get_gene_lengths <(tail -n +6 ${GTF_FILE}) > ${RESULTS_DIR}/gene_lengths.csv
 

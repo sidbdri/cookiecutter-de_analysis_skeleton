@@ -105,7 +105,7 @@ plot_count_distribution(total_dds_data, norm=T)
 
 #####
 
-gene_info <- get_gene_info()
+gene_info <- get_gene_info("{{cookiecutter.species}}")
 gene_lengths <- read_csv("results/gene_lengths.csv")
 
 results <- total_dds_data %>% get_count_data() 
@@ -170,7 +170,7 @@ condition_camera_results <- gene_sets %>%
 for (category in seq(1:length(gene_set_categories))) {
   write_camera_results(
     gene_set_categories[[category]], gene_sets[[category]], "condition",
-    condition_results, condition_camera_results[[category]])
+    results, condition_camera_results[[category]])
 }
 
 # condition_results %>% plot_gene_set(c5_{{cookiecutter.species}}, "GO_<go_term>", "condition.stat")

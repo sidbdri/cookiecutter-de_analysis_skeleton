@@ -9,9 +9,10 @@ mkproject -f {{cookiecutter.project_name}}
 pip install multiqc
 pip install git+https://github.com/sidbdri/transcript-utils.git
 
-RNASEQ_DIR=data/rnaseq
+DATA_DIR=data
+RNASEQ_DIR=${DATA_DIR}/rnaseq
 GENOME_DATA_DIR=/srv/data/genome/{{cookiecutter.species}}/ensembl-{{cookiecutter.ensembl_version}}
-ENSEMBL_DIR=data/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_version}}
+ENSEMBL_DIR=${DATA_DIR}/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_version}}
 
 mkdir -p ${RNASEQ_DIR}
 
@@ -26,6 +27,16 @@ ln -s ${GENOME_DATA_DIR}/{{cookiecutter.gtf_files[cookiecutter.species]}} ${ENSE
 ln -s ${GENOME_DATA_DIR}/genes.tsv ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.salmon_index}} ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.kallisto_index}} ${ENSEMBL_DIR}
+
+ln -s /srv/data/genome/human/msigdb ${DATA_DIR}
+
+if [[ "{{cookiecutter.species}}" != "human" ]]; then
+    ln -s ${GENOME_DATA_DIR}/human_orthologs.tsv ${ENSEMBL_DIR}
+
+    HUMAN_ENSEMBL_DIR=${DATA_DIR}/human_ensembl_{{cookiecutter.ensembl_version}}
+    mkdir -p ${HUMAN_ENSEMBL_DIR}
+    ln -s /srv/data/genome/human/ensembl-{{cookiecutter.ensembl_version}}/genes.tsv ${HUMAN_ENSEMBL_DIR}  
+fi
 
 git init
 mv gitignore .gitignore

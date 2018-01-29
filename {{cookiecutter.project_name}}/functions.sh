@@ -1,5 +1,8 @@
 #!/bin/bash
 
+STAR=STAR{{cookiecutter.star_version}}
+FEATURE_COUNTS=featureCounts{{cookiecutter.featurecounts_version}}
+
 function listFiles {
     DELIMITER=$1
     shift
@@ -20,17 +23,18 @@ function map_reads {
     star_tmp=${SAMPLE}.tmp
     mkdir ${star_tmp}
 
-
     if [ -z "$READ_2_FILES" ]
     then
         #if read_2 files is empty, the input is single end read
-        STAR --runThreadN ${NUM_THREADS} --genomeDir ${INDEX_DIR} --readFilesIn ${READ_1_FILES} --outFileNamePrefix ${star_tmp}/star --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate --readFilesCommand zcat
+        read_files_opt="--readFilesIn ${READ_1_FILES}"
     else
-        STAR --runThreadN ${NUM_THREADS} --genomeDir ${INDEX_DIR} --readFilesIn ${READ_1_FILES} ${READ_2_FILES} --outFileNamePrefix ${star_tmp}/star --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate --readFilesCommand zcat
-
+        read_files_opt="--readFilesIn ${READ_1_FILES} ${READ_2_FILES}"
     fi
+    
+    ${STAR} --runThreadN ${NUM_THREADS} --genomeDir ${INDEX_DIR} --outFileNamePrefix ${star_tmp}/star --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat ${read_files_opt}
 
-    mv ${star_tmp}/starAligned.sortedByCoord.out.bam ${OUTPUT_DIR}/${SAMPLE}.bam
+    mv ${star_tmp}/starAligned.out.bam ${OUTPUT_DIR}/${SAMPLE}.bam
+    mv ${star_tmp}/starAligned.sortedByCoord.out.bam ${OUTPUT_DIR}/${SAMPLE}.sorted.bam
     mv ${star_tmp}/starLog.final.out ${OUTPUT_DIR}/${SAMPLE}.log.out
 
     rm -rf ${star_tmp}
@@ -45,7 +49,7 @@ function count_reads_for_features {
 
     counts_tmp=.counts_tmp
 
-    featureCounts -T ${NUM_THREADS} -p -a ${FEATURES_GTF} -o ${counts_tmp} -s 2 ${BAM_FILE}
+    ${FEATURE_COUNTS} -T ${NUM_THREADS} -p -a ${FEATURES_GTF} -o ${counts_tmp} -s 2 ${BAM_FILE}
     tail -n +3 ${counts_tmp} | cut -f 1,7 > ${COUNTS_OUTPUT_FILE}
 
     rm ${counts_tmp}
@@ -61,7 +65,7 @@ function count_reads_for_features_strand_test {
     counts_tmp=.counts_tmp
 
     for i in 0 1 2; do
-        featureCounts -T ${NUM_THREADS} -p -a ${FEATURES_GTF} -o ${counts_tmp} -s $i ${BAM_FILE}
+        ${FEATURE_COUNTS} -T ${NUM_THREADS} -p -a ${FEATURES_GTF} -o ${counts_tmp} -s $i ${BAM_FILE}
         tail -n +3 ${counts_tmp} | cut -f 1,7 > ${COUNTS_OUTPUT_FILE}.$i
 
         rm ${counts_tmp}

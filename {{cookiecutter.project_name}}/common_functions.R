@@ -241,7 +241,7 @@ perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP")
   
   go_results <- go_data %>% GenTable(weight_fisher=result_fisher, orderBy="weight_fisher", topNodes=150)
   
-  gene_info <- get_gene_info()
+  gene_info <- get_gene_info("{{cookiecutter.species}}")
   go_results$Genes <- sapply(go_results[,c('GO.ID')], 
                              function(x) get_significant_genes(x, go_data, gene_info))
   
@@ -274,10 +274,10 @@ get_human_vs_species_ortholog_info <- function(species) {
   orthologs_entrez <- orthologs %>% 
     left_join(species_genes %>% 
                 dplyr::select(gene, entrez_id) %>% 
-                rename(species_gene=gene, species_entrez_id=entrez_id)) %>% 
+                dplyr::rename(species_gene=gene, species_entrez_id=entrez_id)) %>%
     left_join(human_genes %>% 
                 dplyr::select(gene, entrez_id) %>% 
-                rename(human_gene=gene, human_entrez_id=entrez_id)) %>% 
+                dplyr::rename(human_gene=gene, human_entrez_id=entrez_id)) %>%
     dplyr::select(species_entrez_id, human_entrez_id) %>% 
     filter(!is.na(species_entrez_id) & !is.na(human_entrez_id)) %>% 
     distinct()
@@ -286,12 +286,12 @@ get_human_vs_species_ortholog_info <- function(species) {
                          mutate(gene_name=tolower(gene_name)) %>% 
                          dplyr::select(gene_name, entrez_id) %>% 
                          filter(!is.na(entrez_id)) %>% 
-                         rename(species_entrez_id=entrez_id)) %>% 
+                         dplyr::rename(species_entrez_id=entrez_id)) %>%
     inner_join(human_genes %>% 
                  mutate(gene_name=tolower(gene_name)) %>% 
                  dplyr::select(gene_name, entrez_id) %>% 
                  filter(!is.na(entrez_id)) %>% 
-                 rename(human_entrez_id=entrez_id)) %>% 
+                 dplyr::rename(human_entrez_id=entrez_id)) %>%
     dplyr::select(-gene_name) %>% 
     distinct()
   

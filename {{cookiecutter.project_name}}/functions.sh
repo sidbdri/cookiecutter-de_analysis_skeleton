@@ -2,6 +2,7 @@
 
 STAR=STAR{{cookiecutter.star_version}}
 FEATURE_COUNTS=featureCounts{{cookiecutter.featurecounts_version}}
+PICARD=/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar
 
 function listFiles {
     DELIMITER=$1
@@ -30,7 +31,7 @@ function map_reads {
     else
         read_files_opt="--readFilesIn ${READ_1_FILES} ${READ_2_FILES}"
     fi
-    
+
     ${STAR} --runThreadN ${NUM_THREADS} --genomeDir ${INDEX_DIR} --outFileNamePrefix ${star_tmp}/star --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat ${read_files_opt}
 
     mv ${star_tmp}/starAligned.out.bam ${OUTPUT_DIR}/${SAMPLE}.bam
@@ -38,6 +39,16 @@ function map_reads {
     mv ${star_tmp}/starLog.final.out ${OUTPUT_DIR}/${SAMPLE}.log.out
 
     rm -rf ${star_tmp}
+}
+
+function picard_rnaseq_metrics {
+  SAMPLE=$1
+  INPUT_DIR=$2
+  OUTPUT_DIR=$3
+  REF_FLAT=$4
+  RIBOSOMAL_DIR=$5
+
+  java -jar ${PICARD} CollectRnaSeqMetrics I=${INPUT_DIR}/${SAMPLE}.sorted.bam O=${OUTPUT_DIR}/${SAMPLE}.txt REF_FLAT=${REF_FLAT} STRAND=SECOND_READ_TRANSCRIPTION_STRAND RIBOSOMAL_INTERVALS=${RIBOSOMAL_DIR}/${SAMPLE}.txt
 }
 
 

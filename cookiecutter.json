@@ -20,6 +20,11 @@
         "human": "Homo_sapiens.GRCh38.{{ cookiecutter.ensembl_version }}.gtf",
         "rat": "Rattus_norvegicus.Rnor_6.0.{{ cookiecutter.ensembl_version }}.gtf"
     },
+    "rff_files": {
+        "mouse": "Mus_musculus.GRCm38.{{ cookiecutter.ensembl_version }}.rff",
+        "human": "Homo_sapiens.GRCh38.{{ cookiecutter.ensembl_version }}.rff",
+        "rat": "Rattus_norvegicus.Rnor_6.0.{{ cookiecutter.ensembl_version }}.rff"
+    },
     "assembly_names": {
         "mouse": "primary_assembly",
         "human": "primary_assembly",

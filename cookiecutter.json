@@ -12,8 +12,8 @@
     "featurecounts_version": "1.5.2",
     "salmon_index": "salmon_index",
     "kallisto_index": "kallisto_index",
-    "projects_base": "/home/odando/projects",
-    "virtualenv_home": "/home/odando/.virtualenvs",
+    "projects_base": "projects",
+    "virtualenv_home": ".virtualenvs",
     "gtf_files": {
         "mouse": "Mus_musculus.GRCm38.{{ cookiecutter.ensembl_version }}.gtf",
         "human": "Homo_sapiens.GRCh38.{{ cookiecutter.ensembl_version }}.gtf",

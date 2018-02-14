@@ -21,7 +21,7 @@ get_total_dds <- function(filter_low_counts=FALSE) {
     
   get_deseq2_dataset(
     total_count_data, SAMPLE_DATA,
-    filter_low_counts=filter_low_counts, design_formula=~condition)
+    filter_low_counts=filter_low_counts, design_formula=~1)
 }
 
 get_total_dds_tximport <- function(quant_method) {

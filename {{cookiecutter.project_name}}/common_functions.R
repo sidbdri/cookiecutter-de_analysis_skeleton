@@ -344,12 +344,18 @@ get_camera_results <- function(vst, gene_sets, gene_info, design_formula) {
   expression_data %>% camera(idx, design_matrix)
 }
 
-plot_gene_set <- function(results, gene_sets, gene_set_name, stat) {
+plot_gene_set <- function(results, gene_sets, gene_set_name, prefix) {
   idx <- gene_sets %>% 
     ids2indices(id=results$entrez_id) %>%
     extract2(gene_set_name)
   
-  results %>% pull(stat) %>% barcodeplot(index=idx)
+  pval <- prefix %>% str_c(".pval") %>% rlang::sym()
+  l2fc <- prefix %>% str_c(".l2fc") %>% rlang::sym()
+  
+  results %>% 
+    mutate(signed_p = -log10(!!pval) * sign(!!l2fc)) %>%
+    pull(signed_p) %>% 
+    barcodeplot(index=idx, quantiles = c(-1,1)*(-log10(0.05)))
 }
 
 get_gene_set_results <- function(results, gene_sets, gene_set_name, pvalue) {

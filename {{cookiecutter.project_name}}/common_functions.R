@@ -367,7 +367,10 @@ get_gene_set_results <- function(results, gene_sets, gene_set_name, pvalue) {
   results %>% extract(idx, ) %>% arrange_(pvalue)
 }
 
-write_camera_results <- function(gene_set_collection_name, gene_set_collection, comparison_name, de_results, camera_results) {
+write_camera_results <- function(
+  gene_set_collection_name, gene_set_collection, comparison_name, de_results, camera_results,
+  barcodeplots=TRUE) {
+  
   camera_results %<>% 
     tibble::rownames_to_column(var="GeneSet") %>% 
     filter(FDR < 0.1)
@@ -389,5 +392,11 @@ write_camera_results <- function(gene_set_collection_name, gene_set_collection, 
     walk(function(x) {
       gene_set_results <- de_results %>% get_gene_set_results(gene_set_collection, x, str_c(comparison_name, ".pval"))
       gene_set_results %>% write_csv(str_c(sub_dir, "/", x, ".csv"))
+      
+      if (barcodeplots) {
+        pdf(str_c(sub_dir, "/", x, ".pdf"))
+        plot_gene_set(de_results, gene_set_collection, x, comparison_name)
+        dev.off()
+      }
     })
 }

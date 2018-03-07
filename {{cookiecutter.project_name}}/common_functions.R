@@ -241,7 +241,7 @@ perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP")
   
   go_results <- go_data %>% GenTable(weight_fisher=result_fisher, orderBy="weight_fisher", topNodes=150)
   
-  gene_info <- get_gene_info()
+  gene_info <- get_gene_info("{{cookiecutter.species}}")
   go_results$Genes <- sapply(go_results[,c('GO.ID')], 
                              function(x) get_significant_genes(x, go_data, gene_info))
   
@@ -274,10 +274,10 @@ get_human_vs_species_ortholog_info <- function(species) {
   orthologs_entrez <- orthologs %>% 
     left_join(species_genes %>% 
                 dplyr::select(gene, entrez_id) %>% 
-                rename(species_gene=gene, species_entrez_id=entrez_id)) %>% 
+                dplyr::rename(species_gene=gene, species_entrez_id=entrez_id)) %>%
     left_join(human_genes %>% 
                 dplyr::select(gene, entrez_id) %>% 
-                rename(human_gene=gene, human_entrez_id=entrez_id)) %>% 
+                dplyr::rename(human_gene=gene, human_entrez_id=entrez_id)) %>%
     dplyr::select(species_entrez_id, human_entrez_id) %>% 
     filter(!is.na(species_entrez_id) & !is.na(human_entrez_id)) %>% 
     distinct()
@@ -286,12 +286,12 @@ get_human_vs_species_ortholog_info <- function(species) {
                          mutate(gene_name=tolower(gene_name)) %>% 
                          dplyr::select(gene_name, entrez_id) %>% 
                          filter(!is.na(entrez_id)) %>% 
-                         rename(species_entrez_id=entrez_id)) %>% 
+                         dplyr::rename(species_entrez_id=entrez_id)) %>%
     inner_join(human_genes %>% 
                  mutate(gene_name=tolower(gene_name)) %>% 
                  dplyr::select(gene_name, entrez_id) %>% 
                  filter(!is.na(entrez_id)) %>% 
-                 rename(human_entrez_id=entrez_id)) %>% 
+                 dplyr::rename(human_entrez_id=entrez_id)) %>%
     dplyr::select(-gene_name) %>% 
     distinct()
   
@@ -344,12 +344,18 @@ get_camera_results <- function(vst, gene_sets, gene_info, design_formula) {
   expression_data %>% camera(idx, design_matrix)
 }
 
-plot_gene_set <- function(results, gene_sets, gene_set_name, stat) {
+plot_gene_set <- function(results, gene_sets, gene_set_name, prefix) {
   idx <- gene_sets %>% 
     ids2indices(id=results$entrez_id) %>%
     extract2(gene_set_name)
   
-  results %>% pull(stat) %>% barcodeplot(index=idx)
+  pval <- prefix %>% str_c(".pval") %>% rlang::sym()
+  l2fc <- prefix %>% str_c(".l2fc") %>% rlang::sym()
+  
+  results %>% 
+    mutate(signed_p = -log10(!!pval) * sign(!!l2fc)) %>%
+    pull(signed_p) %>% 
+    barcodeplot(index=idx, quantiles = c(-1,1)*(-log10(0.05)))
 }
 
 get_gene_set_results <- function(results, gene_sets, gene_set_name, pvalue) {
@@ -361,7 +367,10 @@ get_gene_set_results <- function(results, gene_sets, gene_set_name, pvalue) {
   results %>% extract(idx, ) %>% arrange_(pvalue)
 }
 
-write_camera_results <- function(gene_set_collection_name, gene_set_collection, comparison_name, de_results, camera_results) {
+write_camera_results <- function(
+  gene_set_collection_name, gene_set_collection, comparison_name, de_results, camera_results,
+  barcodeplots=TRUE) {
+  
   camera_results %<>% 
     tibble::rownames_to_column(var="GeneSet") %>% 
     filter(FDR < 0.1)
@@ -383,5 +392,11 @@ write_camera_results <- function(gene_set_collection_name, gene_set_collection, 
     walk(function(x) {
       gene_set_results <- de_results %>% get_gene_set_results(gene_set_collection, x, str_c(comparison_name, ".pval"))
       gene_set_results %>% write_csv(str_c(sub_dir, "/", x, ".csv"))
+      
+      if (barcodeplots) {
+        pdf(str_c(sub_dir, "/", x, ".pdf"))
+        plot_gene_set(de_results, gene_set_collection, x, comparison_name)
+        dev.off()
+      }
     })
 }

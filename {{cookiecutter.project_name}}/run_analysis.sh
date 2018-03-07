@@ -6,7 +6,7 @@ set -o xtrace
 
 source functions.sh
 
-MAIN_DIR={{cookiecutter.projects_base}}/{{cookiecutter.project_name}}
+MAIN_DIR=${HOME}/{{cookiecutter.projects_base}}/{{cookiecutter.project_name}}
 DATA_DIR=${MAIN_DIR}/data
 PICARD_DATA=${DATA_DIR}/picard
 RNASEQ_DIR=${DATA_DIR}/rnaseq

@@ -4,7 +4,7 @@ set -o nounset
 set -o errexit
 set -o xtrace
 
-MAIN_DIR={{cookiecutter.projects_base}}/{{cookiecutter.project_name}}
+MAIN_DIR=${HOME}/{{cookiecutter.projects_base}}/{{cookiecutter.project_name}}
 RESULTS_DIR=${MAIN_DIR}/results
 
 ##### Record software version information

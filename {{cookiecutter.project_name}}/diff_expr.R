@@ -16,12 +16,12 @@ get_total_dds <- function(filter_low_counts=FALSE) {
   total_count_data <- SAMPLE_DATA %>% 
     row.names() %>% 
     map(read_counts) %>%
-    reduce(inner_join) %>%
+    purrr::reduce(inner_join) %>%
     remove_gene_column()
     
   get_deseq2_dataset(
     total_count_data, SAMPLE_DATA,
-    filter_low_counts=filter_low_counts, design_formula=~condition)
+    filter_low_counts=filter_low_counts, design_formula=~1)
 }
 
 get_total_dds_tximport <- function(quant_method) {
@@ -51,7 +51,7 @@ get_condition_res <- function() {
   dds <- sample_data %>% 
     row.names() %>% 
     map(read_counts) %>% 
-    reduce(inner_join) %>% 
+    purrr::reduce(inner_join) %>%
     remove_gene_column() %>% 
     get_deseq2_dataset(sample_data, design_formula=~condition)
 
@@ -173,8 +173,8 @@ for (category in seq(1:length(gene_set_categories))) {
     results, condition_camera_results[[category]])
 }
 
-# condition_results %>% plot_gene_set(c5_{{cookiecutter.species}}, "GO_<go_term>", "condition.stat")
-# condition_results %>% get_gene_set_results(c5_{{cookiecutter.species}}, "GO_<go_term>", "condition.pval") %>% head
+# results %>% plot_gene_set(gene_sets[[3]], "GO_<go_term>", "condition.stat")
+# results %>% get_gene_set_results(gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head
 
 ##### Salmon/tximport analysis
 
@@ -183,7 +183,7 @@ results_salmon <- get_total_dds_tximport("salmon") %>%
 
 salmon_tpms <- SAMPLE_NAMES %>%
   map(get_salmon_tpms) %>%
-  reduce(inner_join)
+  purrr::reduce(inner_join)
 
 results_salmon %<>% 
   inner_join(fpkms) %>%
@@ -217,7 +217,7 @@ results_kallisto <- get_total_dds_tximport("kallisto") %>%
 
 kallisto_tpms <- SAMPLE_NAMES %>%
   map(get_kallisto_tpms) %>%
-  reduce(inner_join)
+  purrr::reduce(inner_join)
 
 results_kallisto %<>% 
   inner_join(kallisto_tpms) %>%

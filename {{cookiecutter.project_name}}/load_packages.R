@@ -16,3 +16,6 @@ library(topGO)
 library(tximport)
 
 sessionInfo()
+
+writeLines("")
+source("https://bioconductor.org/biocLite.R")

@@ -8,12 +8,12 @@ source functions.sh
 
 MAIN_DIR={{cookiecutter.projects_base}}/{{cookiecutter.project_name}}
 DATA_DIR=${MAIN_DIR}/data
-RIBOSOMAL_DIR=${DATA_DIR}/ribosomal
+PICARD_DATA=${DATA_DIR}/picard
 RNASEQ_DIR=${DATA_DIR}/rnaseq
 ENSEMBL_DIR=${DATA_DIR}/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_version}}
 STAR_INDEX=${ENSEMBL_DIR}/{{cookiecutter.assembly_names[cookiecutter.species]}}
 GTF_FILE=${ENSEMBL_DIR}/{{cookiecutter.gtf_files[cookiecutter.species]}}
-REF_FLAT=${ENSEMBL_DIR}/{{cookiecutter.rff_files[cookiecutter.species]}}
+REF_FLAT=${PICARD_DATA}/{{cookiecutter.rff_files[cookiecutter.species]}}
 REFERENCE=${ENSEMBL_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.fa
 SALMON_INDEX=${ENSEMBL_DIR}/{{cookiecutter.salmon_index}}
 KALLISTO_INDEX=${ENSEMBL_DIR}/{{cookiecutter.kallisto_index}}
@@ -57,15 +57,14 @@ done
 
 ##### Run Picard alignment metrics summary
 mkdir -p ${PICARD_DIR}
-mkdir -p ${RIBOSOMAL_DIR}
 
-grep rRNA ${GTF_FILE} | cut -s -f 1,4,5,7,9 > ${RIBOSOMAL_DIR}/intervalListBody.txt
+grep rRNA ${GTF_FILE} | cut -s -f 1,4,5,7,9 > ${PICARD_DATA}/intervalListBody.txt
 
 for sample in ${SAMPLES}; do
-    samtools view -H ${MAPPING_DIR}/${sample}.sorted.bam > ${RIBOSOMAL_DIR}/${sample}_header.txt
-    cat ${RIBOSOMAL_DIR}/${sample}_header.txt ${RIBOSOMAL_DIR}/intervalListBody.txt > ${RIBOSOMAL_DIR}/${sample}.txt
+    samtools view -H ${MAPPING_DIR}/${sample}.sorted.bam > ${PICARD_DATA}/${sample}_header.txt
+    cat ${PICARD_DATA}/${sample}_header.txt ${PICARD_DATA}/intervalListBody.txt > ${PICARD_DATA}/${sample}.txt
 
-    picard_rnaseq_metrics ${sample} ${MAPPING_DIR} ${PICARD_DIR} ${REF_FLAT} ${RIBOSOMAL_DIR}
+    picard_rnaseq_metrics ${sample} ${MAPPING_DIR} ${PICARD_DIR} ${REF_FLAT} ${PICARD_DATA}
 done
 
 
@@ -74,7 +73,7 @@ mkdir -p ${COUNTS_DIR}
 
 first_sample="TRUE"
 
-#for sample in ${SAMPLES}; do
+for sample in ${SAMPLES}; do
     [[ "${first_sample}" == "FALSE" ]] || {
         first_sample="FALSE"
         count_reads_for_features_strand_test ${NUM_THREADS} ${GTF_FILE} ${MAPPING_DIR}/${sample}.bam ${COUNTS_DIR}/strand_test.${sample}.counts
@@ -107,7 +106,7 @@ for sample in ${SAMPLES}; do
 done
 
 ##### Gather all QC data
-multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto results
+multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m picard results
 
 ##### Perform differential expression
 mkdir -p ${DIFF_EXPR_DIR}/go

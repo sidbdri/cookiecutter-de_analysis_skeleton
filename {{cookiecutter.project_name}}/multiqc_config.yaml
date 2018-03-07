@@ -1,3 +1,6 @@
 sp:
     star:
             fn: '*.log.out'
+    picard/rnaseqmetrics:
+            contents_re: .*CollectRnaSeqMetrics.*
+            shared: true

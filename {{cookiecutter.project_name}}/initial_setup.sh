@@ -11,9 +11,10 @@ pip install git+https://github.com/sidbdri/transcript-utils.git
 
 DATA_DIR=data
 RNASEQ_DIR=${DATA_DIR}/rnaseq
+PICARD_DATA=${DATA_DIR}/picard
 GENOME_DATA_DIR=/srv/data/genome/{{cookiecutter.species}}/ensembl-{{cookiecutter.ensembl_version}}
 ENSEMBL_DIR=${DATA_DIR}/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_version}}
-REF_FLAT=${GENOME_DATA_DIR}/{{cookiecutter.rff_files[cookiecutter.species]}}
+REF_FLAT=${PICARD_DATA}/{{cookiecutter.rff_files[cookiecutter.species]}}
 GTF_FILE=${GENOME_DATA_DIR}/{{cookiecutter.gtf_files[cookiecutter.species]}}
 
 
@@ -27,15 +28,16 @@ done
 
 mkdir -p ${ENSEMBL_DIR}
 
-if [ ! -f ${REF_FLAT} ];then
-  /home/zkozic/software/gtfToGenePred/gtfToGenePred -genePredExt -geneNameAsName2 ${GTF_FILE} ${GENOME_DATA_DIR}/refFlat.tmp.txt
-  paste <(cut -f 12 ${GENOME_DATA_DIR}/refFlat.tmp.txt) <(cut -f 1-10 ${GENOME_DATA_DIR}/refFlat.tmp.txt) > ${REF_FLAT}
-  rm ${GENOME_DATA_DIR}/refFlat.tmp.txt
-fi
+mkdir -p $PICARD_DATA
 
-[ ! -f ${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.dict ] && java -jar ${PICARD} CreateSequenceDictionary \
-R=${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.fa \
-O=${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.dict
+# Generating refFlat file for Picard RNA-seq metrics
+gtfToGenePred -genePredExt -geneNameAsName2 ${GTF_FILE} ${PICARD_DATA}/refFlat.tmp.txt
+paste <(cut -f 12 ${PICARD_DATA}/refFlat.tmp.txt) <(cut -f 1-10 ${PICARD_DATA}/refFlat.tmp.txt) > ${REF_FLAT}
+rm ${PICARD_DATA}/refFlat.tmp.txt
+
+#[ ! -f ${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.dict ] && java -jar ${PICARD} CreateSequenceDictionary \
+#R=${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.fa \
+#O=${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.dict
 
 
 ln -s ${GENOME_DATA_DIR}/STAR_indices/{{cookiecutter.assembly_names[cookiecutter.species]}} ${ENSEMBL_DIR}
@@ -44,10 +46,10 @@ ln -s ${GENOME_DATA_DIR}/genes.tsv ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.salmon_index}} ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.kallisto_index}} ${ENSEMBL_DIR}
 # for picard alignment metrics
-ln -s ${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.fa ${ENSEMBL_DIR}
-ln -s ${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.dict ${ENSEMBL_DIR}
+#ln -s ${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.fa ${ENSEMBL_DIR}
+#ln -s ${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.dict ${ENSEMBL_DIR}
 # for picard RNA-seq metrics
-ln -s ${REF_FLAT} ${ENSEMBL_DIR}
+#ln -s ${REF_FLAT} ${ENSEMBL_DIR}
 
 ln -s /srv/data/genome/human/msigdb ${DATA_DIR}
 

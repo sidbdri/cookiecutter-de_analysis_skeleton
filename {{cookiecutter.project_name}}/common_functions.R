@@ -321,7 +321,7 @@ get_gene_sets <- function(species, gene_set_name) {
   ret <- gene_sets %>% map(function(y) {
     count <<- count + 1
     setTxtProgressBar(pb, count)
-    ortholog_info[which(ortholog_info$human_entrez_id %in% y),]$species_entrez_id
+    ortholog_info[which(ortholog_info$human_entrez_id %in% y),]$species_entrez_id %>% unique
   }) 
   
   close(pb)

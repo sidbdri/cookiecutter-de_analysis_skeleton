@@ -55,9 +55,11 @@ get_condition_res <- function() {
     remove_gene_column() %>% 
     get_deseq2_dataset(sample_data, design_formula=~condition)
 
+  #cond2 is to be compared against the baseline, cond1.
   res <- dds %>% 
-    get_deseq2_results("<condition>", "<cond2>", "<cond1>") %>% 
+    get_deseq2_results("<condition>", "<cond2>", "<cond1>") %>%
     left_join(dds %>% get_raw_l2fc(sample_data, condition="<cond2>"))
+
 
   list(res, dds %<>% varianceStabilizingTransformation)
 }

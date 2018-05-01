@@ -61,12 +61,11 @@ mkdir -p ${PICARD_DIR}
 grep rRNA ${GTF_FILE} | cut -s -f 1,4,5,7,9 > ${PICARD_DATA}/intervalListBody.txt
 
 for sample in ${SAMPLES}; do
-    samtools view -H ${MAPPING_DIR}/${sample}.sorted.bam > ${PICARD_DATA}/${sample}_header.txt
+    sambamba view -H ${MAPPING_DIR}/${sample}.sorted.bam > ${PICARD_DATA}/${sample}_header.txt
     cat ${PICARD_DATA}/${sample}_header.txt ${PICARD_DATA}/intervalListBody.txt > ${PICARD_DATA}/${sample}.txt
 
     picard_rnaseq_metrics ${sample} ${MAPPING_DIR} ${PICARD_DIR} ${REF_FLAT} ${PICARD_DATA}
 done
-
 
 ##### Count mapped reads
 mkdir -p ${COUNTS_DIR}

@@ -51,7 +51,6 @@ function picard_rnaseq_metrics {
   java -jar ${PICARD} CollectRnaSeqMetrics I=${INPUT_DIR}/${SAMPLE}.sorted.bam O=${OUTPUT_DIR}/${SAMPLE}.txt REF_FLAT=${REF_FLAT} STRAND=SECOND_READ_TRANSCRIPTION_STRAND RIBOSOMAL_INTERVALS=${RIBOSOMAL_DIR}/${SAMPLE}.txt
 }
 
-
 function count_reads_for_features {
     NUM_THREADS=$1
     FEATURES_GTF=$2

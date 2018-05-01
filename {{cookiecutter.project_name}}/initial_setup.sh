@@ -17,7 +17,6 @@ ENSEMBL_DIR=${DATA_DIR}/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_
 REF_FLAT=${PICARD_DATA}/{{cookiecutter.rff_files[cookiecutter.species]}}
 GTF_FILE=${GENOME_DATA_DIR}/{{cookiecutter.gtf_files[cookiecutter.species]}}
 
-
 PICARD=/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar
 
 mkdir -p ${RNASEQ_DIR}
@@ -26,8 +25,6 @@ for sample in {{cookiecutter.rnaseq_samples}}; do
     ln -s {{cookiecutter.rnaseq_samples_dir}}/$sample ${RNASEQ_DIR}/$sample
 done
 
-mkdir -p ${ENSEMBL_DIR}
-
 mkdir -p $PICARD_DATA
 
 # Generating refFlat file for Picard RNA-seq metrics
@@ -35,21 +32,13 @@ gtfToGenePred -genePredExt -geneNameAsName2 ${GTF_FILE} ${PICARD_DATA}/refFlat.t
 paste <(cut -f 12 ${PICARD_DATA}/refFlat.tmp.txt) <(cut -f 1-10 ${PICARD_DATA}/refFlat.tmp.txt) > ${REF_FLAT}
 rm ${PICARD_DATA}/refFlat.tmp.txt
 
-#[ ! -f ${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.dict ] && java -jar ${PICARD} CreateSequenceDictionary \
-#R=${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.fa \
-#O=${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.dict
-
+mkdir -p ${ENSEMBL_DIR}
 
 ln -s ${GENOME_DATA_DIR}/STAR_indices/{{cookiecutter.assembly_names[cookiecutter.species]}} ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.gtf_files[cookiecutter.species]}} ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/genes.tsv ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.salmon_index}} ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.kallisto_index}} ${ENSEMBL_DIR}
-# for picard alignment metrics
-#ln -s ${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.fa ${ENSEMBL_DIR}
-#ln -s ${GENOME_DATA_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.dict ${ENSEMBL_DIR}
-# for picard RNA-seq metrics
-#ln -s ${REF_FLAT} ${ENSEMBL_DIR}
 
 ln -s /srv/data/genome/human/msigdb ${DATA_DIR}
 

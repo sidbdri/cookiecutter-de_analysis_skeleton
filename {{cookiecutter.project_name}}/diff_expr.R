@@ -46,6 +46,30 @@ get_total_dds_tximport <- function(quant_method) {
   return(total_dds)
 }
 
+#get res for given condition name
+get_res <- function(comparision_name) {
+  x=comparision_table %>% filter(comparision==comparision_name)
+  sample_data <- SAMPLE_DATA %>%
+    tibble::rownames_to_column(var = "tmp_row_names") %>%
+    filter(!!parse_expr(x$filter)) %>%
+    tibble::column_to_rownames(var = "tmp_row_names")
+  
+  
+  dds <- sample_data %>% 
+    row.names() %>% 
+    map(read_counts) %>% 
+    purrr::reduce(inner_join) %>%
+    remove_gene_column() %>% 
+    get_deseq2_dataset(sample_data, design_formula = x$fomular %>% as.formula() )
+  
+  res <- dds %>% 
+    get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>% 
+    left_join(dds %>% get_raw_l2fc(sample_data, genotype==x$condition))
+  
+  
+  list(res, dds %<>% varianceStabilizingTransformation)
+}
+
 get_condition_res <- function() {
   sample_data <- SAMPLE_DATA %>% 
     filter_with_rownames(...)
@@ -117,28 +141,44 @@ results <- total_dds_data %>% get_count_data()
 fpkms <- results %>% 
   get_fpkms(gene_lengths, colnames(results) %>% tail(-1), "_fpkm")
 
+
+# fpkms %<>% mutate(
+#   P10_Ctx_KO_fpkm_avg = !!get_avg_fpkm(filter="age=='P10' & genotype=='KO' & region=='Ctx'"),
+#   P10_Piri_KO_fpkm_avg = !!get_avg_fpkm(filter="age=='P10' & genotype=='KO' & region=='Piri'")
+# ) 
 fpkms %<>% mutate(
-  <CONDITION1>_fpkm_avg = (<SAMPLE1>_fpkm + etc)/n,
+  <CONDITION1>_fpkm_avg = !!get_avg_fpkm(filter="condition1=='' & condition2==''"),
   etc.
 )
+
+
 
 results %<>% 
   inner_join(fpkms) %>%
   inner_join(gene_info) %>% 
   inner_join(gene_lengths)
 
-condition_res <- get_condition_res()
 
-results %<>% 
-  left_join(condition_res[[1]], by="gene") %>%
-  dplyr::rename(condition.l2fc=log2FoldChange,
-         condition.raw_l2fc=raw_l2fc,
-         condition.stat=stat,
-         condition.pval=pvalue,
-         condition.padj=padj)
+##run all get_res functions abd add to results object
+comparision_table %>% pull(comparision) %>% walk ( function(x){
+  res_name<-str_c(x,'res',sep = '_')
+  assign(str_c(x,'res',sep = '_'), get_res(x),envir = .GlobalEnv)
+  
+  res <-get(res_name, envir = .GlobalEnv)
+  results<-get("results",envir = .GlobalEnv) %>% 
+    left_join(res[[1]], by="gene") %>%
+    dplyr::rename(!!str_c(x,'l2fc',sep = '.'):=log2FoldChange,
+                  !!str_c(x,'raw_l2fc',sep = '.'):=raw_l2fc,
+                  !!str_c(x,'stat',sep = '.'):=stat,
+                  !!str_c(x,'pval',sep = '.'):=pvalue,
+                  !!str_c(x,'padj',sep = '.'):=padj)
+  plot_pvalue_distribution(results, str_c(x,'pval',sep = '.'))
+  assign("results", results,envir = .GlobalEnv)
+}) 
 
-plot_pvalue_distribution(results, "condition.pval")
 
+
+#save results
 results %>% 
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
                 gene_length, max_transcript_length,
@@ -157,9 +197,24 @@ results %>%
 
 expressed_genes <- get_total_dds(TRUE) %>% get_count_data()
 
-results %>% 
-  filter(padj < 0.1) %>%
-  perform_go_analyses(expressed_genes, "<condition_comparison>")
+comparision_table %>% pull(comparision) %>% walk( function(x){
+  p_str=str_c(x,'padj',sep = '.')
+  l2fc_str=str_c(x,'l2fc',sep = '.')
+  
+  get("results",envir = .GlobalEnv) %>% 
+    filter( get(p_str) < 0.05 ) %>% 
+    perform_go_analyses(expressed_genes, x) 
+  
+  get("results",envir = .GlobalEnv) %>%
+    filter( get(p_str) < 0.05  & get(l2fc_str) > 0 ) %>% 
+    perform_go_analyses(expressed_genes, str_c(x,'up',sep = '.')) 
+  
+  get("results",envir = .GlobalEnv) %>%
+    filter( get(p_str) < 0.05  & get(l2fc_str) < 0 ) %>% 
+    perform_go_analyses(expressed_genes, str_c(x,'down',sep = '.')) 
+})
+
+
 
 ##### Gene set enrichment analysis
 
@@ -168,14 +223,24 @@ gene_set_categories <- list("CURATED", "MOTIF", "GO")
 gene_sets <- gene_set_categories %>% 
   map(function(x) get_gene_sets("{{cookiecutter.species}}", x))
 
-condition_camera_results <- gene_sets %>% 
-  map(function(x) get_camera_results(condition_res[[2]], x, gene_info, ~condition))
 
-for (category in seq(1:length(gene_set_categories))) {
-  write_camera_results(
-    gene_set_categories[[category]], gene_sets[[category]], "condition",
-    results, condition_camera_results[[category]])
-}
+comparision_table %>% pull(comparision) %>% walk( function(x){
+  x=comparision_table %>% filter(x==comparision)
+  res<-str_c(x$comparision,'res',sep = '_') %>% get(envir = .GlobalEnv)
+  
+  camera_results <- get('gene_sets',envir = .GlobalEnv) %>% 
+    map(function(y) get_camera_results( res[[2]],y,gene_info, x$fomular %>% as.formula()))
+  
+  assign(str_c(x$comparision,'camera_results',sep = '_'),camera_results,envir = .GlobalEnv)
+  
+  
+  for (category in seq(1:length(gene_set_categories))) {
+    write_camera_results(
+      gene_set_categories[[category]], gene_sets[[category]], x$comparision,
+      results,camera_results[[category]])
+  }
+  
+})
 
 # results %>% plot_gene_set(gene_sets[[3]], "GO_<go_term>", "condition.stat")
 # results %>% get_gene_set_results(gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head

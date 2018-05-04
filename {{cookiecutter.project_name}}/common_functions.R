@@ -370,7 +370,7 @@ get_gene_set_results <- function(results, gene_sets, gene_set_name, pvalue) {
 
 write_camera_results <- function(
   gene_set_collection_name, gene_set_collection, comparison_name, de_results, camera_results,
-  barcodeplots=TRUE) {
+  barcodeplots=FALSE) {
   
   camera_results %<>% 
     tibble::rownames_to_column(var="GeneSet") %>% 

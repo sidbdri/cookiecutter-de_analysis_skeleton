@@ -6,6 +6,8 @@ SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
   t %>%
   as.vector
 
+# n.b. Ensure that conditions to be used in GSA comparisons are factors with
+# the correct base level set.
 SAMPLE_DATA <- data.frame(
   condition=...,
   row.names=SAMPLE_NAMES

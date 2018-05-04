@@ -401,3 +401,9 @@ write_camera_results <- function(
       }
     })
 }
+
+get_avg_fpkm <- function(filter="age=='P10' & genotype=='KO' & region=='Ctx'"){
+  samples<-SAMPLE_DATA %>% filter(!!parse_expr(filter)) %>% pull(sample_name) %>% as.vector() %>% str_c('fpkm',sep = '_')
+  avg<-fpkms %>% dplyr::select(.dots = samples) %>% mutate(sum=rowSums(.)) %>% mutate(avg=sum/length(samples)) 
+  avg$avg
+}

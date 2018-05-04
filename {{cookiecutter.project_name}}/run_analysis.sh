@@ -105,7 +105,7 @@ for sample in ${SAMPLES}; do
 done
 
 ##### Gather all QC data
-multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m picard results
+multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m picard -x differential_expression results
 
 ##### Perform differential expression
 mkdir -p ${DIFF_EXPR_DIR}/go

@@ -15,7 +15,7 @@ SAMPLE_DATA <- data.frame(
 )
 
 #example can be found https://github.com/sidbdri/cookiecutter-sargasso-de_analysis_skeleton
-comparision_table<-tribble(
+comparison_table<-tribble(
 ~comparision, ~fomular, ~condition_name, ~condition, ~condition_base, ~filter,...,
 #"P10_Ctx_KO_vs_WT", "~genotype", "genotype", "KO", "WT", "age=='P10' & region=='Ctx'",...,
 )
@@ -56,7 +56,7 @@ get_total_dds_tximport <- function(quant_method) {
 
 #get res for given condition name
 get_res <- function(comparision_name) {
-  x=comparision_table %>% filter(comparision==comparision_name)
+  x=comparison_table %>% filter(comparision==comparision_name)
   sample_data <- SAMPLE_DATA %>%
     tibble::rownames_to_column(var = "tmp_row_names") %>%
     filter(!!parse_expr(x$filter)) %>%
@@ -168,7 +168,7 @@ results %<>%
 
 
 ##run all get_res functions and add to results object
-comparision_table %>% pull(comparision) %>% walk ( function(x){
+comparison_table %>% pull(comparision) %>% walk ( function(x){
   res_name<-str_c(x,'res',sep = '_')
   assign(str_c(x,'res',sep = '_'), get_res(x),envir = .GlobalEnv)
   
@@ -198,7 +198,7 @@ results %>%
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
                 gene_length, max_transcript_length,
          dplyr::contains("_fpkm"), 
-         comparision_table %>% pull(comparision) %>%
+         comparison_table %>% pull(comparision) %>%
            sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
            as.vector() %>% unique(), 
          -dplyr::ends_with(".stat")) %>% 
@@ -208,7 +208,7 @@ results %>%
 
 expressed_genes <- get_total_dds(TRUE) %>% get_count_data()
 
-comparision_table %>% pull(comparision) %>% walk( function(x){
+comparison_table %>% pull(comparision) %>% walk( function(x){
   p_str=str_c(x,'padj',sep = '.')
   l2fc_str=str_c(x,'l2fc',sep = '.')
   
@@ -235,8 +235,8 @@ gene_sets <- gene_set_categories %>%
   map(function(x) get_gene_sets(x))
 
 
-comparision_table %>% pull(comparision) %>% walk( function(x){
-  x=comparision_table %>% filter(x==comparision)
+comparison_table %>% pull(comparision) %>% walk( function(x){
+  x=comparison_table %>% filter(x==comparision)
   res<-str_c(x$comparision,'res',sep = '_') %>% get(envir = .GlobalEnv)
   
   camera_results <- get('gene_sets',envir = .GlobalEnv) %>% 

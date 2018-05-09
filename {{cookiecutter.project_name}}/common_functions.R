@@ -257,7 +257,7 @@ perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix)
   c("BP", "MF", "CC") %>% walk(
     function(x) {
       perform_go_analysis(expressed_genes, significant_genes, x) %>%
-        write_csv(str_c("results/differential_expression/go/{{cookiecutter.species}}_", file_prefix, "_go_", x %>% tolower, ".csv"))      
+        write_csv(str_c("results/differential_expression/go/{{cookiecutter.species}}_", file_prefix, "_go_", x %>% tolower, ".csv"))
     }
   )
 }
@@ -403,7 +403,8 @@ write_camera_results <- function(
 }
 
 get_avg_fpkm <- function(filter="age=='P10' & genotype=='KO' & region=='Ctx'"){
-  samples<-SAMPLE_DATA %>% filter(!!parse_expr(filter)) %>% pull(sample_name) %>% as.vector() %>% str_c('fpkm',sep = '_')
-  avg<-fpkms %>% dplyr::select(.dots = samples) %>% mutate(sum=rowSums(.)) %>% mutate(avg=sum/length(samples)) 
+  samples<-SAMPLE_DATA %>% tibble::rownames_to_column(var = "row_names") %>%
+    filter(!!parse_expr(filter)) %>% pull(row_names) %>% as.vector() %>% str_c('fpkm',sep = '_')
+  avg<-fpkms %>% dplyr::select(.dots = samples) %>% mutate(sum=rowSums(.)) %>% mutate(avg=sum/length(samples))
   avg$avg
 }

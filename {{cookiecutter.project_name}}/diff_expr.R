@@ -1,6 +1,7 @@
 source("load_packages.R")
 source("common_functions.R")
 
+
 SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
   outer(c(rep1, rep2, etc), str_c, sep="todo") %>%
   t %>%
@@ -10,6 +11,13 @@ SAMPLE_DATA <- data.frame(
   condition=...,
   row.names=SAMPLE_NAMES
 )
+
+#example can be found https://github.com/sidbdri/cookiecutter-sargasso-de_analysis_skeleton
+comparision_table<-tribble(
+~comparision, ~fomular, ~condition_name, ~condition, ~condition_base, ~filter,...,
+#"P10_Ctx_KO_vs_WT", "~genotype", "genotype", "KO", "WT", "age=='P10' & region=='Ctx'",...,
+)
+
 
 get_total_dds <- function(filter_low_counts=FALSE) {
   # Collate count data
@@ -62,31 +70,31 @@ get_res <- function(comparision_name) {
   
   res <- dds %>% 
     get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>% 
-    left_join(dds %>% get_raw_l2fc(sample_data, genotype==x$condition))
+    left_join(dds %>% get_raw_l2fc(sample_data, x$condition_name==x$condition))
   
   
   list(res, dds %<>% varianceStabilizingTransformation)
 }
 
-get_condition_res <- function() {
-  sample_data <- SAMPLE_DATA %>% 
-    filter_with_rownames(...)
-
-  dds <- sample_data %>% 
-    row.names() %>% 
-    map(read_counts) %>% 
-    purrr::reduce(inner_join) %>%
-    remove_gene_column() %>% 
-    get_deseq2_dataset(sample_data, design_formula=~condition)
-
-  #cond2 is to be compared against the baseline, cond1.
-  res <- dds %>% 
-    get_deseq2_results("<condition>", "<cond2>", "<cond1>") %>%
-    left_join(dds %>% get_raw_l2fc(sample_data, condition="<cond2>"))
-
-
-  list(res, dds %<>% varianceStabilizingTransformation)
-}
+# get_condition_res <- function() {
+#   sample_data <- SAMPLE_DATA %>% 
+#     filter_with_rownames(...)
+# 
+#   dds <- sample_data %>% 
+#     row.names() %>% 
+#     map(read_counts) %>% 
+#     purrr::reduce(inner_join) %>%
+#     remove_gene_column() %>% 
+#     get_deseq2_dataset(sample_data, design_formula=~condition)
+# 
+#   #cond2 is to be compared against the baseline, cond1.
+#   res <- dds %>% 
+#     get_deseq2_results("<condition>", "<cond2>", "<cond1>") %>%
+#     left_join(dds %>% get_raw_l2fc(sample_data, condition="<cond2>"))
+# 
+# 
+#   list(res, dds %<>% varianceStabilizingTransformation)
+# }
   
 get_condition_res_tximport <- function(quant_method) {
   sample_data <- data.frame(
@@ -157,7 +165,7 @@ results %<>%
   inner_join(gene_lengths)
 
 
-##run all get_res functions abd add to results object
+##run all get_res functions and add to results object
 comparision_table %>% pull(comparision) %>% walk ( function(x){
   res_name<-str_c(x,'res',sep = '_')
   assign(str_c(x,'res',sep = '_'), get_res(x),envir = .GlobalEnv)
@@ -176,6 +184,7 @@ comparision_table %>% pull(comparision) %>% walk ( function(x){
 
 
 
+
 #save results
 results %>% 
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
@@ -187,7 +196,9 @@ results %>%
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
                 gene_length, max_transcript_length,
          dplyr::contains("_fpkm"), 
-         starts_with(comparison), etc., 
+         comparision_table %>% pull(comparision) %>%
+           sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
+           as.vector() %>% unique(), 
          -dplyr::ends_with(".stat")) %>% 
   write_csv("results/differential_expression/deseq2_results_fpkm.csv")
 
@@ -201,15 +212,15 @@ comparision_table %>% pull(comparision) %>% walk( function(x){
   
   get("results",envir = .GlobalEnv) %>% 
     filter( get(p_str) < 0.05 ) %>% 
-    perform_go_analyses(expressed_genes, x) 
+    perform_go_analyses(expressed_genes, x)
   
   get("results",envir = .GlobalEnv) %>%
     filter( get(p_str) < 0.05  & get(l2fc_str) > 0 ) %>% 
-    perform_go_analyses(expressed_genes, str_c(x,'up',sep = '.')) 
+    perform_go_analyses(expressed_genes, str_c(x,'up',sep = '.'))
   
   get("results",envir = .GlobalEnv) %>%
     filter( get(p_str) < 0.05  & get(l2fc_str) < 0 ) %>% 
-    perform_go_analyses(expressed_genes, str_c(x,'down',sep = '.')) 
+    perform_go_analyses(expressed_genes, str_c(x,'down',sep = '.'))
 })
 
 
@@ -219,7 +230,7 @@ comparision_table %>% pull(comparision) %>% walk( function(x){
 gene_set_categories <- list("CURATED", "MOTIF", "GO")
 
 gene_sets <- gene_set_categories %>% 
-  map(function(x) get_gene_sets("{{cookiecutter.species}}", x))
+  map(function(x) get_gene_sets(x))
 
 
 comparision_table %>% pull(comparision) %>% walk( function(x){

@@ -96,8 +96,8 @@ ALLOW_MEM=$(echo ${MAX_MEM} | awk '{print int($1 * 0.8)}')
 MAX_CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 ALLOW_CORES=$(echo ${MAX_CORES} | awk '{print int($1 * 0.8)}')
 
-    if [ "$(($THREAD_USING))" -ge "${TOTAL_THREADS}"  ] || [ "${MEM_USING}" -ge "${ALLOW_MEM}" ] \
-     || [ "$((${THREAD_USING}+${THREADS_PRE_SAMPLE}))"  -ge "${TOTAL_THREADS}"  ]; then
+    if [ "$(($THREAD_USING))" -ge "${NUM_TOTAL_THREADS}"  ] || [ "${MEM_USING}" -ge "${ALLOW_MEM}" ] \
+     || [ "$((${THREAD_USING}+${NUM_THREADS_PRE_SAMPLE}))"  -ge "${NUM_TOTAL_THREADS}"  ]; then
         echo "yes"
     else
         echo "no"
@@ -111,6 +111,6 @@ function checkBusy {
         THREAD_USING=0
         MEM_USING=0
     fi
-    THREAD_USING=$((${THREAD_USING}+${THREADS_PRE_SAMPLE}))
+    THREAD_USING=$((${THREAD_USING}+${NUM_THREADS_PRE_SAMPLE}))
     MEM_USING=$((${MEM_USING}+30))
 }

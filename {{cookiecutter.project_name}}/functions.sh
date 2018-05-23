@@ -88,3 +88,29 @@ function clean_de_results {
 
     sed -i "s/-Inf/'-Inf/g;s/,NA,/,,/g;s/,NA,/,,/g;s/,NA$/,/g" ${DE_RESULTS_FILE}
 }
+
+function isBusy {
+
+MAX_MEM=$(cat /proc/meminfo | grep 'MemTotal'| awk '{print int($2/(1024^2))}')
+ALLOW_MEM=$(echo ${MAX_MEM} | awk '{print int($1 * 0.8)}')
+MAX_CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
+ALLOW_CORES=$(echo ${MAX_CORES} | awk '{print int($1 * 0.8)}')
+
+    if [ "$(($THREAD_USING))" -ge "${TOTAL_THREADS}"  ] || [ "${MEM_USING}" -ge "${ALLOW_MEM}" ] \
+     || [ "$((${THREAD_USING}+${THREADS_PRE_SAMPLE}))"  -ge "${TOTAL_THREADS}"  ]; then
+        echo "yes"
+    else
+        echo "no"
+    fi
+}
+
+function checkBusy {
+     if [ "$(isBusy)" == "yes" ] ; then
+#        echo "server busy, ${THREAD_USING}/${MAX_CORES} cores/ ${MEM_USING}G/${MAX_MEM} memory using... waiting for jobs: $(jobs -p) "
+        wait $(jobs -p)
+        THREAD_USING=0
+        MEM_USING=0
+    fi
+    THREAD_USING=$((${THREAD_USING}+${THREADS_PRE_SAMPLE}))
+    MEM_USING=$((${MEM_USING}+30))
+}

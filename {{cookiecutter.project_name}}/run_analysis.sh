@@ -29,6 +29,12 @@ DIFF_EXPR_DIR=${RESULTS_DIR}/differential_expression
 
 NUM_THREADS=16
 
+
+NUM_THREADS_PRE_SAMPLE={{cookiecutter.number_threads_pre_sample}}
+NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
+THREAD_USING=0
+MEM_USING=0
+
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
 PAIRED_END_READ="{{cookiecutter.paired_end_read}}"
 
@@ -38,7 +44,7 @@ mkdir -p ${QC_DIR}
 for sample in ${SAMPLES}; do
     output_dir=${QC_DIR}/${sample}
     mkdir -p ${output_dir}
-
+    checkBusy
     (zcat ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}} | fastqc --outdir=${output_dir} stdin) &
 done
 
@@ -48,10 +54,11 @@ wait
 mkdir -p ${MAPPING_DIR}
 
 for sample in ${SAMPLES}; do
+    checkBusy
     if [ $PAIRED_END_READ = "yes" ]; then
-        map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS} $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) ${MAPPING_DIR}
+        map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS} $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) ${MAPPING_DIR} &
     else
-        map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS} $(listFiles , ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}}) "" ${MAPPING_DIR}
+        map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS} $(listFiles , ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}}) "" ${MAPPING_DIR} &
     fi
 done
 
@@ -77,8 +84,8 @@ for sample in ${SAMPLES}; do
         first_sample="FALSE"
         count_reads_for_features_strand_test ${NUM_THREADS} ${GTF_FILE} ${MAPPING_DIR}/${sample}.bam ${COUNTS_DIR}/strand_test.${sample}.counts
     }
-
-    count_reads_for_features ${NUM_THREADS} ${GTF_FILE} ${MAPPING_DIR}/${sample}.bam ${COUNTS_DIR}/${sample}.counts
+    checkBusy
+    count_reads_for_features ${NUM_THREADS} ${GTF_FILE} ${MAPPING_DIR}/${sample}.bam ${COUNTS_DIR}/${sample}.counts &
 done
 
 ##### Quantify transcript expression with Salmon

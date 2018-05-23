@@ -97,7 +97,7 @@ MAX_CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 ALLOW_CORES=$(echo ${MAX_CORES} | awk '{print int($1 * 0.8)}')
 
     if [ "$(($THREAD_USING))" -ge "${NUM_TOTAL_THREADS}"  ] || [ "${MEM_USING}" -ge "${ALLOW_MEM}" ] \
-     || [ "$((${THREAD_USING}+${NUM_THREADS_PER_SAMPLE}))"  -ge "${NUM_TOTAL_THREADS}"  ]; then
+     || [ "$((${THREAD_USING}+${NUM_THREADS_PER_SAMPLE}))"  -g "${NUM_TOTAL_THREADS}"  ]; then
         echo "yes"
     else
         echo "no"

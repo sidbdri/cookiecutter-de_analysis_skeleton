@@ -1,5 +1,8 @@
 #!/bin/bash
 
+trap "exit" INT TERM
+trap "kill 0" EXIT
+
 set -o nounset
 set -o errexit
 set -o xtrace

@@ -50,7 +50,6 @@ for sample in ${SAMPLES}; do
     checkBusy
     (zcat ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}} | fastqc --outdir=${output_dir} stdin) &
 done
-
 wait
 
 ##### Map reads
@@ -64,6 +63,7 @@ for sample in ${SAMPLES}; do
         map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS_PER_SAMPLE} $(listFiles , ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}}) "" ${MAPPING_DIR} &
     fi
 done
+wait
 
 ##### Run Picard alignment metrics summary
 mkdir -p ${PICARD_DIR}
@@ -90,6 +90,7 @@ for sample in ${SAMPLES}; do
     checkBusy
     count_reads_for_features ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE} ${MAPPING_DIR}/${sample}.bam ${COUNTS_DIR}/${sample}.counts &
 done
+wait
 
 ##### Quantify transcript expression with Salmon
 mkdir -p ${SALMON_QUANT_DIR}

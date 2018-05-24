@@ -57,7 +57,7 @@ function count_reads_for_features {
     BAM_FILE=$3
     COUNTS_OUTPUT_FILE=$4
 
-    counts_tmp=.counts_tmp
+    counts_tmp=.$(basename "${BAM_FILE}").counts_tmp
 
     ${FEATURE_COUNTS} -T ${NUM_THREADS} -p -a ${FEATURES_GTF} -o ${counts_tmp} -s 2 ${BAM_FILE}
     tail -n +3 ${counts_tmp} | cut -f 1,7 > ${COUNTS_OUTPUT_FILE}
@@ -72,7 +72,8 @@ function count_reads_for_features_strand_test {
     BAM_FILE=$3
     COUNTS_OUTPUT_FILE=$4
 
-    counts_tmp=.counts_tmp
+    counts_tmp=.$(basename "${BAM_FILE}").counts_tmp
+
 
     for i in 0 1 2; do
         ${FEATURE_COUNTS} -T ${NUM_THREADS} -p -a ${FEATURES_GTF} -o ${counts_tmp} -s $i ${BAM_FILE}

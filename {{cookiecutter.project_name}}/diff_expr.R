@@ -61,6 +61,11 @@ get_res <- function(comparision_name) {
     tibble::rownames_to_column(var = "tmp_row_names") %>%
     filter(!!parse_expr(x$filter)) %>%
     tibble::column_to_rownames(var = "tmp_row_names")
+
+  ##Ensure that conditions to be used in GSA comparisons are factors with
+  # the correct base level set.
+  sample_data %<>%
+  mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name),ordered=TRUE,levels=c(!!x$condition_base,!!x$condition)))
   
   
   dds <- sample_data %>% 
@@ -232,7 +237,7 @@ comparison_table %>% pull(comparision) %>% walk( function(x){
 gene_set_categories <- list("CURATED", "MOTIF", "GO")
 
 gene_sets <- gene_set_categories %>% 
-  map(function(x) get_gene_sets(x))
+  map(function(x) get_gene_sets("{{cookiecutter.species}}"，x))
 
 
 comparison_table %>% pull(comparision) %>% walk( function(x){

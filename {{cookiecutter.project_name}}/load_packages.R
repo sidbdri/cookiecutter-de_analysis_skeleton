@@ -14,6 +14,7 @@ library(org.Rn.eg.db)
 library(stringr)
 library(topGO)
 library(tximport)
+library(rlang)
 
 sessionInfo()
 

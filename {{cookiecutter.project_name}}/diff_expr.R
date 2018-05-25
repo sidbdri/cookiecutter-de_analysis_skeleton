@@ -59,27 +59,27 @@ get_res <- function(comparision_name) {
   x=comparison_table %>% filter(comparision==comparision_name)
   sample_data <- SAMPLE_DATA %>%
     tibble::rownames_to_column(var = "tmp_row_names") %>%
+    mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
     filter(!!parse_expr(x$filter)) %>%
     tibble::column_to_rownames(var = "tmp_row_names")
 
   ##Ensure that conditions to be used in GSA comparisons are factors with
   # the correct base level set.
-  sample_data %<>%
-  mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name),ordered=TRUE,levels=c(!!x$condition_base,!!x$condition)))
-  
-  
-  dds <- sample_data %>% 
-    row.names() %>% 
-    map(read_counts) %>% 
+  sample_data$condition %<>% relevel(x$condition_base)
+
+
+  dds <- sample_data %>%
+    row.names() %>%
+    map(read_counts) %>%
     purrr::reduce(inner_join) %>%
-    remove_gene_column() %>% 
+    remove_gene_column() %>%
     get_deseq2_dataset(sample_data, design_formula = x$fomular %>% as.formula() )
-  
-  res <- dds %>% 
-    get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>% 
-    left_join(dds %>% get_raw_l2fc(sample_data, x$condition_name==x$condition))
-  
-  
+
+  res <- dds %>%
+    get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
+    left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
+
+
   list(res, dds %<>% varianceStabilizingTransformation)
 }
 

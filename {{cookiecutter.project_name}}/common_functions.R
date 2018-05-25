@@ -41,14 +41,14 @@ get_deseq2_results <- function(dds, comparison, condition, condition_base, alpha
     dplyr::select(-baseMean, -lfcSE)
 }
 
-get_raw_l2fc <- function(dds, sample_data, ...) {
+get_raw_l2fc <- function(dds, sample_data, comparison_samples_filter) {
   sample_data %<>% tibble::rownames_to_column(var="tmp_sample_name")
   
   all_samples <- sample_data %>% extract2("tmp_sample_name") %>% as.vector
-  
-  comparison_sample_data <- filter_(sample_data, .dots=lazyeval::lazy_dots(...))
+
+  comparison_sample_data <- filter(sample_data, !!comparison_samples_filter)
   comparison_samples <- comparison_sample_data %>% extract2("tmp_sample_name") %>% as.vector
-  
+
   base_samples = all_samples %>% setdiff(comparison_samples)
   
   dds %>% 
@@ -365,7 +365,7 @@ get_gene_set_results <- function(results, gene_sets, gene_set_name, pvalue) {
     match(results$entrez_id) %>% 
     na.omit
   
-  results %>% extract(idx, ) %>% arrange_(pvalue)
+    results %>% magrittr::extract(idx, ) %>% arrange_(pvalue)
 }
 
 write_camera_results <- function(

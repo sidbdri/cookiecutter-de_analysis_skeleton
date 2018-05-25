@@ -65,7 +65,7 @@ get_res <- function(comparision_name) {
 
   ##Ensure that conditions to be used in GSA comparisons are factors with
   # the correct base level set.
-  sample_data$condition %<>% relevel(x$condition_base)
+  sample_data[,x$condition_name] %<>% relevel(x$condition_base)
 
 
   dds <- sample_data %>%

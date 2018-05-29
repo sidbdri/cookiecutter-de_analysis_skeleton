@@ -48,6 +48,9 @@ function picard_rnaseq_metrics {
   REF_FLAT=$4
   RIBOSOMAL_DIR=$5
 
+  sambamba view -H ${INPUT_DIR}/${SAMPLE}.sorted.bam > ${RIBOSOMAL_DIR}/${SAMPLE}_header.txt
+  cat ${RIBOSOMAL_DIR}/${SAMPLE}_header.txt ${RIBOSOMAL_DIR}/intervalListBody.txt > ${RIBOSOMAL_DIR}/${SAMPLE}.txt
+
   java -jar ${PICARD} CollectRnaSeqMetrics I=${INPUT_DIR}/${SAMPLE}.sorted.bam O=${OUTPUT_DIR}/${SAMPLE}.txt REF_FLAT=${REF_FLAT} STRAND=SECOND_READ_TRANSCRIPTION_STRAND RIBOSOMAL_INTERVALS=${RIBOSOMAL_DIR}/${SAMPLE}.txt
 }
 

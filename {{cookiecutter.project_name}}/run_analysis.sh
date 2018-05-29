@@ -74,6 +74,7 @@ for sample in ${SAMPLES}; do
     checkBusy
     picard_rnaseq_metrics ${sample} ${MAPPING_DIR} ${PICARD_DIR} ${REF_FLAT} ${PICARD_DATA} &
 done
+wait
 
 ##### Count mapped reads
 mkdir -p ${COUNTS_DIR}

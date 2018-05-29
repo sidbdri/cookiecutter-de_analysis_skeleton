@@ -133,3 +133,4 @@ Rscript diff_expr.R
 for de_results in ${DIFF_EXPR_DIR}/*.csv; do
     clean_de_results ${de_results}
 done
+

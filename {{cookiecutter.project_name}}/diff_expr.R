@@ -20,6 +20,14 @@ comparison_table<-tribble(
 #"P10_Ctx_KO_vs_WT", "~genotype", "genotype", "KO", "WT", "age=='P10' & region=='Ctx'",...,
 )
 
+SUMMARY_TB<-setNames(data.frame(matrix(ncol = 13, nrow = 0)), 
+                     c("Comparision", "DESeq_model_formula", "Condition_tested",
+                       "Base_level_condition","Number_of_samples_in_base_level_condition",
+                       "Sample_names_in_base_level_condition",
+                       "Comparison_level_condition","Number_of_samples_in_comparison_level_condition",
+                       "Sample_names_in_comparison_level_condition",
+                       "p.adj.cutoff","Up_regulated","Down_regulated","D.E.total"))
+
 
 get_total_dds <- function(filter_low_counts=FALSE) {
   # Collate count data
@@ -79,6 +87,21 @@ get_res <- function(comparision_name) {
     get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
     left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
 
+  #fill sumary table
+  SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>% 
+    add_row(Comparision = x$comparision, DESeq_model_formula = x$fomular, 
+            Condition_tested = x$condition_name,
+            Base_level_condition=x$condition_base,
+            Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
+            Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name) %>% str_c(collapse = ','),
+            Comparison_level_condition=x$condition,
+            Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
+            Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name) %>% str_c(collapse = ','),
+            p.adj.cutoff=0.05,
+            Up_regulated=res %>% filter( padj < 0.05 & log2FoldChange > 0 ) %>% nrow(),
+            Down_regulated=res %>% filter( padj < 0.05 & log2FoldChange < 0 ) %>% nrow(),
+            D.E.total=res %>% filter( padj < 0.05) %>% nrow())
+  assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
 
   list(res, dds %<>% varianceStabilizingTransformation)
 }
@@ -294,6 +317,9 @@ results_salmon %>%
          dplyr::contains("_tpm"), 
          starts_with(condition), etc.) %>% 
   write_csv("results/differential_expression/deseq2_salmon_results_fpkm.csv")
+
+SUMMARY_TB %>% 
+  write_csv("results/differential_expression/de_summary.csv")
 
 ##### Kallisto/tximport analysis
 

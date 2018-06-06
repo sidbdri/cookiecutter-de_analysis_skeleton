@@ -260,7 +260,7 @@ comparison_table %>% pull(comparision) %>% walk( function(x){
 gene_set_categories <- list("CURATED", "MOTIF", "GO")
 
 gene_sets <- gene_set_categories %>% 
-  map(function(x) get_gene_sets("{{cookiecutter.species}}"，x))
+  map(function(x) get_gene_sets("{{cookiecutter.species}}",x))
 
 
 comparison_table %>% pull(comparision) %>% walk( function(x){

@@ -232,6 +232,9 @@ results %>%
          -dplyr::ends_with(".stat")) %>% 
   write_csv("results/differential_expression/deseq2_results_fpkm.csv")
 
+SUMMARY_TB %>%
+write_csv("results/differential_expression/de_summary.csv")
+
 ##### GO analyses
 
 expressed_genes <- get_total_dds(TRUE) %>% get_count_data()
@@ -284,8 +287,7 @@ comparison_table %>% pull(comparision) %>% walk( function(x){
 # results %>% plot_gene_set(gene_sets[[3]], "GO_<go_term>", "condition.stat")
 # results %>% get_gene_set_results(gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head
 
-SUMMARY_TB %>%
-write_csv("results/differential_expression/de_summary.csv")
+
 
 ##### Salmon/tximport analysis
 

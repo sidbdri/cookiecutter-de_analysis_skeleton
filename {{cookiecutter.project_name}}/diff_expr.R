@@ -284,6 +284,9 @@ comparison_table %>% pull(comparision) %>% walk( function(x){
 # results %>% plot_gene_set(gene_sets[[3]], "GO_<go_term>", "condition.stat")
 # results %>% get_gene_set_results(gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head
 
+SUMMARY_TB %>%
+write_csv("results/differential_expression/de_summary.csv")
+
 ##### Salmon/tximport analysis
 
 results_salmon <- get_total_dds_tximport("salmon") %>% 
@@ -318,8 +321,7 @@ results_salmon %>%
          starts_with(condition), etc.) %>% 
   write_csv("results/differential_expression/deseq2_salmon_results_fpkm.csv")
 
-SUMMARY_TB %>% 
-  write_csv("results/differential_expression/de_summary.csv")
+
 
 ##### Kallisto/tximport analysis
 

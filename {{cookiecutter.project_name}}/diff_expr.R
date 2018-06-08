@@ -20,9 +20,9 @@ comparison_table<-tribble(
 #"P10_Ctx_KO_vs_WT", "~genotype", "genotype", "KO", "WT", "age=='P10' & region=='Ctx'",...,
 )
 
-SUMMARY_TB<-setNames(data.frame(matrix(ncol = 13, nrow = 0)), 
+SUMMARY_TB<-setNames(data.frame(matrix(ncol = 14, nrow = 0)),
                      c("Comparision", "DESeq_model_formula", "Condition_tested",
-                       "Base_level_condition","Number_of_samples_in_base_level_condition",
+                       "Base_level_condition","Total_number_of_samples_data","Number_of_samples_in_base_level_condition",
                        "Sample_names_in_base_level_condition",
                        "Comparison_level_condition","Number_of_samples_in_comparison_level_condition",
                        "Sample_names_in_comparison_level_condition",
@@ -92,6 +92,7 @@ get_res <- function(comparision_name) {
     add_row(Comparision = x$comparision, DESeq_model_formula = x$fomular, 
             Condition_tested = x$condition_name,
             Base_level_condition=x$condition_base,
+            Total_number_of_samples_data=sample_data %>% nrow(),
             Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
             Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name) %>% str_c(collapse = ','),
             Comparison_level_condition=x$condition,

@@ -257,8 +257,6 @@ comparison_table %>% pull(comparision) %>% walk( function(x){
     perform_go_analyses(expressed_genes, str_c(x,'down',sep = '.'))
 })
 
-
-
 ##### Gene set enrichment analysis
 
 gene_set_categories <- list("CURATED", "MOTIF", "GO")
@@ -276,19 +274,19 @@ comparison_table %>% pull(comparision) %>% walk( function(x){
   
   assign(str_c(x$comparision,'camera_results',sep = '_'),camera_results,envir = .GlobalEnv)
   
-  
   for (category in seq(1:length(gene_set_categories))) {
+    de_res <- results %>% dplyr::select(
+      gene, gene_name, entrez_id, 
+      starts_with(str_c(x$comparison, ".")), 
+      -starts_with(str_c(x$comparison, ".stat")))  
     write_camera_results(
       gene_set_categories[[category]], gene_sets[[category]], x$comparision,
-      results,camera_results[[category]])
+      de_res, camera_results[[category]])
   }
-  
 })
 
 # results %>% plot_gene_set(gene_sets[[3]], "GO_<go_term>", "condition.stat")
 # results %>% get_gene_set_results(gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head
-
-
 
 ##### Salmon/tximport analysis
 
@@ -323,8 +321,6 @@ results_salmon %>%
          dplyr::contains("_tpm"), 
          starts_with(condition), etc.) %>% 
   write_csv("results/differential_expression/deseq2_salmon_results_fpkm.csv")
-
-
 
 ##### Kallisto/tximport analysis
 

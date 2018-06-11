@@ -21,7 +21,7 @@ COMPARISON_TABLE<-tribble(
 )
 
 SUMMARY_TB<-setNames(data.frame(matrix(ncol = 14, nrow = 0)),
-                     c("Comparision", "DESeq_model_formula", "Condition_tested", "Total_number_of_samples_data",
+                     c("Comparison", "DESeq_model_formula", "Condition_tested", "Total_number_of_samples_data",
                        "Base_level_condition", "Number_of_samples_in_base_level_condition",
                        "Sample_names_in_base_level_condition",
                        "Comparison_level_condition", "Number_of_samples_in_comparison_level_condition",
@@ -89,7 +89,7 @@ get_res <- function(comparison_name) {
 
   #fill summary table
   SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>% 
-    add_row(Comparision = x$comparison, DESeq_model_formula = x$formula, 
+    add_row(Comparison = x$comparison, DESeq_model_formula = x$formula, 
             Condition_tested = x$condition_name,
             Total_number_of_samples_data=sample_data %>% nrow(),
             Base_level_condition=x$condition_base,
@@ -102,6 +102,7 @@ get_res <- function(comparison_name) {
             Up_regulated=res %>% filter( padj < 0.05 & log2FoldChange > 0 ) %>% nrow(),
             Down_regulated=res %>% filter( padj < 0.05 & log2FoldChange < 0 ) %>% nrow(),
             D.E.total=res %>% filter( padj < 0.05) %>% nrow())
+
   assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
 
   list(res, dds %<>% varianceStabilizingTransformation)

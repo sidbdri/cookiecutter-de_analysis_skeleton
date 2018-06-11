@@ -15,8 +15,8 @@ SAMPLE_DATA <- data.frame(
 )
 
 #example can be found https://github.com/sidbdri/cookiecutter-sargasso-de_analysis_skeleton
-comparison_table<-tribble(
-~comparision, ~fomular, ~condition_name, ~condition, ~condition_base, ~filter,...,
+COMPARISON_TABLE<-tribble(
+~comparison, ~formula, ~condition_name, ~condition, ~condition_base, ~filter,...,
 #"P10_Ctx_KO_vs_WT", "~genotype", "genotype", "KO", "WT", "age=='P10' & region=='Ctx'",...,
 )
 
@@ -63,8 +63,8 @@ get_total_dds_tximport <- function(quant_method) {
 }
 
 #get res for given condition name
-get_res <- function(comparision_name) {
-  x=comparison_table %>% filter(comparision==comparision_name)
+get_res <- function(comparison_name) {
+  x=COMPARISON_TABLE %>% filter(comparison==comparison_name)
   sample_data <- SAMPLE_DATA %>%
     tibble::rownames_to_column(var = "tmp_row_names") %>%
     mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
@@ -81,15 +81,15 @@ get_res <- function(comparision_name) {
     map(read_counts) %>%
     purrr::reduce(inner_join) %>%
     remove_gene_column() %>%
-    get_deseq2_dataset(sample_data, design_formula = x$fomular %>% as.formula() )
+    get_deseq2_dataset(sample_data, design_formula = x$formula %>% as.formula() )
 
   res <- dds %>%
     get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
     left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
 
-  #fill sumary table
+  #fill summary table
   SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>% 
-    add_row(Comparision = x$comparision, DESeq_model_formula = x$fomular, 
+    add_row(Comparision = x$comparison, DESeq_model_formula = x$formula, 
             Condition_tested = x$condition_name,
             Base_level_condition=x$condition_base,
             Total_number_of_samples_data=sample_data %>% nrow(),
@@ -188,16 +188,13 @@ fpkms %<>% mutate(
   etc.
 )
 
-
-
 results %<>% 
   inner_join(fpkms) %>%
   inner_join(gene_info) %>% 
   inner_join(gene_lengths)
 
-
 ##run all get_res functions and add to results object
-comparison_table %>% pull(comparision) %>% walk ( function(x){
+COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   res_name<-str_c(x,'res',sep = '_')
   assign(str_c(x,'res',sep = '_'), get_res(x),envir = .GlobalEnv)
   
@@ -213,9 +210,6 @@ comparison_table %>% pull(comparision) %>% walk ( function(x){
   assign("results", results,envir = .GlobalEnv)
 }) 
 
-
-
-
 #save results
 results %>% 
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
@@ -227,7 +221,7 @@ results %>%
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
                 gene_length, max_transcript_length,
          dplyr::contains("_fpkm"), 
-         comparison_table %>% pull(comparision) %>%
+         COMPARISON_TABLE %>% pull(comparison) %>%
            sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
            as.vector() %>% unique(), 
          -dplyr::ends_with(".stat")) %>% 
@@ -240,7 +234,7 @@ write_csv("results/differential_expression/de_summary.csv")
 
 expressed_genes <- get_total_dds(TRUE) %>% get_count_data()
 
-comparison_table %>% pull(comparision) %>% walk( function(x){
+COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
   p_str=str_c(x,'padj',sep = '.')
   l2fc_str=str_c(x,'l2fc',sep = '.')
   
@@ -265,14 +259,14 @@ gene_sets <- gene_set_categories %>%
   map(function(x) get_gene_sets("{{cookiecutter.species}}",x))
 
 
-comparison_table %>% pull(comparision) %>% walk( function(x){
-  x=comparison_table %>% filter(x==comparision)
-  res<-str_c(x$comparision,'res',sep = '_') %>% get(envir = .GlobalEnv)
+COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
+  x <- COMPARISON_TABLE %>% filter(x==comparison)
+  res<-str_c(x$comparison,'res',sep = '_') %>% get(envir = .GlobalEnv)
   
   camera_results <- get('gene_sets',envir = .GlobalEnv) %>% 
-    map(function(y) get_camera_results( res[[2]],y,gene_info, x$fomular %>% as.formula()))
+    map(function(y) get_camera_results( res[[2]],y,gene_info, x$formula %>% as.formula()))
   
-  assign(str_c(x$comparision,'camera_results',sep = '_'),camera_results,envir = .GlobalEnv)
+  assign(str_c(x$comparison,'camera_results',sep = '_'),camera_results,envir = .GlobalEnv)
   
   for (category in seq(1:length(gene_set_categories))) {
     de_res <- results %>% dplyr::select(
@@ -280,7 +274,7 @@ comparison_table %>% pull(comparision) %>% walk( function(x){
       starts_with(str_c(x$comparison, ".")), 
       -starts_with(str_c(x$comparison, ".stat")))  
     write_camera_results(
-      gene_set_categories[[category]], gene_sets[[category]], x$comparision,
+      gene_set_categories[[category]], gene_sets[[category]], x$comparison,
       de_res, camera_results[[category]])
   }
 })

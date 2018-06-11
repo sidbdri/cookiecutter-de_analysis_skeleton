@@ -21,12 +21,12 @@ COMPARISON_TABLE<-tribble(
 )
 
 SUMMARY_TB<-setNames(data.frame(matrix(ncol = 14, nrow = 0)),
-                     c("Comparision", "DESeq_model_formula", "Condition_tested",
-                       "Base_level_condition","Total_number_of_samples_data","Number_of_samples_in_base_level_condition",
+                     c("Comparision", "DESeq_model_formula", "Condition_tested", "Total_number_of_samples_data",
+                       "Base_level_condition", "Number_of_samples_in_base_level_condition",
                        "Sample_names_in_base_level_condition",
-                       "Comparison_level_condition","Number_of_samples_in_comparison_level_condition",
+                       "Comparison_level_condition", "Number_of_samples_in_comparison_level_condition",
                        "Sample_names_in_comparison_level_condition",
-                       "p.adj.cutoff","Up_regulated","Down_regulated","D.E.total"))
+                       "p.adj.cutoff", "Up_regulated", "Down_regulated", "D.E.total"))
 
 
 get_total_dds <- function(filter_low_counts=FALSE) {
@@ -91,8 +91,8 @@ get_res <- function(comparison_name) {
   SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>% 
     add_row(Comparision = x$comparison, DESeq_model_formula = x$formula, 
             Condition_tested = x$condition_name,
-            Base_level_condition=x$condition_base,
             Total_number_of_samples_data=sample_data %>% nrow(),
+            Base_level_condition=x$condition_base,
             Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
             Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name) %>% str_c(collapse = ','),
             Comparison_level_condition=x$condition,

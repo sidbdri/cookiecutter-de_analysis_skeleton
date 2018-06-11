@@ -48,6 +48,9 @@ function picard_rnaseq_metrics {
   REF_FLAT=$4
   RIBOSOMAL_DIR=$5
 
+  sambamba view -H ${INPUT_DIR}/${SAMPLE}.sorted.bam > ${RIBOSOMAL_DIR}/${SAMPLE}_header.txt
+  cat ${RIBOSOMAL_DIR}/${SAMPLE}_header.txt ${RIBOSOMAL_DIR}/intervalListBody.txt > ${RIBOSOMAL_DIR}/${SAMPLE}.txt
+
   java -jar ${PICARD} CollectRnaSeqMetrics I=${INPUT_DIR}/${SAMPLE}.sorted.bam O=${OUTPUT_DIR}/${SAMPLE}.txt REF_FLAT=${REF_FLAT} STRAND=SECOND_READ_TRANSCRIPTION_STRAND RIBOSOMAL_INTERVALS=${RIBOSOMAL_DIR}/${SAMPLE}.txt
 }
 
@@ -57,7 +60,7 @@ function count_reads_for_features {
     BAM_FILE=$3
     COUNTS_OUTPUT_FILE=$4
 
-    counts_tmp=.counts_tmp
+    counts_tmp=.$(basename "${BAM_FILE}").counts_tmp
 
     ${FEATURE_COUNTS} -T ${NUM_THREADS} -p -a ${FEATURES_GTF} -o ${counts_tmp} -s 2 ${BAM_FILE}
     tail -n +3 ${counts_tmp} | cut -f 1,7 > ${COUNTS_OUTPUT_FILE}
@@ -72,7 +75,8 @@ function count_reads_for_features_strand_test {
     BAM_FILE=$3
     COUNTS_OUTPUT_FILE=$4
 
-    counts_tmp=.counts_tmp
+    counts_tmp=.$(basename "${BAM_FILE}").counts_tmp
+
 
     for i in 0 1 2; do
         ${FEATURE_COUNTS} -T ${NUM_THREADS} -p -a ${FEATURES_GTF} -o ${counts_tmp} -s $i ${BAM_FILE}
@@ -87,4 +91,30 @@ function clean_de_results {
     DE_RESULTS_FILE=$1
 
     sed -i "s/-Inf/'-Inf/g;s/,NA,/,,/g;s/,NA,/,,/g;s/,NA$/,/g" ${DE_RESULTS_FILE}
+}
+
+function isBusy {
+
+MAX_MEM=$(cat /proc/meminfo | grep 'MemTotal'| awk '{print int($2/(1024^2))}')
+ALLOW_MEM=$(echo ${MAX_MEM} | awk '{print int($1 * 0.8)}')
+MAX_CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
+ALLOW_CORES=$(echo ${MAX_CORES} | awk '{print int($1 * 0.8)}')
+
+    if [ "$(($THREAD_USING))" -ge "${NUM_TOTAL_THREADS}"  ] || [ "${MEM_USING}" -ge "${ALLOW_MEM}" ] \
+     || [ "$((${THREAD_USING}+${NUM_THREADS_PER_SAMPLE}))"  -gt "${NUM_TOTAL_THREADS}"  ]; then
+        echo "yes"
+    else
+        echo "no"
+    fi
+}
+
+function checkBusy {
+     if [ "$(isBusy)" == "yes" ] ; then
+#        echo "server busy, ${THREAD_USING}/${MAX_CORES} cores/ ${MEM_USING}G/${MAX_MEM} memory using... waiting for jobs: $(jobs -p) "
+        wait $(jobs -p)
+        THREAD_USING=0
+        MEM_USING=0
+    fi
+    THREAD_USING=$((${THREAD_USING}+${NUM_THREADS_PER_SAMPLE}))
+    MEM_USING=$((${MEM_USING}+30))
 }

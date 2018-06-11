@@ -7,6 +7,8 @@
     "read1_identifier": "_1",
     "read2_identifier": "{{ cookiecutter.read1_identifier|replace('1', '2') }}",
     "ensembl_version": "90",
+    "number_threads_pre_sample": 8,
+    "number_total_threads": 16,
     "species": ["mouse", "rat", "human"],
     "star_version": "2.5.3a",
     "featurecounts_version": "1.5.2",

@@ -41,14 +41,14 @@ get_deseq2_results <- function(dds, comparison, condition, condition_base, alpha
     dplyr::select(-baseMean, -lfcSE)
 }
 
-get_raw_l2fc <- function(dds, sample_data, ...) {
+get_raw_l2fc <- function(dds, sample_data, comparison_samples_filter) {
   sample_data %<>% tibble::rownames_to_column(var="tmp_sample_name")
   
   all_samples <- sample_data %>% extract2("tmp_sample_name") %>% as.vector
-  
-  comparison_sample_data <- filter_(sample_data, .dots=lazyeval::lazy_dots(...))
+
+  comparison_sample_data <- filter(sample_data, !!comparison_samples_filter)
   comparison_samples <- comparison_sample_data %>% extract2("tmp_sample_name") %>% as.vector
-  
+
   base_samples = all_samples %>% setdiff(comparison_samples)
   
   dds %>% 
@@ -257,7 +257,7 @@ perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix)
   c("BP", "MF", "CC") %>% walk(
     function(x) {
       perform_go_analysis(expressed_genes, significant_genes, x) %>%
-        write_csv(str_c("results/differential_expression/go/{{cookiecutter.species}}_", file_prefix, "_go_", x %>% tolower, ".csv"))      
+        write_csv(str_c("results/differential_expression/go/{{cookiecutter.species}}_", file_prefix, "_go_", x %>% tolower, ".csv"))
     }
   )
 }
@@ -365,7 +365,7 @@ get_gene_set_results <- function(results, gene_sets, gene_set_name, pvalue) {
     match(results$entrez_id) %>% 
     na.omit
   
-  results %>% extract(idx, ) %>% arrange_(pvalue)
+    results %>% magrittr::extract(idx, ) %>% arrange_(pvalue)
 }
 
 write_camera_results <- function(
@@ -400,4 +400,11 @@ write_camera_results <- function(
         dev.off()
       }
     })
+}
+
+get_avg_fpkm <- function(filter="age=='P10' & genotype=='KO' & region=='Ctx'"){
+  samples<-SAMPLE_DATA %>% tibble::rownames_to_column(var = "row_names") %>%
+    filter(!!parse_expr(filter)) %>% pull(row_names) %>% as.vector() %>% str_c('fpkm',sep = '_')
+  avg<-fpkms %>% dplyr::select(.dots = samples) %>% mutate(sum=rowSums(.)) %>% mutate(avg=sum/length(samples))
+  avg$avg
 }

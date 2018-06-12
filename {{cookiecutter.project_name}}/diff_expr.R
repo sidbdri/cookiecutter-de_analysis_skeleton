@@ -29,7 +29,7 @@ SUMMARY_TB<-setNames(data.frame(matrix(ncol = 14, nrow = 0)),
                        "p.adj.cutoff", "Up_regulated", "Down_regulated", "D.E.total"))
 
 
-get_total_dds <- function(filter_low_counts=FALSE) {
+get_total_dds <- function(filter_low_counts=FALSE,,qSVA=FALSE) {
   # Collate count data
   total_count_data <- SAMPLE_DATA %>% 
     row.names() %>% 
@@ -39,7 +39,7 @@ get_total_dds <- function(filter_low_counts=FALSE) {
     
   get_deseq2_dataset(
     total_count_data, SAMPLE_DATA,
-    filter_low_counts=filter_low_counts, design_formula=~1)
+    filter_low_counts=filter_low_counts, design_formula=~1,,qSVA=qSVA)
 }
 
 get_total_dds_tximport <- function(quant_method) {
@@ -63,7 +63,7 @@ get_total_dds_tximport <- function(quant_method) {
 }
 
 #get res for given condition name
-get_res <- function(comparison_name) {
+get_res <- function(comparison_name,qSVA=FALSE) {
   x=COMPARISON_TABLE %>% filter(comparison==comparison_name)
   sample_data <- SAMPLE_DATA %>%
     tibble::rownames_to_column(var = "tmp_row_names") %>%
@@ -81,7 +81,7 @@ get_res <- function(comparison_name) {
     map(read_counts) %>%
     purrr::reduce(inner_join) %>%
     remove_gene_column() %>%
-    get_deseq2_dataset(sample_data, design_formula = x$formula %>% as.formula() )
+    get_deseq2_dataset(sample_data, design_formula = x$formula %>% as.formula(),qSVA=qSVA)
 
   res <- dds %>%
     get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%

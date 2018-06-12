@@ -21,12 +21,16 @@ remove_gene_column <- function(count_data) {
 }
 
 get_deseq2_dataset <- function(count_data, sample_data, filter_low_counts=TRUE, 
-                               design_formula=~condition) {
+                               design_formula=~condition,qSVA=FALSE) {
   
   dds <- DESeqDataSetFromMatrix(countData=count_data, colData=sample_data, design=design_formula)
   
   if (filter_low_counts) {
     dds <- dds[rowSums(counts(dds)) > 1, ]
+  }
+
+  if(qSVA) {
+    dds %<>% get_qsva_dds()
   }
   
   dds %>% DESeq(betaPrior=TRUE)
@@ -407,4 +411,47 @@ get_avg_fpkm <- function(filter="age=='P10' & genotype=='KO' & region=='Ctx'"){
     filter(!!parse_expr(filter)) %>% pull(row_names) %>% as.vector() %>% str_c('fpkm',sep = '_')
   avg<-fpkms %>% dplyr::select(.dots = samples) %>% mutate(sum=rowSums(.)) %>% mutate(avg=sum/length(samples))
   avg$avg
+}
+
+get_quality_surrogate_variables <- function(dds) {
+  design_formula = dds %>% design()
+  sample_data<- dds %>% colData()
+  sample_names <- sample_data %>% rownames()
+
+  quality_surrogate_variables <- sample_names %>%
+    str_c("results/read_counts/", ., ".dm.tsv") %>%
+    read.degradation.matrix(
+      sampleNames=sample_names,
+      totalMapped=dds %>% counts %>% colSums,
+      readLength=75,
+      type="region_matrix_single",
+      BPPARAM=SerialParam()) %>%
+    qsva(mod=design_formula %>% model.matrix(sample_data))
+
+  quality_surrogate_variables %>% print
+
+  quality_surrogate_variables
+}
+
+get_qsva_dds <- function(dds) {
+
+  design_formula = dds %>% design()
+  sample_data<- dds %>% colData()
+
+  quality_surrogate_variables <- get_quality_surrogate_variables(dds)
+
+
+  if (is.vector(quality_surrogate_variables)) {
+   quality_surrogate_variables %<>% data.frame(PC1=.)
+  }
+
+  colData(dds) %<>% cbind(quality_surrogate_variables)
+
+  design(dds) <- design_formula %>%
+                    terms() %>%
+                    attr("term.labels") %>%
+                    c(quality_surrogate_variables %>% colnames, .) %>%
+                    reformulate
+
+  dds
 }

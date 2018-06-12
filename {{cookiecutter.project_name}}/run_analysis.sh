@@ -20,6 +20,7 @@ REF_FLAT=${PICARD_DATA}/{{cookiecutter.rff_files[cookiecutter.species]}}
 REFERENCE=${ENSEMBL_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.fa
 SALMON_INDEX=${ENSEMBL_DIR}/{{cookiecutter.salmon_index}}
 KALLISTO_INDEX=${ENSEMBL_DIR}/{{cookiecutter.kallisto_index}}
+REGION_MATRIX_DIR=${DATA_DIR}/region_matrix
 RESULTS_DIR=${MAIN_DIR}/results
 
 QC_DIR=${RESULTS_DIR}/fastqc
@@ -40,6 +41,8 @@ MEM_USING=0
 
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
 PAIRED_END_READ="{{cookiecutter.paired_end_read}}"
+qSVA="{{cookiecutter.qSVA}}"
+WIGGLETOOLS=/opt/WiggleTools/bin/wiggletools
 
 ##### Perform QC on raw reads
 mkdir -p ${QC_DIR}
@@ -90,6 +93,27 @@ for sample in ${SAMPLES}; do
     count_reads_for_features ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE} ${MAPPING_DIR}/${sample}.bam ${COUNTS_DIR}/${sample}.counts &
 done
 wait
+
+
+##### Pre-processing for qSVA
+if [ $qSVA = "yes" ]; then
+    for sample in ${SAMPLES}; do
+        sambamba index -t ${NUM_THREADS_PER_SAMPLE} ${MAPPING_DIR}/${sample}.sorted.bam &
+        checkBusy
+    done
+    wait
+
+    for sample in ${SAMPLES}; do
+        python ${REGION_MATRIX_DIR}/region_matrix.py \
+        --regions ${REGION_MATRIX_DIR}/sorted_polyA_degradation_regions_v2.bed \
+        --bams ${MAPPING_DIR}/${sample}.sorted.bam \
+        --wiggletools ${WIGGLETOOLS} > ${COUNTS_DIR}/${sample}.dm.tsv &
+        checkBusy
+    done
+    wait
+fi
+
+
 
 ##### Quantify transcript expression with Salmon
 mkdir -p ${SALMON_QUANT_DIR}

@@ -16,6 +16,8 @@ GENOME_DATA_DIR=/srv/data/genome/{{cookiecutter.species}}/ensembl-{{cookiecutter
 ENSEMBL_DIR=${DATA_DIR}/{{cookiecutter.species}}_ensembl_{{cookiecutter.ensembl_version}}
 REF_FLAT=${PICARD_DATA}/{{cookiecutter.rff_files[cookiecutter.species]}}
 GTF_FILE=${GENOME_DATA_DIR}/{{cookiecutter.gtf_files[cookiecutter.species]}}
+REGION_MATRIX_DIR=${DATA_DIR}/region_matrix
+
 
 PICARD=/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar
 
@@ -48,6 +50,12 @@ if [[ "{{cookiecutter.species}}" != "human" ]]; then
     HUMAN_ENSEMBL_DIR=${DATA_DIR}/human_ensembl_{{cookiecutter.ensembl_version}}
     mkdir -p ${HUMAN_ENSEMBL_DIR}
     ln -s /srv/data/genome/human/ensembl-{{cookiecutter.ensembl_version}}/genes.tsv ${HUMAN_ENSEMBL_DIR}
+fi
+
+
+if [[ "{{cookiecutter.qSVA}}" != "no" ]]; then
+    mkdir ${REGION_MATRIX_DIR}
+    git clone https://github.com/nellore/region_matrix.git ${REGION_MATRIX_DIR}
 fi
 
 git init

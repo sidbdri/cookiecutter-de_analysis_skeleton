@@ -2,6 +2,12 @@ source("load_packages.R")
 source("common_functions.R")
 
 
+{% if cookiecutter.qSVA !="no" %}
+qSVA=TRUE
+{% else %}
+qSVA=FALSE
+{% endif %}
+
 SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
   outer(c(rep1, rep2, etc), str_c, sep="todo") %>%
   t %>%
@@ -159,7 +165,7 @@ get_condition_res_tximport <- function(quant_method) {
 
 #####
 
-total_dds_data <- get_total_dds()
+total_dds_data <- get_total_dds(qSVA=qSVA)
 total_vst <- total_dds_data %>% varianceStabilizingTransformation
 total_vst %>% plot_pca_with_labels(intgroup=c("condition"))
 total_vst %>% plot_heat_map(SAMPLE_DATA %>% 
@@ -197,7 +203,7 @@ results %<>%
 ##run all get_res functions and add to results object
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   res_name<-str_c(x,'res',sep = '_')
-  assign(str_c(x,'res',sep = '_'), get_res(x),envir = .GlobalEnv)
+  assign(str_c(x,'res',sep = '_'), get_res(x,qSVA=qSVA),envir = .GlobalEnv)
   
   res <-get(res_name, envir = .GlobalEnv)
   results<-get("results",envir = .GlobalEnv) %>% 

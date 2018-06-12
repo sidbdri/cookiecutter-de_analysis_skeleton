@@ -442,7 +442,7 @@ get_qsva_dds <- function(dds) {
 
 
   if (is.vector(quality_surrogate_variables)) {
-   quality_surrogate_variables %<>% data.frame(PC1=.)
+   quality_surrogate_variables %<>% data.frame(qSVA=.)
   }
 
   colData(dds) %<>% cbind(quality_surrogate_variables)

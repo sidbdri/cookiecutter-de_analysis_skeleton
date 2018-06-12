@@ -89,7 +89,7 @@ get_res <- function(comparison_name,qSVA=FALSE) {
 
   #fill summary table
   SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>% 
-    add_row(Comparison = x$comparison, DESeq_model_formula = x$formula, 
+    add_row(Comparison = x$comparison, DESeq_model_formula = design(dds) %>% format(),
             Condition_tested = x$condition_name,
             Total_number_of_samples_data=sample_data %>% nrow(),
             Base_level_condition=x$condition_base,

@@ -10,6 +10,7 @@
     "number_threads_pre_sample": 8,
     "number_total_threads": 16,
     "species": ["mouse", "rat", "human"],
+    "qSVA": "no",
     "star_version": "2.5.3a",
     "featurecounts_version": "1.5.2",
     "picard_version": "2.17.6",

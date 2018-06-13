@@ -3,9 +3,9 @@ source("common_functions.R")
 
 
 {% if cookiecutter.qSVA !="no" %}
-qSVA=TRUE
+qSVA<-TRUE
 {% else %}
-qSVA=FALSE
+qSVA<-FALSE
 {% endif %}
 
 SAMPLE_NAMES <- c(condition1, condition2, etc) %>%

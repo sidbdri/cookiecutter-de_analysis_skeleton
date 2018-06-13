@@ -97,7 +97,7 @@ wait
 
 
 ##### Pre-processing for qSVA
-if [ ${qSVA} != "no" ]; then
+if [ "${qSVA}" != "no" ]; then
     for sample in ${SAMPLES}; do
         sambamba index -t ${NUM_THREADS_PER_SAMPLE} ${MAPPING_DIR}/${sample}.sorted.bam &
         checkBusy

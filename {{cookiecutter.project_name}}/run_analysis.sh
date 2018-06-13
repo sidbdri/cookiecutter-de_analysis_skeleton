@@ -20,7 +20,6 @@ REF_FLAT=${PICARD_DATA}/{{cookiecutter.rff_files[cookiecutter.species]}}
 REFERENCE=${ENSEMBL_DIR}/{{cookiecutter.species}}_{{cookiecutter.assembly_names[cookiecutter.species]}}.fa
 SALMON_INDEX=${ENSEMBL_DIR}/{{cookiecutter.salmon_index}}
 KALLISTO_INDEX=${ENSEMBL_DIR}/{{cookiecutter.kallisto_index}}
-REGION_MATRIX_DIR=${DATA_DIR}/region_matrix
 RESULTS_DIR=${MAIN_DIR}/results
 
 QC_DIR=${RESULTS_DIR}/fastqc
@@ -41,7 +40,9 @@ MEM_USING=0
 
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
 PAIRED_END_READ="{{cookiecutter.paired_end_read}}"
+
 qSVA="{{cookiecutter.qSVA}}"
+REGION_MATRIX_DIR=/opt/region_matrix
 WIGGLETOOLS=/opt/WiggleTools/bin/wiggletools
 
 ##### Perform QC on raw reads
@@ -96,7 +97,7 @@ wait
 
 
 ##### Pre-processing for qSVA
-if [ $qSVA = "yes" ]; then
+if [ ${qSVA} != "no" ]; then
     for sample in ${SAMPLES}; do
         sambamba index -t ${NUM_THREADS_PER_SAMPLE} ${MAPPING_DIR}/${sample}.sorted.bam &
         checkBusy

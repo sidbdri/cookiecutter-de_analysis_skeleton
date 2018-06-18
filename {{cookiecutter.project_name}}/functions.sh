@@ -13,13 +13,23 @@ function listFiles {
     echo ${OUTPUT%$DELIMITER}
 }
 
+function listFilesNoNewLine {
+    DELIMITER=$1
+    shift
+    FILES=$@
+
+    OUTPUT=$(ls -1 $FILES | tr '\n' "${DELIMITER}")
+    echo -n ${OUTPUT%$DELIMITER}
+}
+
 function map_reads {
     SAMPLE=$1
     INDEX_DIR=$2
     NUM_THREADS=$3
     READ_1_FILES=$4
     READ_2_FILES=$5
-    OUTPUT_DIR=$6
+    MAPPING_DIR=$6
+
 
     star_tmp=${SAMPLE}.tmp
     mkdir ${star_tmp}
@@ -34,24 +44,24 @@ function map_reads {
 
     ${STAR} --runThreadN ${NUM_THREADS} --genomeDir ${INDEX_DIR} --outFileNamePrefix ${star_tmp}/star --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat ${read_files_opt}
 
-    mv ${star_tmp}/starAligned.out.bam ${OUTPUT_DIR}/${SAMPLE}.bam
-    mv ${star_tmp}/starAligned.sortedByCoord.out.bam ${OUTPUT_DIR}/${SAMPLE}.sorted.bam
-    mv ${star_tmp}/starLog.final.out ${OUTPUT_DIR}/${SAMPLE}.log.out
+    mv ${star_tmp}/starAligned.out.bam ${MAPPING_DIR}/${SAMPLE}.bam
+    mv ${star_tmp}/starAligned.sortedByCoord.out.bam ${MAPPING_DIR}/${SAMPLE}.sorted.bam
+    mv ${star_tmp}/starLog.final.out ${MAPPING_DIR}/${SAMPLE}.log.out
 
     rm -rf ${star_tmp}
 }
 
 function picard_rnaseq_metrics {
   SAMPLE=$1
-  INPUT_DIR=$2
+  INPUT_BAM=$2
   OUTPUT_DIR=$3
   REF_FLAT=$4
   RIBOSOMAL_DIR=$5
 
-  sambamba view -H ${INPUT_DIR}/${SAMPLE}.sorted.bam > ${RIBOSOMAL_DIR}/${SAMPLE}_header.txt
+  sambamba view -H ${INPUT_BAM} > ${RIBOSOMAL_DIR}/${SAMPLE}_header.txt
   cat ${RIBOSOMAL_DIR}/${SAMPLE}_header.txt ${RIBOSOMAL_DIR}/intervalListBody.txt > ${RIBOSOMAL_DIR}/${SAMPLE}.txt
 
-  java -jar ${PICARD} CollectRnaSeqMetrics I=${INPUT_DIR}/${SAMPLE}.sorted.bam O=${OUTPUT_DIR}/${SAMPLE}.txt REF_FLAT=${REF_FLAT} STRAND=SECOND_READ_TRANSCRIPTION_STRAND RIBOSOMAL_INTERVALS=${RIBOSOMAL_DIR}/${SAMPLE}.txt
+  java -jar ${PICARD} CollectRnaSeqMetrics I=${INPUT_BAM} O=${OUTPUT_DIR}/${SAMPLE}.txt REF_FLAT=${REF_FLAT} STRAND=SECOND_READ_TRANSCRIPTION_STRAND RIBOSOMAL_INTERVALS=${RIBOSOMAL_DIR}/${SAMPLE}.txt
 }
 
 function count_reads_for_features {
@@ -92,6 +102,30 @@ function clean_de_results {
 
     sed -i "s/-Inf/'-Inf/g;s/,NA,/,,/g;s/,NA,/,,/g;s/,NA$/,/g" ${DE_RESULTS_FILE}
 }
+
+function addSample2tsv {
+    SAMPLE_TSV=$1 && shift
+    BASE_DIR=$1 && shift
+    READ1_IDENTIFIER=$1 && shift
+    READ2_IDENTIFIER=$1 && shift
+    FASTQ_SUFFIX=$1 && shift
+    PAIRED_READ=$1 && shift
+    if [ -z "$READ2_IDENTIFIER" ];then
+        PAIRED_READ=0
+    fi
+    echo -ne '' > ${SAMPLE_TSV}
+    SAMPLE=$@
+    for sample in ${SAMPLE}; do
+        echo -ne ${sample}" " >> ${SAMPLE_TSV}
+        echo -n $(listFilesNoNewLine "," ${BASE_DIR}/${sample}/*${READ1_IDENTIFIER}*.${FASTQ_SUFFIX}) >> ${SAMPLE_TSV}
+        if [ "$PAIRED_READ"=="yes" ]; then
+            echo -n " "  >> ${SAMPLE_TSV}
+            echo -n $(listFilesNoNewLine "," ${BASE_DIR}/${sample}/*${READ2_IDENTIFIER}*.${FASTQ_SUFFIX}) >> ${SAMPLE_TSV}
+        fi
+        echo "" >> ${SAMPLE_TSV}
+    done
+}
+
 
 function isBusy {
 

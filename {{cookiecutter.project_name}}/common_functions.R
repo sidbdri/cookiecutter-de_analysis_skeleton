@@ -228,11 +228,11 @@ get_significant_genes <- function(term, GOdata, gene_info) {
     paste(collapse=", ")
 }
 
-perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP") {
+perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP", species) {
   gene_list <- (gene_universe$gene %in% significant_genes$gene) %>% as.integer %>% factor
   names(gene_list) <- gene_universe$gene
   
-  mapping <- switch("{{cookiecutter.species}}",
+  mapping <- switch(species,
                     mouse = "org.Mm.eg.db",
                     rat = "org.Rn.eg.db",
                     human = "org.Hs.eg.db")
@@ -245,23 +245,28 @@ perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP")
   
   go_results <- go_data %>% GenTable(weight_fisher=result_fisher, orderBy="weight_fisher", topNodes=150)
   
-  gene_info <- get_gene_info("{{cookiecutter.species}}")
+  gene_info <- get_gene_info(species)
   go_results$Genes <- sapply(go_results[,c('GO.ID')], 
                              function(x) get_significant_genes(x, go_data, gene_info))
   
   go_results
 }
 
-perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix) {
+perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix, species) {
   if (significant_genes %>% nrow == 0) {
     message("No significant genes supplied.")
     return()
   }
   
+  top_dir<-str_c("results/differential_expression/go/",species,sep = '')
+  if (!dir.exists(top_dir)) {
+    dir.create(top_dir,recursive=TRUE)
+  }
+
   c("BP", "MF", "CC") %>% walk(
     function(x) {
-      perform_go_analysis(expressed_genes, significant_genes, x) %>%
-        write_csv(str_c("results/differential_expression/go/{{cookiecutter.species}}_", file_prefix, "_go_", x %>% tolower, ".csv"))
+    perform_go_analysis(expressed_genes, significant_genes, x, species) %>%
+    write_csv(str_c("results/differential_expression/go/",species,"/" ,file_prefix, "_go_", x %>% tolower, ".csv"))
     }
   )
 }
@@ -373,7 +378,7 @@ get_gene_set_results <- function(results, gene_sets, gene_set_name, pvalue) {
 }
 
 write_camera_results <- function(
-  gene_set_collection_name, gene_set_collection, comparison_name, de_results, camera_results,
+gene_set_collection_name, gene_set_collection, comparison_name, species, de_results, camera_results,
   barcodeplots=FALSE) {
   
   camera_results %<>% 
@@ -384,13 +389,17 @@ write_camera_results <- function(
     return()
   }
   
-  top_dir <- str_c("results/differential_expression/gsa/", comparison_name)
-  dir.create(top_dir)
+  top_dir <- str_c("results/differential_expression/gsa/",species, "/", comparison_name)
+  if (!dir.exists(top_dir)) {
+    dir.create(top_dir,recursive=TRUE)
+  }
   
   camera_results %>% write_csv(str_c(top_dir, "/", gene_set_collection_name, "_enriched_sets.csv"))
   
   sub_dir <- str_c(top_dir, "/", gene_set_collection_name)
-  dir.create(sub_dir)
+  if (!dir.exists(sub_dir)) {
+    dir.create(sub_dir,recursive=TRUE)
+  }
   
   camera_results %>% 
     extract2("GeneSet") %>% 
@@ -406,7 +415,7 @@ write_camera_results <- function(
     })
 }
 
-get_avg_fpkm <- function(filter="age=='P10' & genotype=='KO' & region=='Ctx'"){
+get_avg_fpkm <- function(SAMPLE_DATA, filter="age=='P10' & genotype=='KO' & region=='Ctx'"){
   samples<-SAMPLE_DATA %>% tibble::rownames_to_column(var = "row_names") %>%
     filter(!!parse_expr(filter)) %>% pull(row_names) %>% as.vector() %>% str_c('fpkm',sep = '_')
   avg<-fpkms %>% dplyr::select(.dots = samples) %>% mutate(sum=rowSums(.)) %>% mutate(avg=sum/length(samples))
@@ -448,10 +457,121 @@ get_qsva_dds <- function(dds) {
   colData(dds) %<>% cbind(quality_surrogate_variables)
 
   design(dds) <- design_formula %>%
-                    terms() %>%
-                    attr("term.labels") %>%
-                    c(quality_surrogate_variables %>% colnames, .) %>%
-                    reformulate
-
+    terms() %>% attr("term.labels") %>%
+    c(quality_surrogate_variables %>% colnames, .) %>% 
+    reformulate
+  
   dds
 }
+
+
+get_total_dds <- function(sample_data, filter_low_counts=FALSE, qSVA=FALSE) {
+  # Collate count data
+  total_count_data <- sample_data %>%
+    row.names() %>%
+    map(read_counts) %>%
+    purrr::reduce(inner_join) %>%
+    remove_gene_column()
+
+  get_deseq2_dataset(
+  total_count_data, sample_data,
+  filter_low_counts=filter_low_counts, design_formula=~1,qSVA=qSVA)
+}
+
+get_total_dds_tximport <- function(quant_method) {
+  total_sample_data <- data.frame(
+    condition=c(),
+    sample=c(),
+    filename=c(),
+    row.names=c("<SAMPLE1>", "<SAMPLE2>", etc)
+  )
+  
+  quant_file <- get_transcript_quant_file(quant_method)
+  quant_files <- str_c("results/", quant_method, "_quant/", total_sample_data$filename, "/", quant_file)
+  names(quant_files) <- total_sample_data$filename
+  
+  txi <- tximport(quant_files, type=quant_method, tx2gene=get_transcripts_to_genes(), reader=read_tsv)
+  
+  total_dds <- DESeqDataSetFromTximport(txi, total_sample_data, ~condition)
+  total_dds <- DESeq(total_dds)
+  
+  return(total_dds)
+}
+
+#get res for given condition name
+get_res <- function(comparison_name,sample_data,comparison_table,qSVA=FALSE) {
+  x=comparison_table %>% filter(comparison==comparison_name)
+  sample_data %<>%
+    tibble::rownames_to_column(var = "tmp_row_names") %>%
+    mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
+    filter(!!parse_expr(x$filter)) %>%
+    tibble::column_to_rownames(var = "tmp_row_names")
+  
+  ##Ensure that conditions to be used in GSA comparisons are factors with
+  # the correct base level set.
+  sample_data[,x$condition_name] %<>% relevel(x$condition_base)
+  
+  
+  dds <- sample_data %>%
+    row.names() %>%
+    map(read_counts) %>%
+    purrr::reduce(inner_join) %>%
+    remove_gene_column() %>%
+    get_deseq2_dataset(sample_data, design_formula = x$formula %>% as.formula(),qSVA=qSVA)
+  
+  res <- dds %>%
+    get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
+    left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
+  
+  #fill summary table
+  SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>% 
+    add_row(Comparison = x$comparison, DESeq_model_formula = design(dds) %>% format(),
+            Condition_tested = x$condition_name,
+            Total_number_of_samples_data=sample_data %>% nrow(),
+            Base_level_condition=x$condition_base,
+            Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
+            Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name) %>% str_c(collapse = ','),
+            Comparison_level_condition=x$condition,
+            Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
+            Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name) %>% str_c(collapse = ','),
+            p.adj.cutoff=0.05,
+            Up_regulated=res %>% filter( padj < 0.05 & log2FoldChange > 0 ) %>% nrow(),
+            Down_regulated=res %>% filter( padj < 0.05 & log2FoldChange < 0 ) %>% nrow(),
+            D.E.total=res %>% filter( padj < 0.05) %>% nrow())
+  
+  assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
+  
+  list(res, dds %<>% varianceStabilizingTransformation)
+}
+
+#######
+# comment out for now, needs project information to fill 
+# this function in order to source the function.
+# get_condition_res_tximport <- function(quant_method) {
+#   sample_data <- data.frame(
+#     condition=c(),
+#     sample=c(),
+#     filename=c(),
+#     row.names=c("<SAMPLE1>", "<SAMPLE2>", etc)
+#   )
+# 
+#   quant_file <- get_transcript_quant_file(quant_method)
+#   quant_files <- str_c("results/", quant_method, "_quant/", sample_data$filename, "/", quant_file)
+#   names(quant_files) <- sample_data$filename
+# 
+#   txi <- tximport(quant_files, type=quant_method, tx2gene=get_transcripts_to_genes(), reader=read_tsv)
+# 
+#   dds <- DESeqDataSetFromTximport(txi, sample_data, ~condition)
+#   dds <- dds[rowSums(counts(dds)) > 1, ]
+#   dds <- DESeq(dds)
+# 
+#   results <- dds %>% get_deseq2_results("condition", "<cond2>", "<cond1>")
+# 
+#   l2fc <- get_count_data(dds) %>%
+#     mutate(l2fc=log2(() / ()) %>%
+#              dplyr::select(gene, l2fc)
+# 
+#            results %<>% left_join(l2fc)
+# 
+#            return(results)
+# }

@@ -3,6 +3,9 @@ source("common_functions.R")
 
 species="{{cookiecutter.species}}"
 
+TX_LEVEL=FALSE
+QUANT_METHOD='salmon'
+
 {% if cookiecutter.qSVA !="no" %}
 qSVA<-TRUE
 {% else %}
@@ -43,7 +46,8 @@ SUMMARY_TB<-setNames(data.frame(matrix(ncol = 14, nrow = 0)),
 
 #####
 
-total_dds_data <- get_total_dds(SAMPLE_DATA,qSVA=qSVA)
+total_dds_data <- get_total_dds_tximport(SAMPLE_DATA,QUANT_METHOD,TX_LEVEL)
+
 total_vst <- total_dds_data %>% varianceStabilizingTransformation
 total_vst %>% plot_pca_with_labels(intgroup=c("condition"))
 total_vst %>% plot_heat_map(SAMPLE_DATA %>% 
@@ -58,33 +62,47 @@ plot_count_distribution(total_dds_data, norm=T)
 gene_info <- get_gene_info(species)
 gene_lengths <- read_csv(str_c("data/",species,"_ensembl_",{{cookiecutter.ensembl_version}},"/gene_lengths.csv", sep=""))
 
-results <- total_dds_data %>% get_count_data() 
+results <- total_dds_data %>% get_count_data()
 
-fpkms <- results %>% 
-  get_fpkms(gene_lengths, colnames(results) %>% tail(-1), "_fpkm")
+txi<-get_tximport(SAMPLE_DATA,QUANT_METHOD,TX_LEVEL)
+tpms<-txi$abundance %>% as.data.frame() %>%
+  rename_all(funs(str_c(.,"_tpm")))
+
+
+# fpkms <- results %>%
+#   get_fpkms(gene_lengths, colnames(results) %>% tail(-1), "_fpkm")
 
 
 # fpkms %<>% mutate(
 #   P10_Ctx_KO_fpkm_avg = !!get_avg_fpkm(filter="age=='P10' & genotype=='KO' & region=='Ctx'"),
 #   P10_Piri_KO_fpkm_avg = !!get_avg_fpkm(filter="age=='P10' & genotype=='KO' & region=='Piri'")
 # ) 
-fpkms %<>% mutate(
-  <CONDITION1>_fpkm_avg = !!get_avg_fpkm(SAMPLE_DATAfilter="condition1=='' & condition2==''"),
-  etc.
-)
+# fpkms %<>% mutate(
+#   <CONDITION1>_fpkm_avg = !!get_avg_fpkm(SAMPLE_DATAfilter="condition1=='' & condition2==''"),
+#   etc.
+# )
 
-results %<>% 
-  inner_join(fpkms) %>%
-  inner_join(gene_info) %>% 
-  inner_join(gene_lengths)
+if(TX_LEVEL){
+  results %<>% rename(transcript=gene) %>%
+    inner_join(txi$Length %>% rename(transcript_length=length) %>% tibble::rownames_to_column('transcript')) %>%
+    inner_join(get_transcripts_to_genes()) %>%
+    inner_join(tpms %>% tibble::rownames_to_column('transcript')) %>%
+    inner_join(gene_info) %>%
+    inner_join(gene_lengths)
+}else{
+  results %<>%
+    inner_join(tpms %>% tibble::rownames_to_column('gene')) %>%
+    inner_join(gene_info) %>%
+    inner_join(gene_lengths)
+}
 
 ##run all get_res functions and add to results object
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   res_name<-str_c(x,'res',sep = '_')
-  assign(str_c(x,'res',sep = '_'), get_res(x,SAMPLE_DATA,COMPARISON_TABLE,qSVA=qSVA),envir = .GlobalEnv)
-  
+  assign(str_c(x,'res',sep = '_'), get_res_tx(x,SAMPLE_DATA,COMPARISON_TABLE,quant_method=QUANT_METHOD,tx_level=TX_LEVEL),envir = .GlobalEnv)
+
   res <-get(res_name, envir = .GlobalEnv)
-  results<-get("results",envir = .GlobalEnv) %>% 
+  results<-get("results",envir = .GlobalEnv) %>%
     left_join(res[[1]], by="gene") %>%
     dplyr::rename(!!str_c(x,'l2fc',sep = '.'):=log2FoldChange,
                   !!str_c(x,'raw_l2fc',sep = '.'):=raw_l2fc,
@@ -93,14 +111,20 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
                   !!str_c(x,'padj',sep = '.'):=padj)
   plot_pvalue_distribution(results, str_c(x,'pval',sep = '.'))
   assign("results", results,envir = .GlobalEnv)
-}) 
+})
 
 #save results
-results %>% 
-  dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
-                gene_length, max_transcript_length,
-                everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c("results/differential_expression/deseq2_results_",species,".csv"))
+column_inclued<-c('gene')
+if(TX_LEVEL){
+  column_inclued<-c('gene','transcript','transcript_length')
+}
+results %>%
+  dplyr::select(!!column_inclued, gene_name, chromosome, description, entrez_id, gene_biotype,
+  gene_length, max_transcript_length,
+  everything(), -dplyr::contains("_tpm"), -dplyr::ends_with(".stat")) %>%
+  write_csv(str_c("results/differential_expression/cortical/deseq2_results_",
+  species,"_tx_",as.character(TX_LEVEL),"_",QUANT_METHOD,".csv"))
+
 
 results %>% 
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
@@ -110,59 +134,61 @@ results %>%
            sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
            as.vector() %>% unique(), 
          -dplyr::ends_with(".stat")) %>% 
-  write_csv(str_c("results/differential_expression/deseq2_results_fpkm_",species,".csv"))
+  write_csv(str_c("results/differential_expression/deseq2_results_tpm_",
+    species,"_tx_",as.character(TX_LEVEL),"_",QUANT_METHOD,".csv"))
 
 SUMMARY_TB %>%
-  write_csv(str_c("results/differential_expression/de_summary_",species,".csv"))
+  write_csv(str_c("results/differential_expression/de_summary_"
+    species,"_tx_",as.character(TX_LEVEL),"_",QUANT_METHOD,".csv"))
 
 ##### GO analyses
+if(!TX_LEVEL){
+    expressed_genes <- total_dds_data %>% get_count_data()
+    COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
+      p_str=str_c(x,'padj',sep = '.')
+      l2fc_str=str_c(x,'l2fc',sep = '.')
 
-expressed_genes <- get_total_dds(SAMPLE_SAMPLE_DATA,filter_low_counts=TRUE) %>% get_count_data()
+      get("results",envir = .GlobalEnv) %>%
+        filter( get(p_str) < 0.05 ) %>%
+        perform_go_analyses(expressed_genes, x, species)
 
-COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
-  p_str=str_c(x,'padj',sep = '.')
-  l2fc_str=str_c(x,'l2fc',sep = '.')
-  
-  get("results",envir = .GlobalEnv) %>% 
-    filter( get(p_str) < 0.05 ) %>% 
-    perform_go_analyses(expressed_genes, x, species)
-  
-  get("results",envir = .GlobalEnv) %>%
-    filter( get(p_str) < 0.05  & get(l2fc_str) > 0 ) %>% 
-    perform_go_analyses(expressed_genes, str_c(x,'up',sep = '.'),species)
-  
-  get("results",envir = .GlobalEnv) %>%
-    filter( get(p_str) < 0.05  & get(l2fc_str) < 0 ) %>% 
-    perform_go_analyses(expressed_genes, str_c(x,'down',sep = '.'),species)
-})
+      get("results",envir = .GlobalEnv) %>%
+        filter( get(p_str) < 0.05  & get(l2fc_str) > 0 ) %>%
+        perform_go_analyses(expressed_genes, str_c(x,'up',sep = '.'),species)
 
-##### Gene set enrichment analysis
+      get("results",envir = .GlobalEnv) %>%
+        filter( get(p_str) < 0.05  & get(l2fc_str) < 0 ) %>%
+        perform_go_analyses(expressed_genes, str_c(x,'down',sep = '.'),species)
+    })
 
-gene_set_categories <- list("CURATED", "MOTIF", "GO")
+    ##### Gene set enrichment analysis
 
-gene_sets <- gene_set_categories %>% 
-  map(function(x) get_gene_sets(species, x))
+    gene_set_categories <- list("CURATED", "MOTIF", "GO")
+
+    gene_sets <- gene_set_categories %>%
+      map(function(x) get_gene_sets(species, x))
 
 
-COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
-  x <- COMPARISON_TABLE %>% filter(x==comparison)
-  res<-str_c(x$comparison,'res',sep = '_') %>% get(envir = .GlobalEnv)
-  
-  camera_results <- get('gene_sets',envir = .GlobalEnv) %>% 
-    map(function(y) get_camera_results( res[[2]],y,gene_info))
-  
-  assign(str_c(x$comparison,'camera_results',sep = '_'),camera_results,envir = .GlobalEnv)
-  
-  for (category in seq(1:length(gene_set_categories))) {
-    de_res <- results %>% dplyr::select(
-      gene, gene_name, entrez_id, 
-      starts_with(str_c(x$comparison, ".")), 
-      -starts_with(str_c(x$comparison, ".stat")))  
-    write_camera_results(
-      gene_set_categories[[category]], gene_sets[[category]], x$comparison, species,
-      de_res, camera_results[[category]])
-  }
-})
+    COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
+      x <- COMPARISON_TABLE %>% filter(x==comparison)
+      res<-str_c(x$comparison,'res',sep = '_') %>% get(envir = .GlobalEnv)
+
+      camera_results <- get('gene_sets',envir = .GlobalEnv) %>%
+        map(function(y) get_camera_results( res[[2]],y,gene_info))
+
+      assign(str_c(x$comparison,'camera_results',sep = '_'),camera_results,envir = .GlobalEnv)
+
+      for (category in seq(1:length(gene_set_categories))) {
+        de_res <- results %>% dplyr::select(
+          gene, gene_name, entrez_id,
+          starts_with(str_c(x$comparison, ".")),
+          -starts_with(str_c(x$comparison, ".stat")))
+        write_camera_results(
+          gene_set_categories[[category]], gene_sets[[category]], x$comparison, species,
+          de_res, camera_results[[category]])
+      }
+    })
+}
 
 # results %>% plot_gene_set(gene_sets[[3]], "GO_<go_term>", "condition.stat")
 # results %>% get_gene_set_results(gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head

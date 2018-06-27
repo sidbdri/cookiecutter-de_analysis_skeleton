@@ -180,8 +180,9 @@ read_de_results <- function(filename, num_samples, num_conditions, num_compariso
 
 ##### Transcript-level D. E. analyses
 
-get_transcripts_to_genes <- function() {
-  read_delim("results/tx2gene.tsv", " ", col_names=c("transcript", "gene"))
+get_transcripts_to_genes <- function(species='human') {
+  str_c("data/", species , "_ensembl_{{cookiecutter.ensembl_version}}/tx2gene.tsv") %>%
+    read_delim(delim = " ", col_names=c("transcript", "gene"))
 }
 
 get_transcript_quant_file <- function(quant_method) {
@@ -339,7 +340,9 @@ get_gene_sets <- function(species, gene_set_name) {
   ret
 }
 
-get_camera_results <- function(vst, gene_sets, gene_info, design_formula) {
+get_camera_results <- function(dds, gene_sets, gene_info) {
+  vst <- dds %>% varianceStabilizingTransformation
+  design_formula <- dds %>% design()
   expression_data <- vst %>% assay
   
   ids <- expression_data %>% 
@@ -478,25 +481,7 @@ get_total_dds <- function(sample_data, filter_low_counts=FALSE, qSVA=FALSE) {
   filter_low_counts=filter_low_counts, design_formula=~1,qSVA=qSVA)
 }
 
-get_total_dds_tximport <- function(quant_method) {
-  total_sample_data <- data.frame(
-    condition=c(),
-    sample=c(),
-    filename=c(),
-    row.names=c("<SAMPLE1>", "<SAMPLE2>", etc)
-  )
-  
-  quant_file <- get_transcript_quant_file(quant_method)
-  quant_files <- str_c("results/", quant_method, "_quant/", total_sample_data$filename, "/", quant_file)
-  names(quant_files) <- total_sample_data$filename
-  
-  txi <- tximport(quant_files, type=quant_method, tx2gene=get_transcripts_to_genes(), reader=read_tsv)
-  
-  total_dds <- DESeqDataSetFromTximport(txi, total_sample_data, ~condition)
-  total_dds <- DESeq(total_dds)
-  
-  return(total_dds)
-}
+
 
 #get res for given condition name
 get_res <- function(comparison_name,sample_data,comparison_table,qSVA=FALSE) {
@@ -541,7 +526,78 @@ get_res <- function(comparison_name,sample_data,comparison_table,qSVA=FALSE) {
   
   assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
   
-  list(res, dds %<>% varianceStabilizingTransformation)
+  list(res, dds)
+}
+
+
+get_tximport<-function(sample_data,quant_method='salmon',tx_level=TRUE){
+  quant_file <- get_transcript_quant_file(quant_method)
+  quant_dirs <- sample_data %>%
+    tibble::rownames_to_column(var="tmp") %>%
+    pull("tmp")
+
+  quant_files <- str_c("results/",quant_method,"_quant/", quant_dirs, "/", quant_file)
+  names(quant_files) <- quant_dirs
+
+  txi <- tximport(quant_files, type=quant_method, txOut = tx_level, tx2gene=get_transcripts_to_genes(), dropInfReps = TRUE)
+  txi$Length <- read.csv(quant_files[1],sep = '\t',stringsAsFactors = FALSE) %>%
+    dplyr::select(id=1,length=2) %>%
+    tibble::remove_rownames() %>%
+    tibble::column_to_rownames(var='id')
+  txi
+}
+
+get_total_dds_tximport <- function(sample_data,quant_method='salmon',tx_level=TRUE) {
+
+  txi <- get_tximport(sample_data,quant_method,tx_level)
+
+  total_dds <- DESeqDataSetFromTximport(txi, sample_data, ~1)
+  total_dds <- DESeq(total_dds)
+
+  total_dds
+}
+
+get_res_tx <- function(comparison_name,sample_data,comparison_table,quant_method='salmon',tx_level=FALSE) {
+  x=comparison_table %>% filter(comparison==comparison_name)
+  sample_data %<>%
+  tibble::rownames_to_column(var = "tmp_row_names") %>%
+    mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
+    filter(!!parse_expr(x$filter)) %>%
+    tibble::column_to_rownames(var = "tmp_row_names")
+
+  ##Ensure that conditions to be used in GSA comparisons are factors with
+  # the correct base level set.
+  sample_data[,x$condition_name] %<>% relevel(x$condition_base)
+
+  txi<-get_tximport(sample_data,quant_method,tx_level)
+
+  dds <- DESeqDataSetFromTximport(txi, sample_data, x$formula %>% as.formula())
+  dds <- dds[rowSums(counts(dds)) > 1, ]
+  dds <- DESeq(dds)
+
+  res <- dds %>%
+    get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
+    left_join(dds %>% get_raw_l2fc_tx(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
+
+  #fill summary table
+  SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>%
+  add_row(Comparison = x$comparison, DESeq_model_formula = design(dds) %>% format(),
+  Condition_tested = x$condition_name,
+  Total_number_of_samples_data=sample_data %>% nrow(),
+  Base_level_condition=x$condition_base,
+  Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
+  Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name) %>% str_c(collapse = ','),
+  Comparison_level_condition=x$condition,
+  Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
+  Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name) %>% str_c(collapse = ','),
+  p.adj.cutoff=0.05,
+  Up_regulated=res %>% filter( padj < 0.05 & log2FoldChange > 0 ) %>% nrow(),
+  Down_regulated=res %>% filter( padj < 0.05 & log2FoldChange < 0 ) %>% nrow(),
+  D.E.total=res %>% filter( padj < 0.05) %>% nrow())
+
+  assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
+
+  list(res, dds)
 }
 
 #######

@@ -5,6 +5,7 @@ species="{{cookiecutter.species}}"
 
 TX_LEVEL=FALSE
 QUANT_METHOD='salmon'
+USE_TX=TRUE
 
 {% if cookiecutter.qSVA !="no" %}
 qSVA<-TRUE
@@ -99,7 +100,7 @@ if(TX_LEVEL){
 ##run all get_res functions and add to results object
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   res_name<-str_c(x,'res',sep = '_')
-  assign(str_c(x,'res',sep = '_'), get_res_tx(x,SAMPLE_DATA,COMPARISON_TABLE,quant_method=QUANT_METHOD,tx_level=TX_LEVEL),envir = .GlobalEnv)
+  assign(str_c(x,'res',sep = '_'), get_res(x,SAMPLE_DATA,COMPARISON_TABLE,use_tx=USE_TX,quant_method=QUANT_METHOD,tx_level=TX_LEVEL),envir = .GlobalEnv)
 
   res <-get(res_name, envir = .GlobalEnv)
   results<-get("results",envir = .GlobalEnv) %>%
@@ -122,8 +123,8 @@ results %>%
   dplyr::select(!!column_inclued, gene_name, chromosome, description, entrez_id, gene_biotype,
   gene_length, max_transcript_length,
   everything(), -dplyr::contains("_tpm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c("results/differential_expression/cortical/deseq2_results_",
-  species,"_tx_",as.character(TX_LEVEL),"_",QUANT_METHOD,".csv"))
+  write_csv(str_c("results/differential_expression/deseq2_results_count_",
+  species,"_tx_",ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".csv"))
 
 
 results %>% 
@@ -135,14 +136,20 @@ results %>%
            as.vector() %>% unique(), 
          -dplyr::ends_with(".stat")) %>% 
   write_csv(str_c("results/differential_expression/deseq2_results_tpm_",
-    species,"_tx_",as.character(TX_LEVEL),"_",QUANT_METHOD,".csv"))
+    species,"_tx_",ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".csv"))
 
 SUMMARY_TB %>%
   write_csv(str_c("results/differential_expression/de_summary_"
-    species,"_tx_",as.character(TX_LEVEL),"_",QUANT_METHOD,".csv"))
+    species,"_tx_",ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".csv"))
+
+library (knitr)
+sink(str_c("results/differential_expression/de_summary_",
+            species,"_tx_",ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".md"))
+kable(SUMMARY_TB, format = 'markdown')
+sink()
 
 ##### GO analyses
-if(!TX_LEVEL){
+if( !USE_TX | !TX_LEVEL ){
     expressed_genes <- total_dds_data %>% get_count_data()
     COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
       p_str=str_c(x,'padj',sep = '.')

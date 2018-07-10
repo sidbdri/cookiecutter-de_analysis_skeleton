@@ -43,7 +43,7 @@ SUMMARY_TB<-setNames(data.frame(matrix(ncol = 14, nrow = 0)),
 
 #####
 
-total_dds_data <- get_total_dds(SAMPLE_DATA,qSVA=qSVA)
+total_dds_data <- get_total_dds(SAMPLE_DATA,species,qSVA=qSVA)
 total_vst <- total_dds_data %>% varianceStabilizingTransformation
 total_vst %>% plot_pca_with_labels(intgroup=c("condition"))
 total_vst %>% plot_heat_map(SAMPLE_DATA %>% 
@@ -69,7 +69,7 @@ fpkms <- results %>%
 #   P10_Piri_KO_fpkm_avg = !!get_avg_fpkm(filter="age=='P10' & genotype=='KO' & region=='Piri'")
 # ) 
 fpkms %<>% mutate(
-  <CONDITION1>_fpkm_avg = !!get_avg_fpkm(SAMPLE_DATAfilter="condition1=='' & condition2==''"),
+  <CONDITION1>_fpkm_avg = !!get_avg_fpkm(SAMPLE_DATA,filter="condition1=='' & condition2==''"),
   etc.
 )
 
@@ -81,7 +81,7 @@ results %<>%
 ##run all get_res functions and add to results object
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   res_name<-str_c(x,'res',sep = '_')
-  assign(str_c(x,'res',sep = '_'), get_res(x,SAMPLE_DATA,COMPARISON_TABLE,qSVA=qSVA),envir = .GlobalEnv)
+  assign(str_c(x,'res',sep = '_'), get_res(x,SAMPLE_DATA,COMPARISON_TABLE,species,qSVA=qSVA),envir = .GlobalEnv)
   
   res <-get(res_name, envir = .GlobalEnv)
   results<-get("results",envir = .GlobalEnv) %>% 
@@ -100,7 +100,7 @@ results %>%
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
                 gene_length, max_transcript_length,
                 everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c("results/differential_expression/deseq2_results_",species,".csv"))
+  write_csv(str_c("results/differential_expression/deseq2_results_count_",species,".csv"))
 
 results %>% 
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
@@ -117,7 +117,7 @@ SUMMARY_TB %>%
 
 ##### GO analyses
 
-expressed_genes <- get_total_dds(SAMPLE_SAMPLE_DATA,filter_low_counts=TRUE) %>% get_count_data()
+expressed_genes <- get_total_dds(SAMPLE_DATA, species, filter_low_counts=TRUE) %>% get_count_data()
 
 COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
   p_str=str_c(x,'padj',sep = '.')
@@ -162,6 +162,20 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
       gene_set_categories[[category]], gene_sets[[category]], x$comparison, species,
       de_res, camera_results[[category]])
   }
+})
+
+
+#rmats
+COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
+    x=COMPARISON_TABLE %>% filter(comparison==comparison_name)
+
+    sample_data <- SAMPLE_DATA %>%
+        tibble::rownames_to_column(var = "tmp_row_names") %>%
+        mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
+        filter(!!parse_expr(x$filter)) %>%
+        tibble::column_to_rownames(var = "tmp_row_names")
+
+    sample_data %>% perform_rmats()
 })
 
 # results %>% plot_gene_set(gene_sets[[3]], "GO_<go_term>", "condition.stat")

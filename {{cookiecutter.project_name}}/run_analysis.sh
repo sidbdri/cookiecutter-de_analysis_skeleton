@@ -80,15 +80,15 @@ done
 #wait
 
 #### Perform QC on raw reads
-mkdir -p ${QC_DIR}
-
-for sample in ${SAMPLES}; do
-    output_dir=${QC_DIR}/${sample}
-    mkdir -p ${output_dir}
-    checkBusy
-    (zcat ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}} | fastqc --outdir=${output_dir} stdin) &
-done
-wait $(jobs -p)
+#mkdir -p ${QC_DIR}
+#
+#for sample in ${SAMPLES}; do
+#    output_dir=${QC_DIR}/${sample}
+#    mkdir -p ${output_dir}
+#    checkBusy
+#    (zcat ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}} | fastqc --outdir=${output_dir} stdin) &
+#done
+#wait $(jobs -p)
 
 #### Perform QC on raw reads
 mkdir -p ${QC_DIR}
@@ -96,8 +96,9 @@ echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_TOTAL_THREADS} -I % bash -c \
 "mkdir -p ${QC_DIR}/%; zcat ${RNASEQ_DIR}/%/*.{{cookiecutter.fastq_suffix}} | fastqc --outdir=${QC_DIR}/% stdin"
 
 
-####map reads
+
 {% if cookiecutter.sargasso == "yes" %}
+####map reads
 #### Run Sargasso
 species_separator --star-executable ${STAR_EXECUTABLE} --sambamba-sort-tmp-dir=${HOME}/tmp \
         --${STRATEGY} --num-threads-per-sample ${NUM_THREADS_PER_SAMPLE} \
@@ -128,7 +129,7 @@ mkdir -p ${FINAL_BAM_DIR}
 
 for sample in ${SAMPLES}; do
     checkBusy
-    {% if cookiecutter.sargasso == "yes" %}
+    {% if cookiecutter.paired_end_read == "yes" %}
     map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS_PER_SAMPLE} $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) ${MAPPING_DIR} &
     {% else %}
     map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS_PER_SAMPLE} $(listFiles , ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}}) "" ${MAPPING_DIR} &

@@ -10,8 +10,8 @@ filter_with_rownames <- function(.data, ...) {
     tibble::column_to_rownames(var = "tmp_row_names")
 }
 
-read_counts <- function(sample) {
-  counts_file_name <- str_c("results/read_counts/", sample, ".counts")
+read_counts <- function(sample, species) {
+  counts_file_name <- str_c("results/read_counts/", sample, ".", species,".counts")
   counts_file_name %>% read_tsv(col_names=c("gene", str_c(sample)))
 }
 
@@ -468,11 +468,11 @@ get_qsva_dds <- function(dds) {
 }
 
 
-get_total_dds <- function(sample_data, filter_low_counts=FALSE, qSVA=FALSE) {
+get_total_dds <- function(sample_data, species, filter_low_counts=FALSE, qSVA=FALSE) {
   # Collate count data
   total_count_data <- sample_data %>%
     row.names() %>%
-    map(read_counts) %>%
+    map(read_counts,species) %>%
     purrr::reduce(inner_join) %>%
     remove_gene_column()
 
@@ -484,7 +484,7 @@ get_total_dds <- function(sample_data, filter_low_counts=FALSE, qSVA=FALSE) {
 
 
 #get res for given condition name
-get_res <- function(comparison_name,sample_data,comparison_table,qSVA=FALSE) {
+get_res <- function(comparison_name,sample_data,comparison_table,species,qSVA=FALSE,use_tx=FALSE,quant_method='salmon',tx_level=FALSE) {ample_data,comparison_table,qSVA=FALSE,) {
   x=comparison_table %>% filter(comparison==comparison_name)
   sample_data %<>%
     tibble::rownames_to_column(var = "tmp_row_names") %>%
@@ -495,14 +495,20 @@ get_res <- function(comparison_name,sample_data,comparison_table,qSVA=FALSE) {
   ##Ensure that conditions to be used in GSA comparisons are factors with
   # the correct base level set.
   sample_data[,x$condition_name] %<>% relevel(x$condition_base)
-  
-  
-  dds <- sample_data %>%
-    row.names() %>%
-    map(read_counts) %>%
-    purrr::reduce(inner_join) %>%
-    remove_gene_column() %>%
-    get_deseq2_dataset(sample_data, design_formula = x$formula %>% as.formula(),qSVA=qSVA)
+
+  if(use_tx){
+    txi<-get_tximport(sample_data,quant_method,tx_level)
+    dds <- DESeqDataSetFromTximport(txi, sample_data, x$formula %>% as.formula())
+    dds <- dds[rowSums(counts(dds)) > 1, ]
+    dds <- DESeq(dds)
+  }else{
+    dds <- sample_data %>%
+      row.names() %>%
+      map(read_counts,species) %>%
+      purrr::reduce(inner_join) %>%
+      remove_gene_column() %>%
+      get_deseq2_dataset(sample_data, design_formula = x$formula %>% as.formula(),qSVA=qSVA)
+  }
   
   res <- dds %>%
     get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
@@ -598,6 +604,55 @@ get_res_tx <- function(comparison_name,sample_data,comparison_table,quant_method
   assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
 
   list(res, dds)
+}
+
+
+
+perform_rmats <- function(sample_data,comparison){
+
+  top_dir<-str_c("results/rMATS/",species,"/",comparison)
+  if (!dir.exists(top_dir)) {
+     dir.create(top_dir,recursive=TRUE)
+  }
+
+  file.create(str_c(top_dir,"/b1.txt"))
+  file.create(str_c(top_dir,"/b2.txt"))
+
+  b1<-str_c(top_dir,"/b1.txt") %>% normalizePath()
+  b2<-str_c(top_dir,"/b2.txt") %>% normalizePath()
+
+
+reps<-sample_data %>%
+    group_by(!!parse_expr(x$condition_name)) %>%
+    mutate(bam_file=str_c("results/final_bams/",sample_name,".",species,".bam",sep = '') %>% normalizePath) %>%
+    summarise(replicates=str_c(bam_file,collapse = ','))
+
+  reps %>%
+    filter(!!parse_expr(x$condition_name) == x$condition_base) %>%
+    pull(replicates) %>%
+    write(b1)
+
+  reps %>%
+    filter(!!parse_expr(x$condition_name) == x$condition) %>%
+    pull(replicates) %>%
+    write(b2)
+
+  cmd <- str_c("cd /opt/rMATS.4.0.2 && python rmats.py",
+                "--b1", b1,
+                "--b2", b2,
+                "--gtf", str_c("data/",dir(path = "data/", pattern = str_c(species,"_ensembl_*"))) %>%
+                list.files(pattern = '.gtf',full.names = T) %>% normalizePath,
+                "--od",top_dir %>% normalizePath,
+                "-t paired",
+                "--nthread 12",
+                "--tstat 12",
+                "--readLength 150",
+                "--cstat 0.0001",
+                "--libType fr-unstranded",sep = " "
+  )
+
+#2hours
+  system(cmd)
 }
 
 #######

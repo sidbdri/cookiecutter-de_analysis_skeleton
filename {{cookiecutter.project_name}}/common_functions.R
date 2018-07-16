@@ -513,6 +513,11 @@ get_res <- function(comparison_name,sample_data,comparison_table,species,qSVA=FA
   res <- dds %>%
     get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
     left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
+
+  #res contains transcript, rather than gene
+  if(use_tx & tx_level){
+    res %<>% dplyr::rename(transcript=gene)
+  }
   
   #fill summary table
   SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>% 
@@ -622,7 +627,7 @@ perform_rmats <- function(sample_data,comparison){
   b2<-str_c(top_dir,"/b2.txt") %>% normalizePath()
 
 
-reps<-sample_data %>%
+  reps<-sample_data %>%
     group_by(!!parse_expr(x$condition_name)) %>%
     mutate(bam_file=str_c("results/final_bams/",sample_name,".",species,".bam",sep = '') %>% normalizePath) %>%
     summarise(replicates=str_c(bam_file,collapse = ','))
@@ -647,7 +652,7 @@ reps<-sample_data %>%
                 "--nthread 12",
                 "--tstat 12",
                 "--readLength 150",
-                "--cstat 0.0001",
+                "--cstat 0.05",
                 "--libType fr-unstranded",sep = " "
   )
 

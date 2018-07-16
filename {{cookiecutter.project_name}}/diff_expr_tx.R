@@ -1,5 +1,5 @@
-source("load_packages.R")
-source("common_functions.R")
+source("meta_data.R")
+
 
 species="{{cookiecutter.species}}"
 
@@ -12,38 +12,6 @@ qSVA<-TRUE
 {% else %}
 qSVA<-FALSE
 {% endif %}
-
-SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
-  outer(c(rep1, rep2, etc), str_c, sep="todo") %>%
-  t %>%
-  as.vector
-
-# n.b. Ensure that conditions to be used in GSA comparisons are factors with
-# the correct base level set.
-SAMPLE_DATA <- data.frame(
-  condition=...,
-  species=species,
-  row.names=SAMPLE_NAMES%>%str_c(species,sep = '.')
-)
-
-SAMPLE_DATA %<>% tibble::rownames_to_column(var = "tmp_row_names") %>%
-                 filter(species==!!species) %>%
-                 tibble::column_to_rownames(var = "tmp_row_names")
-
-#example can be found https://github.com/sidbdri/cookiecutter-sargasso-de_analysis_skeleton
-COMPARISON_TABLE<-tribble(
-~comparison, ~formula, ~condition_name, ~condition, ~condition_base, ~filter,
-#"P10_Ctx_KO_vs_WT", "~genotype", "genotype", "KO", "WT", "age=='P10' & region=='Ctx'",
-)
-
-SUMMARY_TB<-setNames(data.frame(matrix(ncol = 14, nrow = 0)),
-                     c("Comparison", "DESeq_model_formula", "Condition_tested", "Total_number_of_samples_data",
-                       "Base_level_condition", "Number_of_samples_in_base_level_condition",
-                       "Sample_names_in_base_level_condition",
-                       "Comparison_level_condition", "Number_of_samples_in_comparison_level_condition",
-                       "Sample_names_in_comparison_level_condition",
-                       "p.adj.cutoff", "Up_regulated", "Down_regulated", "D.E.total"))
-
 
 #####
 
@@ -97,6 +65,14 @@ if(TX_LEVEL){
     inner_join(gene_lengths)
 }
 
+#workout avg tpm
+results %<>% dplyr::select(gene,dplyr::contains("_tpm")) %>% group_by(gene) %>%
+                summarise_all(.funs = sum) %>%
+                mutate(sum=rowSums(dplyr::select(., dplyr::contains("_tpm"))),
+                n=ncol(dplyr::select(., dplyr::contains("_tpm")))) %>%
+                mutate(avg_tpm=sum/n) %>%
+                dplyr::select(gene,avg_tpm) %>% right_join(results)
+
 ##run all get_res functions and add to results object
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   res_name<-str_c(x,'res',sep = '_')
@@ -104,7 +80,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
 
   res <-get(res_name, envir = .GlobalEnv)
   results<-get("results",envir = .GlobalEnv) %>%
-    left_join(res[[1]], by="gene") %>%
+    left_join(res[[1]]) %>%
     dplyr::rename(!!str_c(x,'l2fc',sep = '.'):=log2FoldChange,
                   !!str_c(x,'raw_l2fc',sep = '.'):=raw_l2fc,
                   !!str_c(x,'stat',sep = '.'):=stat,
@@ -130,7 +106,7 @@ results %>%
 results %>% 
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
                 gene_length, max_transcript_length,
-         dplyr::contains("_fpkm"), 
+         dplyr::contains("_tpm"),
          COMPARISON_TABLE %>% pull(comparison) %>%
            sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
            as.vector() %>% unique(), 

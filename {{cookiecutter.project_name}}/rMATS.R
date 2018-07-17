@@ -5,7 +5,13 @@ species="{{cookiecutter.species}}"
 RMATS_402 = '/opt/rMATS.4.0.2'
 RMATS_325 = '/home/xinhe/Projects/rMATS3/MATS/rMATS_Paired.sh'
 
-perform_rmats_count <- function(sample_data,species,cmp_name){
+rMAT_PARA_t = 'paired'
+rMAT_PARA_nthread=8
+rMAT_PARA_tstat=8
+rMAT_PARA_readLength=75
+rMAT_PARA_cstat = 0.05
+
+generate_rmats_count_cmd <- function(sample_data,species,cmp_name){
 
   x=COMPARISON_TABLE %>% filter(comparison==cmp_name)
 
@@ -41,21 +47,20 @@ perform_rmats_count <- function(sample_data,species,cmp_name){
                "--gtf", str_c("data/",dir(path = "data/", pattern = str_c(species,"_ensembl_*"))) %>% 
                  list.files(pattern = '.gtf',full.names = T) %>% normalizePath,
                "--od",top_dir %>% normalizePath(),
-               "-t paired",
-               "--nthread 12",
-               "--tstat 12",
-               "--readLength 75",
+               "-t", rMAT_PARA_t,
+               "--nthread",rMAT_PARA_nthread,
+               "--tstat",rMAT_PARA_tstat,
+               "--readLength", rMAT_PARA_readLength,
                "--statoff",
-               "--cstat 0.05",
+               "--cstat", rMAT_PARA_cstat,
                "--libType fr-unstranded",sep = " "
   )
   
   cmd_stat <- generate_rmats_stat_cmd(species,cmp_name)
-  
 
   cmd = str_c("(", cmd_count," && ",cmd_stat," ) &",sep ="")
 
-  cmd %>% system()
+  cmd
 }
 
 generate_rmats_stat_cmd <- function(species,comparison){
@@ -85,6 +90,14 @@ perform_rmats_stat <- function(species,comparison){
 }
 
 
+
+#####start script
+write('#!/bin/bash
+trap "exit" INT TERM
+trap "kill 0" EXIT',tmp_script)
+
+
+#write cmd to bash script to run rMATS 4.0.2 and 3.2.5
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   x=COMPARISON_TABLE %>% filter(comparison==x)
   
@@ -93,6 +106,14 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
     mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
     filter(!!parse_expr(x$filter)) %>%
     tibble::column_to_rownames(var = "tmp_row_names")
-  
-  sample_data %>% perform_rmats_count(species, x$comparison)
+
+  cmd = sample_data %>% generate_rmats_count_cmd(species, x$comparison)
+  write(cmd,tmp_script,append = T)
 })
+
+write("wait",tmp_script,append = T)
+
+cmd = str_c('bash ',tmp_script,sep = '')
+system(cmd)
+
+#when finish, parse the result

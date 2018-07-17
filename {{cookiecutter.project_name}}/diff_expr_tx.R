@@ -70,8 +70,8 @@ results %<>% dplyr::select(gene,dplyr::contains("_tpm")) %>% group_by(gene) %>%
                 summarise_all(.funs = sum) %>%
                 mutate(sum=rowSums(dplyr::select(., dplyr::contains("_tpm"))),
                 n=ncol(dplyr::select(., dplyr::contains("_tpm")))) %>%
-                mutate(avg_tpm=sum/n) %>%
-                dplyr::select(gene,avg_tpm) %>% right_join(results)
+                mutate(avg_gene_tpm=sum/n) %>%
+                dplyr::select(gene,avg_gene_tpm) %>% right_join(results)
 
 ##run all get_res functions and add to results object
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){

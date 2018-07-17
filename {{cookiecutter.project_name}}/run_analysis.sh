@@ -260,7 +260,11 @@ mkdir -p ${DIFF_EXPR_DIR}/gsa
 
 exit;
 
-Rscript diff_expr.R
+Rscript diff_expr.R &
+Rscript diff_expr_tx.R &
+Rscript rMATS.R &
+
+wait
 
 for de_results in ${DIFF_EXPR_DIR}/*.csv; do
     clean_de_results ${de_results}

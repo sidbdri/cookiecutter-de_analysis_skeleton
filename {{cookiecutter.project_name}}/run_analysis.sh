@@ -260,12 +260,27 @@ mkdir -p ${DIFF_EXPR_DIR}/gsa
 
 exit;
 
-Rscript diff_expr.R &
-Rscript diff_expr_tx.R &
-Rscript rMATS.R &
+Rscript diff_expr.R > de_expr.log 2>&1 &
+#Rscript diff_expr_tx.R &
+Rscript rMATS.R > rMATS.log  2>&1 &
+
+# when decided which to use, we then only need to run that tx analysis
+for TX_LEVEL in TRUE FALSE; do
+    for QUANT_METHOD in salmon kallisto; do
+        file=./_${QUANT_METHOD}_${TX_LEVEL}.R
+        echo -n "" > ${file}
+        echo QUANT_METHOD=\"${QUANT_METHOD}\" >> ${file}
+        echo TX_LEVEL=${TX_LEVEL} >> ${file}
+        cat diff_expr_tx.R >> ${file}
+        Rscript ${file} > ${QUANT_METHOD}_${TX_LEVEL}.log  2>&1 &
+#       rm ${file}
+    done
+done
 
 wait
 
-for de_results in ${DIFF_EXPR_DIR}/*.csv; do
-    clean_de_results ${de_results}
+for de_results in $(find ${DIFF_EXPR_DIR} -name 'de**.csv'); do
+    clean_de_results ${de_results} &
 done
+wait
+

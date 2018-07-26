@@ -13,6 +13,10 @@ qSVA<-TRUE
 qSVA<-FALSE
 {% endif %}
 
+
+output_folder = 'results/differential_expression/de_tx'
+if (!dir.exists(output_folder)) dir.create(output_folder,recursive=TRUE)
+
 #####
 
 total_dds_data <- get_total_dds_tximport(SAMPLE_DATA,QUANT_METHOD,TX_LEVEL)
@@ -52,31 +56,46 @@ tpms<-txi$abundance %>% as.data.frame() %>%
 # )
 
 if(TX_LEVEL){
-  results %<>% rename(transcript=gene) %>%
-    inner_join(txi$Length %>% rename(transcript_length=length) %>% tibble::rownames_to_column('transcript')) %>%
-    inner_join(get_transcripts_to_genes()) %>%
-    inner_join(tpms %>% tibble::rownames_to_column('transcript')) %>%
-    inner_join(gene_info) %>%
-    inner_join(gene_lengths)
+    tpms %<>% tibble::rownames_to_column('transcript')
+    tpms %<>%inner_join(get_transcripts_to_genes())  %>%
+        left_join(get_avg_tpm(tpms,TX_LEVEL))
+
+    results %<>% rename(transcript=gene) %>%
+        left_join(txi$Length %>% rename(transcript_length=length) %>% tibble::rownames_to_column('transcript')) %>%
+        left_join(get_transcripts_to_genes()) %>%
+        left_join(tpms) %>%
+        left_join(gene_info) %>%
+        left_join(gene_lengths)
+
+    #number of transcript
+    results %<>% left_join(
+    results %>%
+        dplyr::select(gene,transcript) %>%
+        group_by(gene) %>% summarise(number_of_transcript = n()))
 }else{
-  results %<>%
-    inner_join(tpms %>% tibble::rownames_to_column('gene')) %>%
-    inner_join(gene_info) %>%
-    inner_join(gene_lengths)
+    tpms %<>% tibble::rownames_to_column('gene')
+    tpms %<>%inner_join(get_transcripts_to_genes())  %>%
+        left_join(get_avg_tpm(tpms,TX_LEVEL))
+
+    results %<>%
+        left_join(tpms) %>%
+        left_join(gene_info) %>%
+        left_join(gene_lengths)
+
 }
 
-#workout avg tpm
-results %<>% dplyr::select(gene,dplyr::contains("_tpm")) %>% group_by(gene) %>%
-                summarise_all(.funs = sum) %>%
-                mutate(sum=rowSums(dplyr::select(., dplyr::contains("_tpm"))),
-                n=ncol(dplyr::select(., dplyr::contains("_tpm")))) %>%
-                mutate(avg_gene_tpm=sum/n) %>%
-                dplyr::select(gene,avg_gene_tpm) %>% right_join(results)
+# #workout avg tpm
+# results %<>% dplyr::select(gene,dplyr::contains("_tpm")) %>% group_by(gene) %>%
+#                 summarise_all(.funs = sum) %>%
+#                 mutate(sum=rowSums(dplyr::select(., dplyr::contains("_tpm"))),
+#                 n=ncol(dplyr::select(., dplyr::contains("_tpm")))) %>%
+#                 mutate(avg_gene_tpm=sum/n) %>%
+#                 dplyr::select(gene,avg_gene_tpm) %>% right_join(results)
 
 ##run all get_res functions and add to results object
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   res_name<-str_c(x,'res',sep = '_')
-  assign(str_c(x,'res',sep = '_'), get_res(x,SAMPLE_DATA,COMPARISON_TABLE,use_tx=USE_TX,quant_method=QUANT_METHOD,tx_level=TX_LEVEL),envir = .GlobalEnv)
+  assign(str_c(x,'res',sep = '_'), get_res(x,SAMPLE_DATA,COMPARISON_TABLE,tpms,use_tx=USE_TX,quant_method=QUANT_METHOD,tx_level=TX_LEVEL),envir = .GlobalEnv)
 
   res <-get(res_name, envir = .GlobalEnv)
   results<-get("results",envir = .GlobalEnv) %>%
@@ -93,36 +112,47 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
 #save results
 column_inclued<-c('gene')
 if(TX_LEVEL){
-  column_inclued<-c('gene','transcript','transcript_length')
+    column_inclued<-c('transcript','transcript_length','gene','number_of_transcript')
 }
+
+#count
 results %>%
-  dplyr::select(!!column_inclued, gene_name, chromosome, description, entrez_id, gene_biotype,
-  gene_length, max_transcript_length,
-  everything(), -dplyr::contains("_tpm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c("results/differential_expression/deseq2_results_count_",
-  species,"_tx_",ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".csv"))
+    dplyr::select(!!column_inclued, gene_name, chromosome, description, entrez_id, gene_type,
+    everything(),  -gene_length, -max_transcript_length, -dplyr::contains("_tpm"), -dplyr::ends_with(".stat")) %>%
+         write_csv(str_c(output_folder,"/deseq2_results_count_",species,"_tx_",
+                    ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".csv"))
 
-
-results %>% 
-  dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
-                gene_length, max_transcript_length,
-         dplyr::contains("_tpm"),
-         COMPARISON_TABLE %>% pull(comparison) %>%
-           sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
-           as.vector() %>% unique(), 
-         -dplyr::ends_with(".stat")) %>% 
-  write_csv(str_c("results/differential_expression/deseq2_results_tpm_",
-    species,"_tx_",ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".csv"))
-
+if(TX_LEVEL){
+  results %>% 
+    dplyr::select(!!column_inclued, gene_name, chromosome, description, entrez_id, gene_type,
+                  -gene_length, -max_transcript_length, dplyr::contains("_tpm"), 
+                  COMPARISON_TABLE %>% pull(comparison) %>%
+                    sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
+                    as.vector() %>% unique(), 
+                  -dplyr::ends_with(".stat")) %>% 
+    write_csv(str_c(output_folder,"/deseq2_results_tpm_",species,"_tx_",
+                    ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".csv"))
+}else{
+  results %>% 
+    dplyr::select(!!column_inclued, gene_name, chromosome, description, entrez_id, gene_type,
+                  dplyr::contains("_tpm"), 
+                  COMPARISON_TABLE %>% pull(comparison) %>%
+                    sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
+                    as.vector() %>% unique(), 
+                  -dplyr::ends_with(".stat")) %>% 
+    write_csv(str_c(output_folder,"/deseq2_results_tpm_",species,"_tx_",
+                    ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".csv"))
+}
 SUMMARY_TB %>%
-  write_csv(str_c("results/differential_expression/de_summary_"
-    species,"_tx_",ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".csv"))
+    write_csv(str_c(output_folder,"/de_summary_",species,"_tx_",
+              ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".csv"))
 
-library (knitr)
-sink(str_c("results/differential_expression/de_summary_",
-            species,"_tx_",ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".md"))
-kable(SUMMARY_TB, format = 'markdown')
-sink()
+
+# library (knitr)
+# sink(str_c("results/differential_expression/de_summary_",
+#             species,"_tx_",ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".md"))
+# kable(SUMMARY_TB, format = 'markdown')
+# sink()
 
 ##### GO analyses
 if( !USE_TX | !TX_LEVEL ){

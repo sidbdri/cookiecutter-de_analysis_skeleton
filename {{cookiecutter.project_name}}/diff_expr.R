@@ -8,6 +8,9 @@ qSVA<-TRUE
 qSVA<-FALSE
 {% endif %}
 
+output_folder = 'results/differential_expression/de_gene'
+if (!dir.exists(output_folder)) dir.create(output_folder,recursive=TRUE)
+
 
 
 #####
@@ -33,24 +36,15 @@ fpkms <- results %>%
   get_fpkms(gene_lengths, colnames(results) %>% tail(-1), "_fpkm")
 
 
-# fpkms %<>% mutate(
-#   P10_Ctx_KO_fpkm_avg = !!get_avg_fpkm(filter="age=='P10' & genotype=='KO' & region=='Ctx'"),
-#   P10_Piri_KO_fpkm_avg = !!get_avg_fpkm(filter="age=='P10' & genotype=='KO' & region=='Piri'")
-# ) 
-fpkms %<>% mutate(
-  <CONDITION1>_fpkm_avg = !!get_avg_fpkm(SAMPLE_DATA,filter="condition1=='' & condition2==''"),
-  etc.
-)
-
 results %<>% 
-  inner_join(fpkms) %>%
-  inner_join(gene_info) %>% 
-  inner_join(gene_lengths)
+  left_join(fpkms) %>%
+  left_join(gene_info) %>%
+  left_join(gene_lengths)
 
 ##run all get_res functions and add to results object
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   res_name<-str_c(x,'res',sep = '_')
-  assign(str_c(x,'res',sep = '_'), get_res(x,SAMPLE_DATA,COMPARISON_TABLE,species,qSVA=qSVA),envir = .GlobalEnv)
+  assign(str_c(x,'res',sep = '_'), get_res(x,SAMPLE_DATA,COMPARISON_TABLE,fpkms,species,qSVA=qSVA),envir = .GlobalEnv)
   
   res <-get(res_name, envir = .GlobalEnv)
   results<-get("results",envir = .GlobalEnv) %>% 
@@ -69,7 +63,8 @@ results %>%
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
                 gene_length, max_transcript_length,
                 everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c("results/differential_expression/deseq2_results_count_",species,".csv"))
+  write_csv(str_c(output_folder,"/deseq2_results_count_",species,".csv"))
+
 
 results %>% 
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
@@ -78,11 +73,11 @@ results %>%
          COMPARISON_TABLE %>% pull(comparison) %>%
            sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
            as.vector() %>% unique(), 
-         -dplyr::ends_with(".stat")) %>% 
-  write_csv(str_c("results/differential_expression/deseq2_results_fpkm_",species,".csv"))
+         -dplyr::ends_with(".stat")) %>%
+  write_csv(str_c(output_folder,"/deseq2_results_fpkm_",species,".csv"))
 
 SUMMARY_TB %>%
-  write_csv(str_c("results/differential_expression/de_summary_",species,".csv"))
+  write_csv(str_c(output_folder,"/de_summary_",species,".csv"))
 
 ##### GO analyses
 

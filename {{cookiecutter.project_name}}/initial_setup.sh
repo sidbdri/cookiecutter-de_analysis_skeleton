@@ -6,6 +6,7 @@ source /usr/local/bin/virtualenvwrapper.sh
 
 mkproject -f {{cookiecutter.project_name}}
 
+pip install scipy
 pip install multiqc
 pip install git+https://github.com/sidbdri/transcript-utils.git
 {% if cookiecutter.sargasso == "yes" %}

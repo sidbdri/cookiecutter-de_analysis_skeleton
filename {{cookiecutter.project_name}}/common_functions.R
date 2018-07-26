@@ -164,8 +164,10 @@ get_fpkms <- function(all_counts, gene_lengths, samples, col_suffix) {
                all_counts[["max_transcript_length"]], 
                function(x, y) x / y / mmr * 1000)
   }
-  
-  all_counts %>% dplyr::select(gene, dplyr::contains(col_suffix))
+
+  fpkms<-all_counts %>% dplyr::select(gene, dplyr::contains(col_suffix))
+  # workout average fpkm
+  fpkms %>% left_join(get_avg_fpkm(fpkms))
 }
 
 read_de_results <- function(filename, num_samples, num_conditions, num_comparisons, extra_columns="") {
@@ -418,11 +420,53 @@ gene_set_collection_name, gene_set_collection, comparison_name, species, de_resu
     })
 }
 
-get_avg_fpkm <- function(SAMPLE_DATA, filter="age=='P10' & genotype=='KO' & region=='Ctx'"){
-  samples<-SAMPLE_DATA %>% tibble::rownames_to_column(var = "row_names") %>%
-    filter(!!parse_expr(filter)) %>% pull(row_names) %>% as.vector() %>% str_c('fpkm',sep = '_')
-  avg<-fpkms %>% dplyr::select(.dots = samples) %>% mutate(sum=rowSums(.)) %>% mutate(avg=sum/length(samples))
-  avg$avg
+get_avg_fpkm <- function(fpkms){
+  sample_data = SAMPLE_DATA
+  sample_data %<>% group_by(.dots=AVG_FPKM_GROUP) %>%
+    summarise(samples=str_c(sample_name,'_fpkm',sep = '',collapse = ',')) %>%
+    tidyr::unite('avg_name',AVG_FPKM_GROUP,sep='_')
+
+  for (avg in sample_data %>% pull(avg_name)){
+    samples <- sample_data %>%
+      filter(avg_name == avg) %>%
+      pull(samples) %>%
+      str_split(',') %>% unlist()
+
+    avg_fpkm <- fpkms %>% dplyr::select(one_of(samples)) %>%
+      mutate(avg_fpkm=rowMeans(.)) %>%
+      dplyr::pull(avg_fpkm)
+
+    fpkms %<>% mutate(!!str_c(avg,'_avg_fpkm',sep='') := avg_fpkm)
+  }
+
+  fpkms %>% dplyr::select(gene,contains('avg'))
+}
+
+
+
+get_avg_tpm<-function(sample_data,tpms,comparision){
+  sample_data = SAMPLE_DATA
+  sample_data %<>% group_by(.dots=AVG_FPKM_GROUP) %>%
+    summarise(samples=str_c(sample_name,'_tpm',sep = '',collapse = ',')) %>%
+    tidyr::unite('avg_name',AVG_FPKM_GROUP,sep='_')
+
+  for (avg in sample_data %>% pull(avg_name)){
+    samples <- sample_data %>%
+      filter(avg_name == avg) %>%
+      pull(samples) %>%
+      str_split(',') %>% unlist()
+
+    avg_tpm <- tpms %>% dplyr::select(one_of(samples)) %>%
+      mutate(avg_tpm=rowMeans(.)) %>%
+      dplyr::pull(avg_tpm)
+
+    tpms %<>% mutate(!!str_c(avg,'_avg_tpm',sep='') := avg_tpm)
+  }
+
+  id_column=ifelse(tx_level,'transcript','gene')
+
+
+  tpms %>% dplyr::select(!!id_column,contains('avg'))
 }
 
 get_quality_surrogate_variables <- function(dds) {
@@ -484,7 +528,7 @@ get_total_dds <- function(sample_data, species, filter_low_counts=FALSE, qSVA=FA
 
 
 #get res for given condition name
-get_res <- function(comparison_name,sample_data,comparison_table,species,qSVA=FALSE,use_tx=FALSE,quant_method='salmon',tx_level=FALSE) {ample_data,comparison_table,qSVA=FALSE,) {
+get_res <- function(comparison_name,sample_data,comparison_table, tpms, species,qSVA=FALSE,use_tx=FALSE,quant_method='salmon',tx_level=FALSE) {
   x=comparison_table %>% filter(comparison==comparison_name)
   sample_data %<>%
     tibble::rownames_to_column(var = "tmp_row_names") %>%
@@ -500,7 +544,7 @@ get_res <- function(comparison_name,sample_data,comparison_table,species,qSVA=FA
     txi<-get_tximport(sample_data,quant_method,tx_level)
     dds <- DESeqDataSetFromTximport(txi, sample_data, x$formula %>% as.formula())
     dds <- dds[rowSums(counts(dds)) > 1, ]
-    dds <- DESeq(dds)
+    dds <- DESeq(dds, betaPrior = TRUE)
   }else{
     dds <- sample_data %>%
       row.names() %>%
@@ -510,13 +554,17 @@ get_res <- function(comparison_name,sample_data,comparison_table,species,qSVA=FA
       get_deseq2_dataset(sample_data, design_formula = x$formula %>% as.formula(),qSVA=qSVA)
   }
   
-  res <- dds %>%
-    get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
-    left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
 
   #res contains transcript, rather than gene
   if(use_tx & tx_level){
-    res %<>% dplyr::rename(transcript=gene)
+    res <- dds %>%
+        get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
+        left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition)))) %>%
+        dplyr::rename(transcript=gene)
+  }else{
+    res <- dds %>%
+        get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
+        left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
   }
   
   #fill summary table

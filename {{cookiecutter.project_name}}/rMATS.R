@@ -6,14 +6,14 @@ RMATS_402 = '/opt/rMATS.4.0.2'
 RMATS_325 = '/opt/rMATS.3.2.5/MATS/rMATS_Paired.sh'
 
 rMAT_PARA_t = 'paired'
-rMAT_PARA_nthread=1
+#This is for rMATS4 statistic. we are not using this atm
 rMAT_PARA_tstat=1
 rMAT_PARA_readLength=75
 rMAT_PARA_cstat = 0.05
 
 
 #This is the number of thread used in each rMATS run
-rMAT3_PARA_nthread=10
+rMAT_PARA_nthread={{cookiecutter.number_total_threads}}
 #This is the number of rMATS running in parallal 
 XARG_PARA_nthread=1
 
@@ -73,7 +73,7 @@ generate_rmats_count_cmd <- function(sample_data,species,cmp_name){
   
   cmd_stat <- generate_rmats_stat_cmd(species,cmp_name)
 
-  cmd = str_c("(", cmd_count," && ",cmd_stat," ) &",sep ="")
+  cmd = str_c( cmd_count," && ",cmd_stat, sep ="")
 
   cmd
 }
@@ -91,7 +91,7 @@ generate_rmats_stat_cmd <- function(species,comparison){
         if (!dir.exists(outdir)) {
             dir.create(outdir,recursive=TRUE)
         }
-        cmd = c(cmd,str_c(cf,outdir,0.05,rMAT3_PARA_nthread,sep = ' ') )
+        cmd = c(cmd,str_c(cf,outdir,0.05,rMAT_PARA_nthread,sep = ' ') )
     }
     str_c("echo ", cmd %>% str_c(collapse = ' '), "| xargs -d ' ' -n 4 -P " , XARG_PARA_nthread, " -t ", RMATS_325)
 }
@@ -124,7 +124,6 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   write(cmd,tmp_script,append = T)
 })
 
-write("wait",tmp_script,append = T)
 
 cmd = str_c('bash ',tmp_script,sep = '')
 system(cmd)

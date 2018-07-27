@@ -106,8 +106,8 @@ perform_rmats_stat <- function(species,comparison){
 
 #####start script
 write('#!/bin/bash
-trap "exit" INT TERM
-trap "kill 0" EXIT',tmp_script)
+#trap "exit" INT TERM
+#trap "kill 0" EXIT',tmp_script)
 
 
 #write cmd to bash script to run rMATS 4.0.2 and 3.2.5

@@ -111,7 +111,7 @@ species_separator --star-executable ${STAR_EXECUTABLE} --sambamba-sort-tmp-dir=$
         --${STRATEGY} --num-threads-per-sample ${NUM_THREADS_PER_SAMPLE} \
         --num-total-threads ${NUM_TOTAL_THREADS} \
         ${SAMPLE_TSV} ${SARGASSO_RESULTS_DIR} ${SPECIES_PARA[@]}
-cd ${RESULTS_DIR} && make &
+cd ${SARGASSO_RESULTS_DIR} && make &
 wait $(jobs -p)
 
 
@@ -119,7 +119,7 @@ mkdir -p ${FINAL_BAM_DIR}
 for species in ${!SPECIES[@]};do
     for sample in ${SAMPLES}; do
         checkBusy
-        sambamba sort -t ${NUM_THREADS_PER_SAMPLE} -o ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${FILTERED_DIR}/${sample}.${SPECIES[$species]}_filtered.bam &
+        sambamba sort -t ${NUM_THREADS_PER_SAMPLE} -o ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${FILTERED_DIR}/${sample}_${SPECIES[$species]}_filtered.bam &
     done
 ######## NEED TEST WHICH IS BETTER IN THE NEXT PROJECT
 #    for species in ${!SPECIES[@]};do

@@ -24,6 +24,7 @@ PICARD_DATA=${DATA_DIR}/picard
 REGION_MATRIX_DIR=/opt/region_matrix
 WIGGLETOOLS=/opt/WiggleTools/bin/wiggletools
 
+TMP_DIR=${MAIN_DIR}/tmp
 RESULTS_DIR=${MAIN_DIR}/results
 
 QC_DIR=${RESULTS_DIR}/fastqc
@@ -119,7 +120,7 @@ mkdir -p ${FINAL_BAM_DIR}
 for species in ${!SPECIES[@]};do
     for sample in ${SAMPLES}; do
         checkBusy
-        sambamba sort -t ${NUM_THREADS_PER_SAMPLE} -o ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${FILTERED_DIR}/${sample}_${SPECIES[$species]}_filtered.bam &
+        sambamba sort --tmpdir ${TMP_DIR} -t ${NUM_THREADS_PER_SAMPLE} -o ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${FILTERED_DIR}/${sample}_${SPECIES[$species]}_filtered.bam &
     done
 ######## NEED TEST WHICH IS BETTER IN THE NEXT PROJECT
 #    for species in ${!SPECIES[@]};do

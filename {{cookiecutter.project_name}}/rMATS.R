@@ -21,7 +21,7 @@ sSUMMARY_TB %<>% mutate(Up_regulated_gene=integer(),
                       Down_regulated_gene=integer(),
                       D.E.total_gene=integer())
 
-tmp_script = 'rMATS.sh'
+tmp_script = str_c("rMATS_",SPECIES,".sh",sep = '')
 
 output_folder = 'results/differential_expression/de_rmats'
 if (!dir.exists(output_folder)) dir.create(output_folder,recursive=TRUE)

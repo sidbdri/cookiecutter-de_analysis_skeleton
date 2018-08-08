@@ -57,12 +57,12 @@ tpms<-txi$abundance %>% as.data.frame() %>%
 
 if(TX_LEVEL){
     tpms %<>% tibble::rownames_to_column('transcript')
-    tpms %<>%inner_join(get_transcripts_to_genes())  %>%
+    tpms %<>%inner_join(get_transcripts_to_genes(SPECIES))  %>%
         left_join(get_avg_tpm(tpms,TX_LEVEL))
 
     results %<>% rename(transcript=gene) %>%
         left_join(txi$Length %>% rename(transcript_length=length) %>% tibble::rownames_to_column('transcript')) %>%
-        left_join(get_transcripts_to_genes()) %>%
+        left_join(get_transcripts_to_genes(SPECIES)) %>%
         left_join(tpms) %>%
         left_join(gene_info) %>%
         left_join(gene_lengths)
@@ -74,7 +74,7 @@ if(TX_LEVEL){
         group_by(gene) %>% summarise(number_of_transcript = n()))
 }else{
     tpms %<>% tibble::rownames_to_column('gene')
-    tpms %<>%inner_join(get_transcripts_to_genes())  %>%
+    tpms %<>%inner_join(get_transcripts_to_genes(SPECIES))  %>%
         left_join(get_avg_tpm(tpms,TX_LEVEL))
 
     results %<>%

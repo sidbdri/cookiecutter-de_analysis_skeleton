@@ -129,18 +129,18 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
 })
 
 
-#rmats
-COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
-    x=COMPARISON_TABLE %>% filter(comparison==comparison_name)
-
-    sample_data <- SAMPLE_DATA %>%
-        tibble::rownames_to_column(var = "tmp_row_names") %>%
-        mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
-        filter(!!parse_expr(x$filter)) %>%
-        tibble::column_to_rownames(var = "tmp_row_names")
-
-    sample_data %>% perform_rmats()
-})
+# #rmats
+# COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
+#     x=COMPARISON_TABLE %>% filter(comparison==comparison_name)
+#
+#     sample_data <- SAMPLE_DATA %>%
+#         tibble::rownames_to_column(var = "tmp_row_names") %>%
+#         mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
+#         filter(!!parse_expr(x$filter)) %>%
+#         tibble::column_to_rownames(var = "tmp_row_names")
+#
+#     sample_data %>% perform_rmats()
+# })
 
 # results %>% plot_gene_set(gene_sets[[3]], "GO_<go_term>", "condition.stat")
 # results %>% get_gene_set_results(gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head

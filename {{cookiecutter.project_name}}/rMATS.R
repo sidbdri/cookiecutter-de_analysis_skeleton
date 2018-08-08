@@ -17,7 +17,7 @@ rMAT_PARA_nthread={{cookiecutter.number_total_threads}}
 #This is the number of rMATS running in parallal 
 XARG_PARA_nthread=1
 
-SUMMARY_TB %>% mutate(Up_regulated_gene=integer(),
+sSUMMARY_TB %<>% mutate(Up_regulated_gene=integer(),
                       Down_regulated_gene=integer(),
                       D.E.total_gene=integer())
 

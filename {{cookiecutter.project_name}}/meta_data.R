@@ -1,6 +1,8 @@
 source("load_packages.R")
 source("common_functions.R")
 
+species={{cookiecutter.species}}
+
 SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
   outer(c(rep1, rep2, etc), str_c, sep="todo") %>%
   t %>%
@@ -20,7 +22,17 @@ SAMPLE_DATA %<>% tibble::rownames_to_column(var = "tmp_row_names") %>%
 
 
 # To specify what avg fpkms are needed in the result table
-# Example: AVG_FPKM_GROUP = c('type','condition_2') 
+# This usually corespond to column names in the SAMPLE_DATA table
+# There is no limit of the number of groups
+# Example:
+# For a table as follow:
+# | type      |  condition_2 |
+# |--------------------------|
+# | cortical  |  correction  |
+# | motor     |  correction  |
+# | cortical  |  mutant      |
+# | motor     |  mutant      |
+# AVG_FPKM_GROUP = c('type','condition_2')
 # This will generate avg fpkm for all combinations of the two variable in the 
 # SAMPLE_DATA table, resulting 4 columns 
 # cortical_correction_avg_fpkm, cortical_mutant_avg_fpkm, motor_correction_avg_fpkm, motor_mutant_avg_fpkm

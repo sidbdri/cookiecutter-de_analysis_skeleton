@@ -1,7 +1,7 @@
 source("load_packages.R")
 source("common_functions.R")
 
-species={{cookiecutter.species}}
+SPECIES={{cookiecutter.species}}
 
 SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
   outer(c(rep1, rep2, etc), str_c, sep="todo") %>%
@@ -12,12 +12,12 @@ SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
 # the correct base level set.
 SAMPLE_DATA <- data.frame(
   condition=...,
-  species=species,
+  species=SPECIES,
   row.names=SAMPLE_NAMES%>%str_c(species,sep = '.')
 )
 
 SAMPLE_DATA %<>% tibble::rownames_to_column(var = "tmp_row_names") %>%
-                 filter(species==!!species) %>%
+                 filter(species==!!SPECIES) %>%
                  tibble::column_to_rownames(var = "tmp_row_names")
 
 

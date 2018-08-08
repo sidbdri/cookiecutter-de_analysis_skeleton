@@ -1,7 +1,7 @@
 source("meta_data.R")
 
 
-species="{{cookiecutter.species}}"
+SPECIES="{{cookiecutter.species}}"
 
 TX_LEVEL=FALSE
 QUANT_METHOD='salmon'
@@ -32,8 +32,8 @@ plot_count_distribution(total_dds_data, norm=T)
 
 #####
 
-gene_info <- get_gene_info(species)
-gene_lengths <- read_csv(str_c("data/",species,"_ensembl_",{{cookiecutter.ensembl_version}},"/gene_lengths.csv", sep=""))
+gene_info <- get_gene_info(SPECIES)
+gene_lengths <- read_csv(str_c("data/",SPECIES,"_ensembl_",{{cookiecutter.ensembl_version}},"/gene_lengths.csv", sep=""))
 
 results <- total_dds_data %>% get_count_data()
 
@@ -119,7 +119,7 @@ if(TX_LEVEL){
 results %>%
     dplyr::select(!!column_inclued, gene_name, chromosome, description, entrez_id, gene_type,
     everything(),  -gene_length, -max_transcript_length, -dplyr::contains("_tpm"), -dplyr::ends_with(".stat")) %>%
-         write_csv(str_c(output_folder,"/deseq2_results_count_",species,"_tx_",
+         write_csv(str_c(output_folder,"/deseq2_results_count_",SPECIES,"_tx_",
                     ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".csv"))
 
 if(TX_LEVEL){
@@ -130,7 +130,7 @@ if(TX_LEVEL){
                     sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
                     as.vector() %>% unique(), 
                   -dplyr::ends_with(".stat")) %>% 
-    write_csv(str_c(output_folder,"/deseq2_results_tpm_",species,"_tx_",
+    write_csv(str_c(output_folder,"/deseq2_results_tpm_",SPECIES,"_tx_",
                     ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".csv"))
 }else{
   results %>% 
@@ -140,17 +140,17 @@ if(TX_LEVEL){
                     sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
                     as.vector() %>% unique(), 
                   -dplyr::ends_with(".stat")) %>% 
-    write_csv(str_c(output_folder,"/deseq2_results_tpm_",species,"_tx_",
+    write_csv(str_c(output_folder,"/deseq2_results_tpm_",SPECIES,"_tx_",
                     ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".csv"))
 }
 SUMMARY_TB %>%
-    write_csv(str_c(output_folder,"/de_summary_",species,"_tx_",
+    write_csv(str_c(output_folder,"/de_summary_",SPECIES,"_tx_",
               ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".csv"))
 
 
 # library (knitr)
 # sink(str_c("results/differential_expression/de_summary_",
-#             species,"_tx_",ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".md"))
+#             SPECIES,"_tx_",ifelse(TX_LEVEL,"transcript","gene"),"_",QUANT_METHOD,".md"))
 # kable(SUMMARY_TB, format = 'markdown')
 # sink()
 
@@ -163,15 +163,15 @@ if( !USE_TX | !TX_LEVEL ){
 
       get("results",envir = .GlobalEnv) %>%
         filter( get(p_str) < 0.05 ) %>%
-        perform_go_analyses(expressed_genes, x, species)
+        perform_go_analyses(expressed_genes, x, SPECIES)
 
       get("results",envir = .GlobalEnv) %>%
         filter( get(p_str) < 0.05  & get(l2fc_str) > 0 ) %>%
-        perform_go_analyses(expressed_genes, str_c(x,'up',sep = '.'),species)
+        perform_go_analyses(expressed_genes, str_c(x,'up',sep = '.'),SPECIES)
 
       get("results",envir = .GlobalEnv) %>%
         filter( get(p_str) < 0.05  & get(l2fc_str) < 0 ) %>%
-        perform_go_analyses(expressed_genes, str_c(x,'down',sep = '.'),species)
+        perform_go_analyses(expressed_genes, str_c(x,'down',sep = '.'),SPECIES)
     })
 
     ##### Gene set enrichment analysis
@@ -179,7 +179,7 @@ if( !USE_TX | !TX_LEVEL ){
     gene_set_categories <- list("CURATED", "MOTIF", "GO")
 
     gene_sets <- gene_set_categories %>%
-      map(function(x) get_gene_sets(species, x))
+      map(function(x) get_gene_sets(SPECIES, x))
 
 
     COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
@@ -197,7 +197,7 @@ if( !USE_TX | !TX_LEVEL ){
           starts_with(str_c(x$comparison, ".")),
           -starts_with(str_c(x$comparison, ".stat")))
         write_camera_results(
-          gene_set_categories[[category]], gene_sets[[category]], x$comparison, species,
+          gene_set_categories[[category]], gene_sets[[category]], x$comparison, SPECIES,
           de_res, camera_results[[category]])
       }
     })

@@ -1,6 +1,6 @@
 source('meta_data.R')
 
-species="{{cookiecutter.species}}"
+SPECIES="{{cookiecutter.species}}"
 
 RMATS_402 = '/opt/rMATS.4.0.2'
 RMATS_325 = '/opt/rMATS.3.2.5/MATS/rMATS_Paired.sh'
@@ -120,7 +120,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
     filter(!!parse_expr(x$filter)) %>%
     tibble::column_to_rownames(var = "tmp_row_names")
 
-  cmd = sample_data %>% generate_rmats_count_cmd(species, x$comparison)
+  cmd = sample_data %>% generate_rmats_count_cmd(SPECIES, x$comparison)
   write(cmd,tmp_script,append = T)
 })
 
@@ -133,10 +133,10 @@ system(cmd)
 ####################################
 #when finish, parse the result
 
-total_dds_data <- get_total_dds(SAMPLE_DATA,species=species)
+total_dds_data <- get_total_dds(SAMPLE_DATA,species=SPECIES)
 
-gene_info <- get_gene_info(species)
-gene_lengths <- read_csv(str_c("data/",species,"_ensembl_",{{cookiecutter.ensembl_version}},"/gene_lengths.csv", sep=""))
+gene_info <- get_gene_info(SPECIES)
+gene_lengths <- read_csv(str_c("data/",SPECIES,"_ensembl_",{{cookiecutter.ensembl_version}},"/gene_lengths.csv", sep=""))
 
 results <- total_dds_data %>% get_count_data()
 
@@ -168,8 +168,8 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
         filter(!!parse_expr(x$filter)) %>%
         tibble::column_to_rownames(var = "tmp_row_names")
 
-    top_dir = str_c("results/rMATS/",species,"/",x$comparison)
-    out_dir = str_c(output_folder,species,x$comparison,sep = '/')
+    top_dir = str_c("results/rMATS/",SPECIES,"/",x$comparison)
+    out_dir = str_c(output_folder,SPECIES,x$comparison,sep = '/')
 
     if (!dir.exists(out_dir)) {
         dir.create(out_dir,recursive=TRUE)
@@ -222,11 +222,11 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
           dplyr::select(-PValue,-FDR, everything(), 
                         -one_of(str_c(sample_data %>% rownames(),'_fpkm')),
                         -IncFormLen,-SkipFormLen) %>% 
-          write_csv(str_c(out_dir,'/AS_results_fpkm_',basename(f),'_',species,".csv"))
+          write_csv(str_c(out_dir,'/AS_results_fpkm_',basename(f),'_',SPECIES,".csv"))
     }
 })
 
 # modify/reformat summary table
 SUMMARY_TB %>% dplyr::select(-DESeq_model_formula) %>% 
-  write_csv(str_c(output_folder,"/AS_summary_",species,".csv"))
+  write_csv(str_c(output_folder,"/AS_summary_",SPECIES,".csv"))
 

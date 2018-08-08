@@ -1,6 +1,6 @@
 source("meta_data.R")
 
-species="{{cookiecutter.species}}"
+SPECIES="{{cookiecutter.species}}"
 
 {% if cookiecutter.qSVA !="no" %}
 qSVA<-TRUE
@@ -15,7 +15,7 @@ if (!dir.exists(output_folder)) dir.create(output_folder,recursive=TRUE)
 
 #####
 
-total_dds_data <- get_total_dds(SAMPLE_DATA,species,qSVA=qSVA)
+total_dds_data <- get_total_dds(SAMPLE_DATA,SPECIES,qSVA=qSVA)
 total_vst <- total_dds_data %>% varianceStabilizingTransformation
 total_vst %>% plot_pca_with_labels(intgroup=c("condition"))
 total_vst %>% plot_heat_map(SAMPLE_DATA %>% 
@@ -27,8 +27,8 @@ plot_count_distribution(total_dds_data, norm=T)
 
 #####
 
-gene_info <- get_gene_info(species)
-gene_lengths <- read_csv(str_c("data/",species,"_ensembl_",{{cookiecutter.ensembl_version}},"/gene_lengths.csv", sep=""))
+gene_info <- get_gene_info(SPECIES)
+gene_lengths <- read_csv(str_c("data/",SPECIES,"_ensembl_",{{cookiecutter.ensembl_version}},"/gene_lengths.csv", sep=""))
 
 results <- total_dds_data %>% get_count_data() 
 
@@ -44,7 +44,7 @@ results %<>%
 ##run all get_res functions and add to results object
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   res_name<-str_c(x,'res',sep = '_')
-  assign(str_c(x,'res',sep = '_'), get_res(x,SAMPLE_DATA,COMPARISON_TABLE,fpkms,species,qSVA=qSVA),envir = .GlobalEnv)
+  assign(str_c(x,'res',sep = '_'), get_res(x,SAMPLE_DATA,COMPARISON_TABLE,fpkms,SPECIES,qSVA=qSVA),envir = .GlobalEnv)
   
   res <-get(res_name, envir = .GlobalEnv)
   results<-get("results",envir = .GlobalEnv) %>% 
@@ -63,7 +63,7 @@ results %>%
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
                 gene_length, max_transcript_length,
                 everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(output_folder,"/deseq2_results_count_",species,".csv"))
+  write_csv(str_c(output_folder,"/deseq2_results_count_",SPECIES,".csv"))
 
 
 results %>% 
@@ -74,14 +74,14 @@ results %>%
            sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
            as.vector() %>% unique(), 
          -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(output_folder,"/deseq2_results_fpkm_",species,".csv"))
+  write_csv(str_c(output_folder,"/deseq2_results_fpkm_",SPECIES,".csv"))
 
 SUMMARY_TB %>%
-  write_csv(str_c(output_folder,"/de_summary_",species,".csv"))
+  write_csv(str_c(output_folder,"/de_summary_",SPECIES,".csv"))
 
 ##### GO analyses
 
-expressed_genes <- get_total_dds(SAMPLE_DATA, species, filter_low_counts=TRUE) %>% get_count_data()
+expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts=TRUE) %>% get_count_data()
 
 COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
   p_str=str_c(x,'padj',sep = '.')
@@ -89,15 +89,15 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
   
   get("results",envir = .GlobalEnv) %>% 
     filter( get(p_str) < 0.05 ) %>% 
-    perform_go_analyses(expressed_genes, x, species)
+    perform_go_analyses(expressed_genes, x, SPECIES)
   
   get("results",envir = .GlobalEnv) %>%
     filter( get(p_str) < 0.05  & get(l2fc_str) > 0 ) %>% 
-    perform_go_analyses(expressed_genes, str_c(x,'up',sep = '.'),species)
+    perform_go_analyses(expressed_genes, str_c(x,'up',sep = '.'),SPECIES)
   
   get("results",envir = .GlobalEnv) %>%
     filter( get(p_str) < 0.05  & get(l2fc_str) < 0 ) %>% 
-    perform_go_analyses(expressed_genes, str_c(x,'down',sep = '.'),species)
+    perform_go_analyses(expressed_genes, str_c(x,'down',sep = '.'),SPECIES)
 })
 
 ##### Gene set enrichment analysis
@@ -105,7 +105,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
 gene_set_categories <- list("CURATED", "MOTIF", "GO")
 
 gene_sets <- gene_set_categories %>% 
-  map(function(x) get_gene_sets(species, x))
+  map(function(x) get_gene_sets(SPECIES, x))
 
 
 COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
@@ -123,7 +123,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
       starts_with(str_c(x$comparison, ".")), 
       -starts_with(str_c(x$comparison, ".stat")))  
     write_camera_results(
-      gene_set_categories[[category]], gene_sets[[category]], x$comparison, species,
+      gene_set_categories[[category]], gene_sets[[category]], x$comparison, SPECIES,
       de_res, camera_results[[category]])
   }
 })

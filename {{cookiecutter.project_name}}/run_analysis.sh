@@ -249,10 +249,10 @@ for species in ${!SPECIES[@]};do
         read_2=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}.${SPECIES[$species]}.bam_2.fastq.gz
         checkBusy
         if [ $PAIRED_END_READ = "yes" ]; then
-            salmon quant -i ${SALMON_INDEX[$species]} -l A -1 ${read_1} -2 ${read_2} -o ${SALMON_QUANT_DIR}/${SPECIES[$species]}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE} &
+            salmon quant -i ${SALMON_INDEX[$species]} -l A -1 ${read_1} -2 ${read_2} -o ${SALMON_QUANT_DIR}/${SPECIES[$species]}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
         else
             echo "not implement"
-            #salmon quant -i ${SALMON_INDEX[$species]} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.fastq.gz) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE} &
+            #salmon quant -i ${SALMON_INDEX[$species]} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.fastq.gz) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
         fi
 
     done
@@ -280,10 +280,10 @@ mkdir -p ${SALMON_QUANT_DIR}/${SPECIES[0]}
 for sample in ${SAMPLES}; do
     checkBusy
     if [ $PAIRED_END_READ = "yes" ]; then
-        salmon quant -i ${SALMON_INDEX} -l A -1 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz) -2 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_2.fastq.gz) -o ${SALMON_QUANT_DIR}/${SPECIES[0]}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE} &
+        salmon quant -i ${SALMON_INDEX[$species]} -l A -1 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz) -2 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_2.fastq.gz) -o ${SALMON_QUANT_DIR}/${SPECIES[0]}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
     else
         echo "not tested"
-        #salmon quant -i ${SALMON_INDEX} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.fastq.gz) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE} &
+        #salmon quant -i ${SALMON_INDEX[$species]} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.fastq.gz) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
    fi
 done
 
@@ -293,10 +293,10 @@ mkdir -p ${KALLISTO_QUANT_DIR}/${SPECIES[0]}
 for sample in ${SAMPLES}; do
     checkBusy
     if [ $PAIRED_END_READ = "yes" ]; then
-        kallisto quant -i ${KALLISTO_INDEX} -o ${KALLISTO_QUANT_DIR}/${SPECIES[0]}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*)01_1.fastq.gz/\101_2.fastq.gz/' | tr '\n' ' ') &
+        kallisto quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${SPECIES[0]}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*)01_1.fastq.gz/\101_2.fastq.gz/' | tr '\n' ' ') &
     else
         echo "not tested"
-        #kallisto quant -i ${KALLISTO_INDEX} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --single -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*.fastq.gz ) &
+        #kallisto quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --single -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*.fastq.gz ) &
     fi
 done
 wait
@@ -310,9 +310,9 @@ wait
 #for sample in ${SAMPLES}; do
 #    checkBusy
 #    if [ $PAIRED_END_READ = "yes" ]; then
-#        salmon quant -i ${SALMON_INDEX} -l A -1 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) -2 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE} &
+#        salmon quant -i ${SALMON_INDEX} -l A -1 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) -2 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
 #    else
-#        salmon quant -i ${SALMON_INDEX} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}}) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE} &
+#        salmon quant -i ${SALMON_INDEX} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}}) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
 #   fi
 #done
 #
@@ -322,9 +322,9 @@ wait
 #for sample in ${SAMPLES}; do
 #    checkBusy
 #    if [ $PAIRED_END_READ = "yes" ]; then
-#        kallisto quant -i ${KALLISTO_INDEX} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}} | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*){{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}/\1{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}/' | tr '\n' ' ') &
+#        kallisto quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}} | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*){{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}/\1{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}/' | tr '\n' ' ') &
 #    else
-#        kallisto quant -i ${KALLISTO_INDEX} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --single -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}} ) &
+#        kallisto quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --single -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}} ) &
 #    fi
 #done
 #wait

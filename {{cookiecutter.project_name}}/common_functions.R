@@ -209,7 +209,7 @@ get_kallisto_tpms <- function(sample) {
     read_tsv %>% 
     dplyr::select(target_id, tpm)
   
-  transcript_tpms %<>% inner_join(get_transcripts_to_genes(), by=c("target_id"="transcript")) 
+  transcript_tpms %<>% inner_join(get_transcripts_to_genes(SPECIES), by=c("target_id"="transcript"))
   
   transcript_tpms %>% 
     group_by(gene) %>% 
@@ -444,7 +444,7 @@ get_avg_fpkm <- function(fpkms){
 
 
 
-get_avg_tpm<-function(sample_data,tpms,comparision){
+get_avg_tpm<-function(tpms,tx_level){
   sample_data = SAMPLE_DATA
   sample_data %<>% group_by(.dots=AVG_FPKM_GROUP) %>%
     summarise(samples=str_c(sample_name,'_tpm',sep = '',collapse = ',')) %>%
@@ -467,6 +467,7 @@ get_avg_tpm<-function(sample_data,tpms,comparision){
 
 
   tpms %>% dplyr::select(!!id_column,contains('avg'))
+
 }
 
 get_quality_surrogate_variables <- function(dds) {
@@ -595,10 +596,10 @@ get_tximport<-function(sample_data,quant_method='salmon',tx_level=TRUE){
     tibble::rownames_to_column(var="tmp") %>%
     pull("tmp")
 
-  quant_files <- str_c("results/",quant_method,"_quant/", quant_dirs, "/", quant_file)
+  quant_files <- str_c("results/",quant_method,"_quant/", SPECIES, "/",  quant_dirs, "/", quant_file)
   names(quant_files) <- quant_dirs
 
-  txi <- tximport(quant_files, type=quant_method, txOut = tx_level, tx2gene=get_transcripts_to_genes(), dropInfReps = TRUE)
+  txi <- tximport(quant_files, type=quant_method, txOut = tx_level, tx2gene=get_transcripts_to_genes(SPECIES), dropInfReps = TRUE)
   txi$Length <- read.csv(quant_files[1],sep = '\t',stringsAsFactors = FALSE) %>%
     dplyr::select(id=1,length=2) %>%
     tibble::remove_rownames() %>%
@@ -663,7 +664,7 @@ get_res_tx <- function(comparison_name,sample_data,comparison_table,quant_method
 
 perform_rmats <- function(sample_data,comparison){
 
-  top_dir<-str_c("results/rMATS/",species,"/",comparison)
+  top_dir<-str_c("results/rMATS/",SPECIES,"/",comparison)
   if (!dir.exists(top_dir)) {
      dir.create(top_dir,recursive=TRUE)
   }
@@ -677,7 +678,7 @@ perform_rmats <- function(sample_data,comparison){
 
   reps<-sample_data %>%
     group_by(!!parse_expr(x$condition_name)) %>%
-    mutate(bam_file=str_c("results/final_bams/",sample_name,".",species,".bam",sep = '') %>% normalizePath) %>%
+    mutate(bam_file=str_c("results/final_bams/",sample_name,".",SPECIES,".bam",sep = '') %>% normalizePath) %>%
     summarise(replicates=str_c(bam_file,collapse = ','))
 
   reps %>%
@@ -693,7 +694,7 @@ perform_rmats <- function(sample_data,comparison){
   cmd <- str_c("cd /opt/rMATS.4.0.2 && python rmats.py",
                 "--b1", b1,
                 "--b2", b2,
-                "--gtf", str_c("data/",dir(path = "data/", pattern = str_c(species,"_ensembl_*"))) %>%
+                "--gtf", str_c("data/",dir(path = "data/", pattern = str_c(SPECIES,"_ensembl_*"))) %>%
                 list.files(pattern = '.gtf',full.names = T) %>% normalizePath,
                 "--od",top_dir %>% normalizePath,
                 "-t paired",

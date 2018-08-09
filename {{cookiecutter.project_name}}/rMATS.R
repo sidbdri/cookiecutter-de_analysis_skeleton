@@ -9,13 +9,17 @@ rMAT_PARA_t = 'paired'
 #This is for rMATS4 statistic. we are not using this atm
 rMAT_PARA_tstat=1
 rMAT_PARA_readLength=75
-rMAT_PARA_cstat = 0.05
+rMAT_PARA_cstat = 0.1
 
 
 #This is the number of thread used in each rMATS run
 rMAT_PARA_nthread={{cookiecutter.number_total_threads}}
 #This is the number of rMATS running in parallal 
 XARG_PARA_nthread=1
+rMAT3_PARA_splicing_difference = 0.1
+
+#averge count must above a threadhold
+avg_count_cutoff=5
 
 sSUMMARY_TB %<>% mutate(Up_regulated_gene=integer(),
                       Down_regulated_gene=integer(),
@@ -91,7 +95,7 @@ generate_rmats_stat_cmd <- function(species,comparison){
         if (!dir.exists(outdir)) {
             dir.create(outdir,recursive=TRUE)
         }
-        cmd = c(cmd,str_c(cf,outdir,0.05,rMAT_PARA_nthread,sep = ' ') )
+        cmd = c(cmd,str_c(cf,outdir,rMAT3_PARA_splicing_difference,rMAT_PARA_nthread,sep = ' ') )
     }
     str_c("echo ", cmd %>% str_c(collapse = ' '), "| xargs -d ' ' -n 4 -P " , XARG_PARA_nthread, " -t ", RMATS_325)
 }
@@ -180,6 +184,14 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
         as.event = basename(f) %>% strsplit('.',fixed = T) %>% unlist() %>% extract(2)
 
         result.table <- read_tsv(str_c(f,'rMATS_Result.txt',sep = '/'))
+
+        #workout avg count
+        result.table %<>%  dplyr::select(ID,IJC_SAMPLE_1,SJC_SAMPLE_1,IJC_SAMPLE_2,SJC_SAMPLE_2) %>%
+            tidyr::unite(tmp,c("IJC_SAMPLE_1","SJC_SAMPLE_1","IJC_SAMPLE_2","SJC_SAMPLE_2"),sep=',') %>%
+            mutate(avg_count=strsplit(tmp,',')%>% lapply(as.numeric) %>%lapply(mean) %>% unlist()) %>%
+            dplyr::select(-tmp) %>% left_join(result.table)
+
+        #join gene info
         result.table <- read_tsv(str_c(f,'/..','/fromGTF.',as.event,'.txt')) %>%
           inner_join(result.table)
         
@@ -195,6 +207,9 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
           mutate(avg_fpkm=avg) %>% 
           inner_join(result.table,by=c('gene' = 'GeneID')) %>%
           dplyr::select(everything(),-geneSymbol,-chr)
+
+        #filter low counts
+        result.table %<>% filter(avg_count>avg_count_cutoff)
 
         #fill summary table
         SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>% 

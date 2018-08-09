@@ -24,11 +24,11 @@
  in genes in which the above events are found.
 
 
- In the rMATS result folder, you will also find a folder for each comparison, containing the details of each of the five
- supported AS events. Some of the columns contains information that were be used by the rMATS program to calculate the 
- statistical value, thus are more 
-   Again, the columns are self explainable by their names. 
-
+ In the rMATS result folder, you will also find a folder for each comparison with a csv file containing the details of 
+ each of the five supported AS events. Some of the columns in this csv file contains intermediate result that were used 
+ by the rMATS program for the statistical test, thus are more important to us for debugging prosperous. 
+ You might want to focus on the PValue and FDR column.
+   
 
  |Comparison	Condition_tested|Total_number_of_samples_data|Base_level_condition|Number_of_samples_in_base_level_condition|Sample_names_in_base_level_condition|Comparison_level_condition|Number_of_samples_in_comparison_level_condition|Sample_names_in_comparison_level_condition|p.adj.cutoff|Up_regulated|Down_regulated|D.E.total|Up_regulated_gene|Down_regulated_gene|D.E.total_gene|
  |:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|

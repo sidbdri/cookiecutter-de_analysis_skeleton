@@ -209,7 +209,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
           dplyr::select(everything(),-geneSymbol,-chr)
 
         #filter low counts
-        result.table %<>% filter(avg_count>avg_count_cutoff)
+        result.table %<>% filter(avg_count>avg_count_cutoff) %>% dplyr::select(-avg_count)
 
         #fill summary table
         SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>% 

@@ -10,8 +10,8 @@ filter_with_rownames <- function(.data, ...) {
     tibble::column_to_rownames(var = "tmp_row_names")
 }
 
-read_counts <- function(sample) {
-  counts_file_name <- str_c("results/read_counts/", sample, ".counts")
+read_counts <- function(sample, species) {
+  counts_file_name <- str_c("results/read_counts/", sample, ".", species,".counts")
   counts_file_name %>% read_tsv(col_names=c("gene", str_c(sample)))
 }
 
@@ -164,8 +164,10 @@ get_fpkms <- function(all_counts, gene_lengths, samples, col_suffix) {
                all_counts[["max_transcript_length"]], 
                function(x, y) x / y / mmr * 1000)
   }
-  
-  all_counts %>% dplyr::select(gene, dplyr::contains(col_suffix))
+
+  fpkms<-all_counts %>% dplyr::select(gene, dplyr::contains(col_suffix))
+  # workout average fpkm
+  fpkms %>% left_join(get_avg_fpkm(fpkms))
 }
 
 read_de_results <- function(filename, num_samples, num_conditions, num_comparisons, extra_columns="") {
@@ -180,8 +182,9 @@ read_de_results <- function(filename, num_samples, num_conditions, num_compariso
 
 ##### Transcript-level D. E. analyses
 
-get_transcripts_to_genes <- function() {
-  read_delim("results/tx2gene.tsv", " ", col_names=c("transcript", "gene"))
+get_transcripts_to_genes <- function(species='human') {
+  str_c("data/", species , "_ensembl_{{cookiecutter.ensembl_version}}/tx2gene.tsv") %>%
+    read_delim(delim = " ", col_names=c("transcript", "gene"))
 }
 
 get_transcript_quant_file <- function(quant_method) {
@@ -206,7 +209,7 @@ get_kallisto_tpms <- function(sample) {
     read_tsv %>% 
     dplyr::select(target_id, tpm)
   
-  transcript_tpms %<>% inner_join(get_transcripts_to_genes(), by=c("target_id"="transcript")) 
+  transcript_tpms %<>% inner_join(get_transcripts_to_genes(SPECIES), by=c("target_id"="transcript"))
   
   transcript_tpms %>% 
     group_by(gene) %>% 
@@ -228,11 +231,11 @@ get_significant_genes <- function(term, GOdata, gene_info) {
     paste(collapse=", ")
 }
 
-perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP") {
+perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP", species) {
   gene_list <- (gene_universe$gene %in% significant_genes$gene) %>% as.integer %>% factor
   names(gene_list) <- gene_universe$gene
   
-  mapping <- switch("{{cookiecutter.species}}",
+  mapping <- switch(species,
                     mouse = "org.Mm.eg.db",
                     rat = "org.Rn.eg.db",
                     human = "org.Hs.eg.db")
@@ -245,23 +248,28 @@ perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP")
   
   go_results <- go_data %>% GenTable(weight_fisher=result_fisher, orderBy="weight_fisher", topNodes=150)
   
-  gene_info <- get_gene_info("{{cookiecutter.species}}")
+  gene_info <- get_gene_info(species)
   go_results$Genes <- sapply(go_results[,c('GO.ID')], 
                              function(x) get_significant_genes(x, go_data, gene_info))
   
   go_results
 }
 
-perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix) {
+perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix, species) {
   if (significant_genes %>% nrow == 0) {
     message("No significant genes supplied.")
     return()
   }
   
+  top_dir<-str_c("results/differential_expression/go/",species,sep = '')
+  if (!dir.exists(top_dir)) {
+    dir.create(top_dir,recursive=TRUE)
+  }
+
   c("BP", "MF", "CC") %>% walk(
     function(x) {
-      perform_go_analysis(expressed_genes, significant_genes, x) %>%
-        write_csv(str_c("results/differential_expression/go/{{cookiecutter.species}}_", file_prefix, "_go_", x %>% tolower, ".csv"))
+    perform_go_analysis(expressed_genes, significant_genes, x, species) %>%
+    write_csv(str_c("results/differential_expression/go/",species,"/" ,file_prefix, "_go_", x %>% tolower, ".csv"))
     }
   )
 }
@@ -334,7 +342,9 @@ get_gene_sets <- function(species, gene_set_name) {
   ret
 }
 
-get_camera_results <- function(vst, gene_sets, gene_info, design_formula) {
+get_camera_results <- function(dds, gene_sets, gene_info) {
+  vst <- dds %>% varianceStabilizingTransformation
+  design_formula <- dds %>% design()
   expression_data <- vst %>% assay
   
   ids <- expression_data %>% 
@@ -373,7 +383,7 @@ get_gene_set_results <- function(results, gene_sets, gene_set_name, pvalue) {
 }
 
 write_camera_results <- function(
-  gene_set_collection_name, gene_set_collection, comparison_name, de_results, camera_results,
+gene_set_collection_name, gene_set_collection, comparison_name, species, de_results, camera_results,
   barcodeplots=FALSE) {
   
   camera_results %<>% 
@@ -384,13 +394,17 @@ write_camera_results <- function(
     return()
   }
   
-  top_dir <- str_c("results/differential_expression/gsa/", comparison_name)
-  dir.create(top_dir)
+  top_dir <- str_c("results/differential_expression/gsa/",species, "/", comparison_name)
+  if (!dir.exists(top_dir)) {
+    dir.create(top_dir,recursive=TRUE)
+  }
   
   camera_results %>% write_csv(str_c(top_dir, "/", gene_set_collection_name, "_enriched_sets.csv"))
   
   sub_dir <- str_c(top_dir, "/", gene_set_collection_name)
-  dir.create(sub_dir)
+  if (!dir.exists(sub_dir)) {
+    dir.create(sub_dir,recursive=TRUE)
+  }
   
   camera_results %>% 
     extract2("GeneSet") %>% 
@@ -406,11 +420,54 @@ write_camera_results <- function(
     })
 }
 
-get_avg_fpkm <- function(filter="age=='P10' & genotype=='KO' & region=='Ctx'"){
-  samples<-SAMPLE_DATA %>% tibble::rownames_to_column(var = "row_names") %>%
-    filter(!!parse_expr(filter)) %>% pull(row_names) %>% as.vector() %>% str_c('fpkm',sep = '_')
-  avg<-fpkms %>% dplyr::select(.dots = samples) %>% mutate(sum=rowSums(.)) %>% mutate(avg=sum/length(samples))
-  avg$avg
+get_avg_fpkm <- function(fpkms){
+  sample_data = SAMPLE_DATA
+  sample_data %<>% group_by(.dots=AVG_FPKM_GROUP) %>%
+    summarise(samples=str_c(sample_name,'_fpkm',sep = '',collapse = ',')) %>%
+    tidyr::unite('avg_name',AVG_FPKM_GROUP,sep='_')
+
+  for (avg in sample_data %>% pull(avg_name)){
+    samples <- sample_data %>%
+      filter(avg_name == avg) %>%
+      pull(samples) %>%
+      str_split(',') %>% unlist()
+
+    avg_fpkm <- fpkms %>% dplyr::select(one_of(samples)) %>%
+      mutate(avg_fpkm=rowMeans(.)) %>%
+      dplyr::pull(avg_fpkm)
+
+    fpkms %<>% mutate(!!str_c(avg,'_avg_fpkm',sep='') := avg_fpkm)
+  }
+
+  fpkms %>% dplyr::select(gene,contains('avg'))
+}
+
+
+
+get_avg_tpm<-function(tpms,tx_level){
+  sample_data = SAMPLE_DATA
+  sample_data %<>% group_by(.dots=AVG_FPKM_GROUP) %>%
+    summarise(samples=str_c(sample_name,'_tpm',sep = '',collapse = ',')) %>%
+    tidyr::unite('avg_name',AVG_FPKM_GROUP,sep='_')
+
+  for (avg in sample_data %>% pull(avg_name)){
+    samples <- sample_data %>%
+      filter(avg_name == avg) %>%
+      pull(samples) %>%
+      str_split(',') %>% unlist()
+
+    avg_tpm <- tpms %>% dplyr::select(one_of(samples)) %>%
+      mutate(avg_tpm=rowMeans(.)) %>%
+      dplyr::pull(avg_tpm)
+
+    tpms %<>% mutate(!!str_c(avg,'_avg_tpm',sep='') := avg_tpm)
+  }
+
+  id_column=ifelse(tx_level,'transcript','gene')
+
+
+  tpms %>% dplyr::select(!!id_column,contains('avg'))
+
 }
 
 get_quality_surrogate_variables <- function(dds) {
@@ -448,10 +505,204 @@ get_qsva_dds <- function(dds) {
   colData(dds) %<>% cbind(quality_surrogate_variables)
 
   design(dds) <- design_formula %>%
-                    terms() %>%
-                    attr("term.labels") %>%
-                    c(quality_surrogate_variables %>% colnames, .) %>%
-                    reformulate
-
+    terms() %>% attr("term.labels") %>%
+    c(quality_surrogate_variables %>% colnames, .) %>% 
+    reformulate
+  
   dds
 }
+
+
+get_total_dds <- function(sample_data, species, filter_low_counts=FALSE, qSVA=FALSE) {
+  # Collate count data
+  total_count_data <- sample_data %>%
+    row.names() %>%
+    map(read_counts,species) %>%
+    purrr::reduce(inner_join) %>%
+    remove_gene_column()
+
+  get_deseq2_dataset(
+  total_count_data, sample_data,
+  filter_low_counts=filter_low_counts, design_formula=~1,qSVA=qSVA)
+}
+
+
+
+#get res for given condition name
+get_res <- function(comparison_name,sample_data,comparison_table, tpms, species,qSVA=FALSE,use_tx=FALSE,quant_method='salmon',tx_level=FALSE) {
+  x=comparison_table %>% filter(comparison==comparison_name)
+  sample_data %<>%
+    tibble::rownames_to_column(var = "tmp_row_names") %>%
+    mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
+    filter(!!parse_expr(x$filter)) %>%
+    tibble::column_to_rownames(var = "tmp_row_names")
+  
+  ##Ensure that conditions to be used in GSA comparisons are factors with
+  # the correct base level set.
+  sample_data[,x$condition_name] %<>% relevel(x$condition_base)
+
+  if(use_tx){
+    txi<-get_tximport(sample_data,quant_method,tx_level)
+    dds <- DESeqDataSetFromTximport(txi, sample_data, x$formula %>% as.formula())
+    dds <- dds[rowSums(counts(dds)) > 1, ]
+    dds <- DESeq(dds, betaPrior = TRUE)
+  }else{
+    dds <- sample_data %>%
+      row.names() %>%
+      map(read_counts,species) %>%
+      purrr::reduce(inner_join) %>%
+      remove_gene_column() %>%
+      get_deseq2_dataset(sample_data, design_formula = x$formula %>% as.formula(),qSVA=qSVA)
+  }
+  
+
+  #res contains transcript, rather than gene
+  if(use_tx & tx_level){
+    res <- dds %>%
+        get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
+        left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition)))) %>%
+        dplyr::rename(transcript=gene)
+  }else{
+    res <- dds %>%
+        get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
+        left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
+  }
+  
+  #fill summary table
+  SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>% 
+    add_row(Comparison = x$comparison, DESeq_model_formula = design(dds) %>% format(),
+            Condition_tested = x$condition_name,
+            Total_number_of_samples_data=sample_data %>% nrow(),
+            Base_level_condition=x$condition_base,
+            Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
+            Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name) %>% str_c(collapse = ','),
+            Comparison_level_condition=x$condition,
+            Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
+            Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name) %>% str_c(collapse = ','),
+            p.adj.cutoff=0.05,
+            Up_regulated=res %>% filter( padj < 0.05 & log2FoldChange > 0 ) %>% nrow(),
+            Down_regulated=res %>% filter( padj < 0.05 & log2FoldChange < 0 ) %>% nrow(),
+            D.E.total=res %>% filter( padj < 0.05) %>% nrow())
+  
+  assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
+  
+  list(res, dds)
+}
+
+
+get_tximport<-function(sample_data,quant_method='salmon',tx_level=TRUE){
+  quant_file <- get_transcript_quant_file(quant_method)
+  quant_dirs <- sample_data %>%
+    tibble::rownames_to_column(var="tmp") %>%
+    pull("tmp")
+
+  quant_files <- str_c("results/",quant_method,"_quant/", SPECIES, "/",  quant_dirs, "/", quant_file)
+  names(quant_files) <- quant_dirs
+
+  txi <- tximport(quant_files, type=quant_method, txOut = tx_level, tx2gene=get_transcripts_to_genes(SPECIES), dropInfReps = TRUE)
+  txi$Length <- read.csv(quant_files[1],sep = '\t',stringsAsFactors = FALSE) %>%
+    dplyr::select(id=1,length=2) %>%
+    tibble::remove_rownames() %>%
+    tibble::column_to_rownames(var='id')
+  txi
+}
+
+get_total_dds_tximport <- function(sample_data,quant_method='salmon',tx_level=TRUE) {
+
+  txi <- get_tximport(sample_data,quant_method,tx_level)
+
+  total_dds <- DESeqDataSetFromTximport(txi, sample_data, ~1)
+  total_dds <- DESeq(total_dds)
+
+  total_dds
+}
+
+get_res_tx <- function(comparison_name,sample_data,comparison_table,quant_method='salmon',tx_level=FALSE) {
+  x=comparison_table %>% filter(comparison==comparison_name)
+  sample_data %<>%
+  tibble::rownames_to_column(var = "tmp_row_names") %>%
+    mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
+    filter(!!parse_expr(x$filter)) %>%
+    tibble::column_to_rownames(var = "tmp_row_names")
+
+  ##Ensure that conditions to be used in GSA comparisons are factors with
+  # the correct base level set.
+  sample_data[,x$condition_name] %<>% relevel(x$condition_base)
+
+  txi<-get_tximport(sample_data,quant_method,tx_level)
+
+  dds <- DESeqDataSetFromTximport(txi, sample_data, x$formula %>% as.formula())
+  dds <- dds[rowSums(counts(dds)) > 1, ]
+  dds <- DESeq(dds)
+
+  res <- dds %>%
+    get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
+    left_join(dds %>% get_raw_l2fc_tx(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
+
+  #fill summary table
+  SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>%
+  add_row(Comparison = x$comparison, DESeq_model_formula = design(dds) %>% format(),
+  Condition_tested = x$condition_name,
+  Total_number_of_samples_data=sample_data %>% nrow(),
+  Base_level_condition=x$condition_base,
+  Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
+  Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name) %>% str_c(collapse = ','),
+  Comparison_level_condition=x$condition,
+  Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
+  Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name) %>% str_c(collapse = ','),
+  p.adj.cutoff=0.05,
+  Up_regulated=res %>% filter( padj < 0.05 & log2FoldChange > 0 ) %>% nrow(),
+  Down_regulated=res %>% filter( padj < 0.05 & log2FoldChange < 0 ) %>% nrow(),
+  D.E.total=res %>% filter( padj < 0.05) %>% nrow())
+
+  assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
+
+  list(res, dds)
+}
+
+
+checkFormula <- function(){
+  for(r in COMPARISON_TABLE%>%rownames()){
+    row=COMPARISON_TABLE[r,]
+    f = row$formula %>% as.formula() %>% terms()
+    condition = row$condition_name
+    deciding_condition = labels(f)[-1]
+    if(condition != deciding_condition){
+      print(row)
+      stop("The fomular ends with a label which is different to the one specified in the condition_name column.
+           This will cause the gsea algorithm picking up the wrong condition.")
+    }
+  }
+}
+
+#######
+# comment out for now, needs project information to fill 
+# this function in order to source the function.
+# get_condition_res_tximport <- function(quant_method) {
+#   sample_data <- data.frame(
+#     condition=c(),
+#     sample=c(),
+#     filename=c(),
+#     row.names=c("<SAMPLE1>", "<SAMPLE2>", etc)
+#   )
+# 
+#   quant_file <- get_transcript_quant_file(quant_method)
+#   quant_files <- str_c("results/", quant_method, "_quant/", sample_data$filename, "/", quant_file)
+#   names(quant_files) <- sample_data$filename
+# 
+#   txi <- tximport(quant_files, type=quant_method, tx2gene=get_transcripts_to_genes(), reader=read_tsv)
+# 
+#   dds <- DESeqDataSetFromTximport(txi, sample_data, ~condition)
+#   dds <- dds[rowSums(counts(dds)) > 1, ]
+#   dds <- DESeq(dds)
+# 
+#   results <- dds %>% get_deseq2_results("condition", "<cond2>", "<cond1>")
+# 
+#   l2fc <- get_count_data(dds) %>%
+#     mutate(l2fc=log2(() / ()) %>%
+#              dplyr::select(gene, l2fc)
+# 
+#            results %<>% left_join(l2fc)
+# 
+#            return(results)
+# }

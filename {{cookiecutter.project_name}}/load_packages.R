@@ -15,6 +15,8 @@ library(stringr)
 library(topGO)
 library(tximport)
 library(rlang)
+library(sva)
+library(knitr)
 
 sessionInfo()
 

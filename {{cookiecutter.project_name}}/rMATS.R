@@ -223,12 +223,12 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
                   Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
                   Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name) %>% str_c(collapse = ','),
                   p.adj.cutoff=0.05,
-                  Up_regulated= result.table %>% filter(PValue < 0.05 & IncLevelDifference < 0 ) %>% nrow(),
-                  Down_regulated=result.table %>% filter(PValue < 0.05 & IncLevelDifference > 0) %>% nrow(),
-                  D.E.total=result.table %>% filter(PValue < 0.05) %>% nrow(),
-                  Up_regulated_gene = result.table %>% filter(PValue < 0.05 & IncLevelDifference < 0)  %>% pull(gene) %>% unique() %>% length(),
-                  Down_regulated_gene = result.table %>% filter(PValue < 0.05 & IncLevelDifference > 0) %>% pull(gene) %>% unique() %>% length(),
-                  D.E.total_gene = result.table %>% filter(PValue < 0.05) %>% pull(gene) %>% unique() %>% length()
+                  Up_regulated= result.table %>% filter(FDR < 0.05 & IncLevelDifference < 0 ) %>% nrow(),
+                  Down_regulated=result.table %>% filter(FDR < 0.05 & IncLevelDifference > 0) %>% nrow(),
+                  D.E.total=result.table %>% filter(FDR < 0.05) %>% nrow(),
+                  Up_regulated_gene = result.table %>% filter(FDR < 0.05 & IncLevelDifference < 0)  %>% pull(gene) %>% unique() %>% length(),
+                  Down_regulated_gene = result.table %>% filter(FDR < 0.05 & IncLevelDifference > 0) %>% pull(gene) %>% unique() %>% length(),
+                  D.E.total_gene = result.table %>% filter(FDR < 0.05) %>% pull(gene) %>% unique() %>% length()
           )
         assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
 

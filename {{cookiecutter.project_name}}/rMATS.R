@@ -184,12 +184,18 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
         as.event = basename(f) %>% strsplit('.',fixed = T) %>% unlist() %>% extract(2)
 
         result.table <- read_tsv(str_c(f,'rMATS_Result.txt',sep = '/'))
+      
+        #replace ',' with ';' to avoid excel problem in the result
+        result.table %<>% 
+          mutate_at(.vars = vars("IJC_SAMPLE_1","SJC_SAMPLE_1","IJC_SAMPLE_2","SJC_SAMPLE_2","IncLevel1","IncLevel2"),
+                    .funs = funs(gsub(",",";",.)))
 
         #workout avg count
         result.table %<>%  dplyr::select(ID,IJC_SAMPLE_1,SJC_SAMPLE_1,IJC_SAMPLE_2,SJC_SAMPLE_2) %>%
-            tidyr::unite(tmp,c("IJC_SAMPLE_1","SJC_SAMPLE_1","IJC_SAMPLE_2","SJC_SAMPLE_2"),sep=',') %>%
-            mutate(avg_count=strsplit(tmp,',')%>% lapply(as.numeric) %>%lapply(mean) %>% unlist()) %>%
+            tidyr::unite(tmp,c("IJC_SAMPLE_1","SJC_SAMPLE_1","IJC_SAMPLE_2","SJC_SAMPLE_2"),sep=';') %>%
+            mutate(avg_count=strsplit(tmp,';')%>% lapply(as.numeric) %>%lapply(mean) %>% unlist()) %>%
             dplyr::select(-tmp) %>% left_join(result.table)
+
 
         #join gene info
         result.table <- read_tsv(str_c(f,'/..','/fromGTF.',as.event,'.txt')) %>%

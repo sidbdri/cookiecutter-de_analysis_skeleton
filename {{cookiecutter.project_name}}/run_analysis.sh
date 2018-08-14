@@ -81,10 +81,10 @@ addSample2tsv ${MAIN_DIR}/sample.tsv {{ cookiecutter.rnaseq_samples_dir }} \
 
 
 #### Create gene lengths CSV files
-for i in ${!SPECIES[@]}; do
-    get_gene_lengths <(tail -n +6 ${GTF_FILE[$i]}) > ${ENSEMBL_DIR[$i]}/gene_lengths.csv &
+for species in ${!SPECIES[@]}; do
+    get_gene_lengths <(tail -n +6 ${GTF_FILE[$species]}) > ${ENSEMBL_DIR[$species]}/gene_lengths.csv &
     # Construct transcript->gene mapping file for tximport
-    awk '$3=="transcript" {print $14, $10}' ${GTF_FILE[$i]} | sed 's/"//g;s/;//g' > ${ENSEMBL_DIR[$i]}/tx2gene.tsv &
+    awk '$3=="transcript" {print $14, $10}' ${GTF_FILE[$species]} | sed 's/"//g;s/;//g' > ${ENSEMBL_DIR[$species]}/tx2gene.tsv &
 done
 #wait
 
@@ -190,14 +190,14 @@ first_sample="TRUE"
 for sample in ${SAMPLES}; do
     [[ "${first_sample}" == "FALSE" ]] || {
         first_sample="FALSE"
-        for i in ${!SPECIES[@]}; do
-            count_reads_for_features_strand_test ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$i]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/strand_test.${sample}.${SPECIES[$i]}.counts
+        for species in ${!SPECIES[@]}; do
+            count_reads_for_features_strand_test ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/strand_test.${sample}.${SPECIES[$species]}.counts
         done
     }
 
-    for i in ${!SPECIES[@]}; do
+    for species in ${!SPECIES[@]}; do
         checkBusy
-        count_reads_for_features ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$i]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/${sample}.${SPECIES[$i]}.counts &
+        count_reads_for_features ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/${sample}.${SPECIES[$species]}.counts &
     done
 done
 wait $(jobs -p)

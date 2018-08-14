@@ -2,13 +2,14 @@
 
 
 function cleanup {
-  echo "Removing tmp"
-  #not implement
+   echo "Cleaning tmp..."
+   rm -rf ${MAIN_DIR}/*.tmp
+   echo "Killing all sub-processes..."
+   kill -- -$$
 }
 
+trap exit INT
 trap cleanup EXIT
-trap "exit" INT TERM
-trap "kill 0" EXIT
 
 set -o nounset
 set -o errexit

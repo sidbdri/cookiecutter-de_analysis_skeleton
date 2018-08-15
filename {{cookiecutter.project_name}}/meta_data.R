@@ -32,11 +32,11 @@ SAMPLE_DATA %<>% tibble::rownames_to_column(var = "tmp_row_names") %>%
 # | motor     |  correction  |
 # | cortical  |  mutant      |
 # | motor     |  mutant      |
-# AVG_FPKM_GROUP = c('type','condition_2')
-# This will generate avg fpkm for all combinations of the two variable in the 
-# SAMPLE_DATA table, resulting 4 columns 
+# AVG_FPKM_GROUP = list(c('type','condition_2'),c('type'))
+# This will generate avg fpkm for all combinations of each the variables in each vector resulting 6 columns
 # cortical_correction_avg_fpkm, cortical_mutant_avg_fpkm, motor_correction_avg_fpkm, motor_mutant_avg_fpkm
-AVG_FPKM_GROUP = c()
+# cortical_avg_fpkm, motor_avg_fpkm
+AVG_FPKM_GROUP = list(c(),c())
 
 #example can be found https://github.com/sidbdri/cookiecutter-sargasso-de_analysis_skeleton
 COMPARISON_TABLE<-tribble(

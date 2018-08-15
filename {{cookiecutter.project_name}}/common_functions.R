@@ -421,24 +421,25 @@ gene_set_collection_name, gene_set_collection, comparison_name, species, de_resu
 }
 
 get_avg_fpkm <- function(fpkms){
-  sample_data = SAMPLE_DATA
-  sample_data %<>% group_by(.dots=AVG_FPKM_GROUP) %>%
-    summarise(samples=str_c(sample_name,'_fpkm',sep = '',collapse = ',')) %>%
-    tidyr::unite('avg_name',AVG_FPKM_GROUP,sep='_')
+  for (g in AVG_FPKM_GROUP){
+    sample_data = SAMPLE_DATA
+    sample_data %<>% group_by(.dots=g) %>%
+      summarise(samples=str_c(sample_name,'_fpkm',sep = '',collapse = ',')) %>%
+      tidyr::unite('avg_name',g,sep='_')
 
-  for (avg in sample_data %>% pull(avg_name)){
-    samples <- sample_data %>%
-      filter(avg_name == avg) %>%
-      pull(samples) %>%
-      str_split(',') %>% unlist()
+    for (avg in sample_data %>% pull(avg_name)){
+      samples <- sample_data %>%
+        filter(avg_name == avg) %>%
+        pull(samples) %>%
+        str_split(',') %>% unlist()
 
-    avg_fpkm <- fpkms %>% dplyr::select(one_of(samples)) %>%
-      mutate(avg_fpkm=rowMeans(.)) %>%
-      dplyr::pull(avg_fpkm)
+      avg_fpkm <- fpkms %>% dplyr::select(one_of(samples)) %>%
+        mutate(avg_fpkm=rowMeans(.)) %>%
+        dplyr::pull(avg_fpkm)
 
-    fpkms %<>% mutate(!!str_c(avg,'_avg_fpkm',sep='') := avg_fpkm)
+      fpkms %<>% mutate(!!str_c(avg,'_avg_fpkm',sep='') := avg_fpkm)
+    }
   }
-
   fpkms %>% dplyr::select(gene,contains('avg'))
 }
 

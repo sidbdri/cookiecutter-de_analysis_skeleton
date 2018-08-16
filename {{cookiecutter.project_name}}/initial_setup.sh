@@ -35,6 +35,7 @@ ln -s ${GENOME_DATA_DIR}/{{cookiecutter.gtf_files[s]}} ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/genes.tsv ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.salmon_index}} ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.kallisto_index}} ${ENSEMBL_DIR}
+ln -s ${GENOME_DATA_DIR}/*orthologs.tsv  ${ENSEMBL_DIR}
 
 # Generating refFlat file for Picard RNA-seq metrics
 mkdir -p ${PICARD_DATA}/{{ s }}
@@ -42,10 +43,10 @@ gtfToGenePred -genePredExt -geneNameAsName2 ${GTF_FILE} ${PICARD_DATA}/{{ s }}/r
 paste <(cut -f 12 ${PICARD_DATA}/{{ s }}/refFlat.tmp.txt) <(cut -f 1-10 ${PICARD_DATA}/{{ s }}/refFlat.tmp.txt) > ${REF_FLAT}
 rm ${PICARD_DATA}/{{ s }}/refFlat.tmp.txt
 
-{% if s!="human" %}
-ln -s ${GENOME_DATA_DIR}/human_orthologs.tsv ${ENSEMBL_DIR}
-{% endif %}
-{% endfor %}
+#{% if s!="human" %}
+#ln -s ${GENOME_DATA_DIR}/human_orthologs.tsv ${ENSEMBL_DIR}
+#{% endif %}
+#{% endfor %}
 
 {% if "human" not in cookiecutter.species.split(' ') %}
 HUMAN_ENSEMBL_DIR=${DATA_DIR}/human_ensembl_{{cookiecutter.ensembl_version}}

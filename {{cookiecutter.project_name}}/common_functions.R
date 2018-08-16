@@ -676,6 +676,70 @@ checkFormula <- function(){
   }
 }
 
+
+########
+## functions to workout sargasso error assign ratio.
+## commented out for now
+##
+# get_single_species_only_counts <- function(samples, species) {
+#   samples %>%
+#     map(read_counts,species) %>%
+#     reduce(inner_join) %>%
+#     mutate(total = rowSums(dplyr::select(., one_of(samples)))) %>%
+#     dplyr::select(gene, total)
+# }
+#
+# get_mouse_rat_ortholog_info <- function() {
+#   orthologs <- read_tsv("data/rat_ensembl_92/mouse_orthologs.tsv",
+#   col_names=c("rat_gene", "mouse_gene", "type"))
+#
+#   remove_duplicate_genes <- function(gene_info, gene_column) {
+#     duplicates_removed <- gene_info %>%
+#       group_by_(gene_column) %>%
+#       mutate(num_genes=n()) %>%
+#       filter(num_genes == 1) %>%
+#       dplyr::select(-num_genes) %>%
+#       ungroup()
+#   }
+#
+#   get_duplicate_genes <- function(orthologs, gene_column) {
+#     all_orthologs %>%
+#       group_by_(gene_column) %>%
+#       mutate(num_genes=n()) %>%
+#       filter(num_genes > 1) %>%
+#       distinct() %>%
+#       pull(gene_column)
+#   }
+#
+#   # Select only 1-to-1 orthologs
+#   o2o_orthologs <- orthologs %>%
+#     filter(type == "ortholog_one2one") %>%
+#     dplyr::select(-type) %>%
+#     mutate(o2o_ortholog="Y") %>%
+#     remove_duplicate_genes("mouse_gene") %>%
+#     remove_duplicate_genes("rat_gene")
+#
+#   same_name_genes <- (get_gene_info("mouse") %>%
+#     mutate(gene_name=tolower(gene_name)) %>%
+#     dplyr::select(-chromosome, -description, -entrez_id, -gene_type) %>%
+#     rename(mouse_gene=gene)) %>%
+#     inner_join(get_gene_info("rat") %>%
+#       mutate(gene_name=tolower(gene_name)) %>%
+#       dplyr::select(-chromosome, -description, -entrez_id, -gene_type) %>%
+#       rename(rat_gene=gene)) %>%
+#     dplyr::select(-gene_name) %>%
+#     mutate(same_name="Y") %>%
+#     remove_duplicate_genes("mouse_gene") %>%
+#     remove_duplicate_genes("rat_gene")
+#
+#   all_orthologs <- same_name_genes %>% merge(o2o_orthologs, all=T)
+#   all_orthologs[is.na(all_orthologs)] <- ""
+#
+#   all_orthologs %>%
+#     filter(not(mouse_gene %in% get_duplicate_genes(., "mouse_gene") & same_name == "Y")) %>%
+#     filter(not(rat_gene %in% get_duplicate_genes(., "rat_gene") & same_name == "Y"))
+# }
+
 #######
 # comment out for now, needs project information to fill 
 # this function in order to source the function.

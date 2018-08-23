@@ -3,16 +3,26 @@
 At the top-level, the main results folder should contain the following files and sub-folders:
 
 - **\*multiqc_report.html** - One or more web pages containing sequence-level and analysis pipeline quality control data.
-- **deseq2\_results\_fpkm\*.xlsx** - One or more Excel spreadsheets containing results of differential gene expression analysis.
-- **de_summary.xlsx** - An Excel spreadsheet containing a summary of the numbers of genes detected as differentially expressed (at a false discovery rate of 5%).
-- **graphs** - PCA and heatmap plots for each differential expression comparison, plus overall PCA and heatmap plots for all samples.
-- **go** - Gene Ontology enrichment analysis results for each differential expression comparison.
-- **gsa** - Gene set enrichment analysis results for each differential expression comparison.
-- (plus **sessionInfo.txt** - for our records).
+- **differential_expression** - Contains differential expression results at the level of gene, transcript and alternate splicing event.
+- **graphs** - PCA and heatmap plots for each differential expression comparisons, plus overall PCA and heatmap plots for all samples.
+- (plus **sessionInfo.txt** - reproducibility information, for our records).
+
+### Graphs
+
+For each main differential expression comparison made there are two plots describing the samples included in the comparison. The PCA plot graphs samples along the two axes of gene expression by which samples differ by the greatest amount (thus if there are large differences in expression between conditions, you would expect samples from each condition to cluster together - however, a lack of such clustering does not necessarily mean that there will be no differentially expressed genes). The heatmaps show inter-sample "distance" - where each sample is considered as a point in an n-dimensional space (n=number of genes, sample location in the space determine by read count for each gene), and the distance is then just the Euclidean distance between points in that space; again, when there are large differences in expression between conditions, you would expect clustering of samples from each condition. 
+
+There are also PCA and heatmap plots showing all samples.
+
+(n.b. these plots are mainly used to spot gross QC problems and sample mix-ups, but frequently nothing conclusive can be drawn from them.)
 
 ### Differential gene expression
 
-Each of the one or more main differential gene expression results spreadsheets (there may be more than one if there are results for multiple species, or a single spreadsheet was too unwieldy) contains the following columns:
+Differential gene expression results are in the sub-folder **differential\_expression/de_gene**.
+
+- **deseq2\_results\_fpkm\*.csv** - One or more CSV files (these can be opened directly in Excel) containing results of differential gene expression analysis.
+- **de_summary.csv** - A CSV file containing a summary of the numbers of genes detected as differentially expressed (at a false discovery rate of 5%).
+
+Each of the one or more main differential gene expression results files (there may be more than one if there are results for multiple species, or a single file was too unwieldy) contains the following columns:
 
 * **gene**: Ensembl gene ID.
 * **gene_name**: Ensemble gene name.
@@ -34,21 +44,15 @@ and for each differential expression comparison:
 
 (In the first instance, the `l2fc` and `padj` columns are the ones to look at.)
 
-### Graphs
-
-For each differential expression comparison there are two plots describing the samples included in the comparison. The PCA plot graphs samples along the two axes of gene expression by which samples differ by the greatest amount (thus if there are large differences in expression between conditions, you would expect samples from each condition to cluster together - however, a lack of such clustering does not necessarily mean that there will be no differentially expressed genes). The heatmaps show inter-sample "distance" - where each sample is considered as a point in an n-dimensional space (n=number of genes, sample location in the space determine by read count for each gene), and the distance is then just the Euclidean distance between points in that space; again, when there are large differences in expression between conditions, you would expect clustering of samples from each condition. 
-
-There are also PCA and heatmap plots showing all samples.
-
-(n.b. these plots are mainly used to spot gross QC problems and sample mix-ups, but frequently nothing conclusive can be drawn from them.)
-
 ### Gene Ontology enrichment analysis
 
-In the sub-folder "go", there are Gene Ontology (GO) enrichment analyses for each differential expression comparison. For each comparison we take (i) all genes called differentially expressed at false discovery rate < 0.05, (ii) just the up-regulated genes and (iii) just the down-regulated genes. Then for each of the GO categories of "biological process", "cellular compartment" and "molecular function", we use an algorithm to test whether the differentially expressed genes are enriched in genes annotated with particular GO terms, as compared to the background set of all genes expressed in this data. These results can start to give some clue as to the particular biological processes that are being affected, without having to just scan through huge lists of gene expression data.
+In the sub-folder **differential_expression/go**, there are Gene Ontology (GO) enrichment analyses for each differential expression comparison (these may be in further species-specific sub-folders if data from multiple species are being sequenced). 
+
+For each comparison we take (i) all genes called differentially expressed at false discovery rate < 0.05, (ii) just the up-regulated genes and (iii) just the down-regulated genes. Then for each of the GO categories of "biological process", "cellular compartment" and "molecular function", we use an algorithm to test whether the differentially expressed genes are enriched in genes annotated with particular GO terms, as compared to the background set of all genes expressed in this data. These results can start to give some clue as to the particular biological processes that are being affected, without having to just scan through huge lists of gene expression data.
 
 (n.b. some of these GO analysis files might not be present, if there were no, or only a few, differentially expressed genes for a particular differential expression comparison.)
 
-Each GO enrichment results CSV file (which can be opened in Excel) contains the following columns:
+Each GO enrichment results CSV file contains the following columns:
 
 * **GO.ID**: Gene Ontology term ID.
 * **Term**: Gene Ontology term description.
@@ -62,7 +66,7 @@ Note that the p-values here are _not_ corrected for multiple testing (it's not s
 
 ### Gene set enrichment analysis
 
-While GO analyses are useful, they can suffer from our having imposed an arbitrary significance cutoff for the sets of genes considered; but sub-threshold, yet coherent, shifts in the expression of groups of genes between conditions can also be biologically meaningful. These coherent shifts in expression can be investigated using gene set enrichment analyses.
+While GO analyses are useful, they can suffer from our having imposed an arbitrary significance cutoff for the sets of genes considered; but sub-threshold, yet coherent, shifts in the expression of groups of genes between conditions can also be biologically meaningful. These coherent shifts in expression can be investigated using gene set enrichment analyses; results are found in the sub-folder **differential_expression/gsa** (and may be in further species-specific sub-folders if data from multiple species are being sequenced).
 
 The analysis method used here is called "Camera" (Wu & Smyth, "Camera: a competitive gene set test accounting for inter-gene correlation", Nucleic Acids Research (2012), https://academic.oup.com/nar/article/40/17/e133/2411151). This implements a "competitive gene set test" - essentially for a particular set of genes of interest, it takes the expression values of all genes and tests whether the fold change between experimental conditions for the genes in the set is different (as a whole) to the genes not in the set. (It also takes into account that fold changes of different genes are not necessarily independent - e.g. in cases where a bunch of genes in a pathway are all coherently differentially regulated), so the p-value obtained should be more robust than some other competitive gene set test methods that are out there.
 
@@ -90,7 +94,31 @@ n.b. for more information about the provenance of a particular gene set, see the
 
 ### Differential transcript expression
 
-* _TODO_
+Differential transcript expression results are in the sub-folder **differential\_expression/de_tx**.
+
+- **deseq2\_results\_tpm\_\*\_tx\_transcript.csv** - One or more CSV files containing results of differential transcript expression analysis.
+- **de\_summary\_mouse\_tx\_transcript\_salmon.csv** - A CSV file containing a summary of the numbers of transcripts detected as differentially expressed (at a false discovery rate of 5%).
+
+Each of the one or more main differential transcript expression results files (there may be more than one if there are results for multiple species, or a single file was too unwieldy) contains the following columns:
+
+* **transcript**: Ensembl transcript ID.
+* **transcript_length**: Length of transcript in bases.
+* **gene**: Ensembl gene ID.
+* **number_of_transcript**: Number of isoforms defined for this gene in Ensembl.
+* **gene_name**: Ensemble gene name.
+* **chromosome**: Chromosome on which the gene lies.
+* **description**: Ensembl gene description.
+* **entrez_id**: NCBI Gene ID (this is mainly for our internal use).
+* **gene_type**: e.g. protein coding, pseudogene, LINC RNA etc. etc.
+* **\*_tpm**: Per-sample transcript abundances measured in **t**ranscripts **p**er **m**illion (n.b. if Sargasso has been used, there may be separate pre- and post-Sargasso TPM columns for single-species samples).
+* **\*\_avg\_tpm**: Per-condition TPMs averaged over the samples in that condition.
+
+and for each differential expression comparison:
+
+* **\<comparison\_name\>_l2fc**: log2 fold change in transcript expression between conditions.
+* **\<comparison\_name\>_pval**: raw p-value for statistical significance of differential expression.
+* **\<comparison\_name\>_padj**: adjusted p-value (i.e. false discovery rate) after correcting for multiple testing.
+* **\<comparison\_name\>\_raw\_l2fc**: raw log2 fold change in transcript expression between conditions, calculated directly from normalised read counts (this may be different to the fold change calculated by DESeq2, which does some further processing beyond the raw value).
 
 ### rMATS
 
@@ -98,7 +126,7 @@ n.b. for more information about the provenance of a particular gene set, see the
  
 The statistical model of MATS calculates the p-value and false discovery rate that the difference in the "isoform ratio" of a gene between two experimental conditions exceeds a given user-defined threshold. We run rMATS for each comparison between conditions for which we produce differential gene expression results (e.g. mutant vs control). rMATS takes the samples from the two conditions in the comparison and works out the statistically significant (FDR < 0.05) alternative splicing events.
 
-In the rMATS results folder, you will find one or more *AS\_summary_{species}.csv* files, which contain brief summaries of all the comparisons made. Each comparison has 5 rows of summary data, corresponding to the 5 different types of splicing events supported by rMATS:
+In the rMATS results folder (**differential\_expression/de_rmats**), you will find one or more *AS\_summary_{species}.csv* files, which contain brief summaries of all the comparisons made. Each comparison has 5 rows of summary data, corresponding to the 5 different types of splicing events supported by rMATS:
 
   * skipped exons (SE) 
   * alternative 5′ splice sites (A5SS)
@@ -110,7 +138,7 @@ Most of the columns are fairly self-explanatory. The **Up_regulated**, **Down_re
 
 <img align="center" src="alternative_splicing_events.png">
 
-In the rMATS result folder you will also find a sub-folder for each comparison, which in turn holds CSV files containing the details of the results for each of the five supported types of AS events. The columns in these files are:
+In the rMATS result folder you will also find a sub-folder for each comparison (these may be in further species-specific sub-folders if data from multiple species are being sequenced), which in turn holds CSV files containing the details of the results for each of the five supported types of AS events. The columns in these files are:
 
 * **gene**, **gene_name**, **chromosome**, **description**, **entrez_id**, **gene_type**, **gene_length**, **max\_transcript_length**: similar columns to those that appear in the differential gene expression results files
 * **avg_fpkm**: Average gene FPKM measured across all samples involved in this comparison (may be useful for filtering rMATS results)

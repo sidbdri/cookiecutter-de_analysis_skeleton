@@ -86,7 +86,7 @@ for species in ${!SPECIES[@]}; do
     # Construct transcript->gene mapping file for tximport
     awk '$3=="transcript" {print $14, $10}' ${GTF_FILE[$species]} | sed 's/"//g;s/;//g' > ${ENSEMBL_DIR[$species]}/tx2gene.tsv &
 done
-#wait
+wait
 
 #### Perform QC on raw reads
 #mkdir -p ${QC_DIR}
@@ -102,8 +102,8 @@ done
 #### Perform QC on raw reads
 mkdir -p ${QC_DIR}
 echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_TOTAL_THREADS} -I % bash -c \
-"mkdir -p ${QC_DIR}/%; zcat ${RNASEQ_DIR}/%/*.{{cookiecutter.fastq_suffix}} | fastqc --outdir=${QC_DIR}/% stdin"
-
+"mkdir -p ${QC_DIR}/%; zcat ${RNASEQ_DIR}/%/*.{{cookiecutter.fastq_suffix}} | fastqc --outdir=${QC_DIR}/% stdin" &
+wait
 
 
 {% if cookiecutter.sargasso == "yes" %}

@@ -568,6 +568,24 @@ get_res <- function(comparison_name,sample_data,comparison_table, tpms, species,
         get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
         left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
   }
+
+  #we plot pca and heatmap for this comparison
+  if(!use_tx){
+    vst <- dds %>% varianceStabilizingTransformation
+    vst %>% plot_pca_with_labels(intgroup=c(x$condition_name)) %>% print
+    vst %>% plot_heat_map(sample_data %>%
+      mutate(sample_info=str_c(!!parse_expr(x$condition_name), sample_id, sep=":")) %>%
+      extract2("sample_info"))
+
+
+    pdf(str_c('results/differential_expression/graphs/pca_',x$comparison,'.pdf',sep = ''),width=6,height=6)
+    vst %>% plot_pca_with_labels(intgroup=PCA_FEATURE)
+    dev.off()
+
+    pdf(str_c('results/differential_expression/graphs/heatmap_',x$comparison,'.pdf',sep = ''),width=6,height=6)
+    vst %>% plot_heat_map(sample_data %>%  tidyr::unite(col='sample_info',HEAD_MAP_FEATURE , sep = ":", remove = FALSE) %>% extract2("sample_info"))
+    dev.off()
+  }
   
   #fill summary table
   SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>% 

@@ -47,6 +47,10 @@ COMPARISON_TABLE<-tribble(
 #This is to make sure the formula is order so that the 'deciding' condition are the last item in the formula
 checkFormula()
 
+#plot setup
+PCA_FEATURE<-c('condition')
+HEAD_MAP_FEATURE<-c('condition','treatment')
+
 SUMMARY_TB<-setNames(data.frame(matrix(ncol = 14, nrow = 0)),
                      c("Comparison", "DESeq_model_formula", "Condition_tested", "Total_number_of_samples_data",
                        "Base_level_condition", "Number_of_samples_in_base_level_condition",

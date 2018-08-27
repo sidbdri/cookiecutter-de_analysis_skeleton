@@ -664,10 +664,15 @@ get_res_tx <- function(comparison_name,sample_data,comparison_table,quant_method
 
 checkFormula <- function(){
   for(r in COMPARISON_TABLE%>%rownames()){
-    row=COMPARISON_TABLE[r,]
-    f = row$formula %>% as.formula() %>% terms()
-    condition = row$condition_name
-    deciding_condition = labels(f)[-1]
+    row <- COMPARISON_TABLE[r,]
+    f <- row$formula %>% as.formula() %>% terms()
+    condition <- row$condition_name
+    if(labels(f) %>% length() > 1){
+      deciding_condition<-labels(f)[-1]
+    }else{
+      deciding_condition<-labels(f)[1]
+    }
+
     if(condition != deciding_condition){
       print(row)
       stop("The fomular ends with a label which is different to the one specified in the condition_name column.

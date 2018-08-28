@@ -49,7 +49,7 @@ checkFormula()
 
 #plot setup
 PCA_FEATURE<-c('condition')
-HEAD_MAP_FEATURE<-c('condition','treatment')
+HEAT_MAP_FEATURE<-c('condition','treatment')
 
 SUMMARY_TB<-setNames(data.frame(matrix(ncol = 14, nrow = 0)),
                      c("Comparison", "DESeq_model_formula", "Condition_tested", "Total_number_of_samples_data",

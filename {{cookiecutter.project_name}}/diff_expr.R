@@ -23,7 +23,7 @@ total_vst %>% plot_pca_with_labels(intgroup=PCA_FEATURE)
 dev.off()
 
 pdf("results/differential_expression/graphs/heatmap_all.pdf",width=6,height=6)
-total_vst %>% plot_heat_map(SAMPLE_DATA %>%  tidyr::unite(col='sample_info', HEAD_MAP_FEATURE, sep = ":", remove = FALSE) %>% extract2("sample_info"))
+total_vst %>% plot_heat_map(SAMPLE_DATA %>%  tidyr::unite(col='sample_info', HEAT_MAP_FEATURE, sep = ":", remove = FALSE) %>% extract2("sample_info"))
 dev.off()
 
 pdf("results/differential_expression/graphs/count_distribution_norm.pdf",width=6,height=6)

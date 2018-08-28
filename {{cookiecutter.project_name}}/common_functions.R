@@ -422,9 +422,9 @@ gene_set_collection_name, gene_set_collection, comparison_name, species, de_resu
 
 get_avg_fpkm <- function(fpkms){
   for (g in AVG_FPKM_GROUP){
-    sample_data = SAMPLE_DATA
-    sample_data %<>% group_by(.dots=g) %>%
-      summarise(samples=str_c(sample_name,'_fpkm',sep = '',collapse = ',')) %>%
+    sample_data <- SAMPLE_DATA
+    sample_data %<>% tibble::rownames_to_column(var = "tmp_row_names") %>% group_by(.dots=g) %>%
+      summarise(samples=str_c(tmp_row_names,'_fpkm',sep = '',collapse = ',')) %>%
       tidyr::unite('avg_name',g,sep='_')
 
     for (avg in sample_data %>% pull(avg_name)){
@@ -447,8 +447,8 @@ get_avg_fpkm <- function(fpkms){
 
 get_avg_tpm<-function(tpms,tx_level){
   sample_data = SAMPLE_DATA
-  sample_data %<>% group_by(.dots=AVG_FPKM_GROUP) %>%
-    summarise(samples=str_c(sample_name,'_tpm',sep = '',collapse = ',')) %>%
+  sample_data %<>% tibble::rownames_to_column(var = "tmp_row_names") %>% group_by(.dots=AVG_FPKM_GROUP) %>%
+    summarise(samples=str_c(tmp_row_names,'_tpm',sep = '',collapse = ',')) %>%
     tidyr::unite('avg_name',AVG_FPKM_GROUP,sep='_')
 
   for (avg in sample_data %>% pull(avg_name)){
@@ -567,6 +567,26 @@ get_res <- function(comparison_name,sample_data,comparison_table, tpms, species,
     res <- dds %>%
         get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
         left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
+  }
+
+  #we plot pca and heatmap for this comparison
+  if(!use_tx){
+    vst <- dds %>% varianceStabilizingTransformation
+    vst %>% plot_pca_with_labels(intgroup=c(x$condition_name)) %>% print
+    vst %>% plot_heat_map(sample_data %>%
+      mutate(sample_info=str_c(!!parse_expr(x$condition_name), sample_id, sep=":")) %>%
+      extract2("sample_info"))
+
+
+    pdf(str_c('results/differential_expression/graphs/pca_',x$comparison,'.pdf',sep = ''),width=6,height=6)
+    vst %>% plot_pca_with_labels(intgroup=x$condition_name)
+    dev.off()
+
+    pdf(str_c('results/differential_expression/graphs/heatmap_',x$comparison,'.pdf',sep = ''),width=6,height=6)
+    vst %>% plot_heat_map(sample_data %>% tibble::rownames_to_column(var = "id_label") %>%
+                            tidyr::unite(col='sample_info',c(id_label,x$condition_name) , sep = ":", remove = FALSE) %>%
+                          extract2("sample_info"))
+    dev.off()
   }
   
   #fill summary table

@@ -45,9 +45,9 @@ generate_rmats_count_cmd <- function(sample_data,species,cmp_name){
   b1<-str_c(top_dir,"/b1.txt") %>% normalizePath()
   b2<-str_c(top_dir,"/b2.txt") %>% normalizePath()
   
-  reps<-sample_data %>% 
+  reps<-sample_data %>% tibble::rownames_to_column(var = "tmp_row_names") %>%
     group_by(!!parse_expr(x$condition_name)) %>% 
-    mutate(bam_file=str_c("results/final_bams/",sample_name,".",species,".bam",sep = '') %>% normalizePath) %>%
+    mutate(bam_file=str_c("results/final_bams/",tmp_row_names,".",species,".bam",sep = '') %>% normalizePath) %>%
     summarise(replicates=str_c(bam_file,collapse = ',')) 
   
   reps %>% 
@@ -224,10 +224,10 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
                   Total_number_of_samples_data=sample_data %>% nrow(),
                   Base_level_condition=x$condition_base,
                   Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
-                  Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name) %>% str_c(collapse = ','),
+                  Sample_names_in_base_level_condition=sample_data %>% tibble::rownames_to_column(var = "tmp_row_names") %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(tmp_row_names) %>% str_c(collapse = ','),
                   Comparison_level_condition=x$condition,
                   Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
-                  Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name) %>% str_c(collapse = ','),
+                  Sample_names_in_comparison_level_condition=sample_data %>% tibble::rownames_to_column(var = "tmp_row_names") %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(tmp_row_names) %>% str_c(collapse = ','),
                   p.adj.cutoff=0.05,
                   Up_regulated= result.table %>% filter(FDR < 0.05 & IncLevelDifference < 0 ) %>% nrow(),
                   Down_regulated=result.table %>% filter(FDR < 0.05 & IncLevelDifference > 0) %>% nrow(),

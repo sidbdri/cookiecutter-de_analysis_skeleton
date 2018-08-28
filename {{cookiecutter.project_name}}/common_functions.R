@@ -702,106 +702,106 @@ checkFormula <- function(){
 }
 
 
-###############################
-#' Plot the gene fpkm graph of samples.
-#' 
-#' @param gene_identifier A string of either the gene entrez_id, ensembl_id or gene_symbol.
-#' @param result_table A string of the path to the deseq2_results_fpkm.csv, which contains the gene fpkm info, 
-#'                or a result table. If left empty, will read ./results/differential_expression/deseq2_results_fpkm.csv by default. 
-#' @param debug A boolean. Whether to print markdown table of the the gene fpkms. 
-#' @param print A boolean. Whether to plot the graph before returning the ggplot object.
-#' @param feature_group A string vector. The result table should contains fpkm columns which has all the feature separated by '_',
-#'                for exmaple: 101_WT_Hip_Ctrl. This will be split into columns listed in feature_group, 
-#'                which in this case can be c('sample_id','condition','region','treatment'),
-#' @param filter A string. This will be applied when selecting the samples from the result table. Example: filter="condition=='5xFAD'". 
-#'                If left NULL, all samples will be used.
-#' @param plot_feature A string vector, indicating the usage of aes on the features in feature_group. 
-#'                The length of the vector should be the same as the feature_group.
-#' @param plot_label A string. Which feature to be use as label of the points in the plot.
-#' @param plot_x A string. Which feature to be use as x axis.
-#' @return ggplot object
-#' @examples 
-#'plotGeneCount('ENSMUSG00000029816', result_table=result_table,debug=FALSE,print=FALSE,
-#'              feature_group=c('sample_id','condition','region','treatment'), filter="condition=='5xFAD'", 
-#'              plot_feature=c('','','','color'),
-#'              plot_label="sample_id",plot_x="region")
-#'          
-#' genes<-c("ENSMUSG00000029816","ENSMUSG00000073700","ENSMUSG00000034525","ENSMUSG00000032350","ENSMUSG00000026116",
-#'          "ENSMUSG00000020841" ,"ENSMUSG00000025743","ENSMUSG00000031529","ENSMUSG00000025854","ENSMUSG00000084012","ENSMUSG00000030275")
-#' p=''
-#' for(g in split(genes, ceiling(seq_along(genes)/4)) ){
-#'   for( i in g ){
-#'     if(nchar(p)==0){
-#'       p1 <- plotGeneCount(i, result_table=result_table,debug=FALSE,print=FALSE,
-#'                     feature_group=c('sample_id','condition','region','treatment'), filter="condition=='5xFAD'", 
-#'                     plot_feature=c('','','','color'),
-#'                     plot_label="sample_id",plot_x="region")
-#'      
-#'       p<-"p1"
-#'     }else{
-#'       p<-str_c(p,'p1',sep = '+')
-#'     }
-#'   }
-#'   if(length(g)<2){
-#'     p %>% parse_expr() %>% eval() %>% print()
-#'   }else{
-#'     str_c(p," plot_layout(ncol = 2)",sep = '+') %>% parse_expr() %>% eval() %>% print()
-#'   }
-#'   p=''
-#' }                                             
-plotGeneCount <- function(gene_identifier,result_table=NULL,debug=FALSE,print=FALSE,
-                          feature_group=c(),
-                          filter=NULL, 
-                          plot_feature=c(),
-                          plot_label="",
-                          plot_x=""){
-  # devtools::install_github("thomasp85/patchwork",force = TRUE)
-  # devtools::install_github("slowkow/ggrepel")
-  require(patchwork)
-  require(ggrepel)
-  require(knitr)
-  
-  if(is.null(result_table)) result_table<-read.csv('./results/differential_expression/deseq2_results_fpkm.csv')
-  if(is_string(result_table)) result_table<-read.csv(result_table)
-  
-  fpkm_debug <- result_table %>% dplyr::select(gene, gene_name, chromosome, entrez_id, gene_type,
-                                               dplyr::ends_with("_fpkm"),-dplyr::ends_with("avg_fpkm"),
-                                               -dplyr::ends_with(".stat")) %>%
-    dplyr::filter(gene_name==gene_identifier | gene==gene_identifier | entrez_id==gene_identifier )
-  
-  gene_name=fpkm_debug$gene_name %>% as.vector()
-  
-  if(debug){
-    fpkm_debug %>% kable( format = 'markdown', digits=99) %>% print()
-  }
-  
-  fpkm_debug_long <- fpkm_debug  %>% as_tibble() %>%
-    melt(id.var=c("gene","gene_name","chromosome","entrez_id","gene_type"),
-         variable.name='meta',value.name='fpkm') %>%
-    tidyr::separate(meta,sep='_',into=c(feature_group,"tmp"),remove=TRUE) %>%
-    tidyr::unite(col="sample_meta",feature_group,remove = FALSE) %>%
-    dplyr::select(-tmp)
-  
-  if(!is.null(filter)){
-    fpkm_debug_long %>% filter(!!parse_expr(filter))
-  }
-  
-  p <- fpkm_debug_long %>% ggplot( mapping=aes_string(y="fpkm",x=plot_x))
-  for(i in which(plot_feature!='')){
-    switch(plot_feature[i],
-           'color' = p <- p + aes_string(color=feature_group[i]), 
-           'shape' = p <- p + aes_string(shape=feature_group[i]),
-           'size' = p <- p + aes_string(size=feature_group[i])
-    )
-  }
-  
-  
-  p <- p +  geom_point(size=3) + geom_text_repel(aes(label=!!parse_expr(plot_label)),nudge_x=-0.35,direction="y",hjust= 0.5,segment.size= 0.1,size=3) + 
-    ggtitle(gene_identifier %>% str_c(gene_name,sep=':')) + theme(legend.position="top") 
-  
-  if(print) p %>% print()
-  p
-}
+# ###############################
+# #' Plot the gene fpkm graph of samples.
+# #'
+# #' @param gene_identifier A string of either the gene entrez_id, ensembl_id or gene_symbol.
+# #' @param result_table A string of the path to the deseq2_results_fpkm.csv, which contains the gene fpkm info,
+# #'                or a result table. If left empty, will read ./results/differential_expression/deseq2_results_fpkm.csv by default.
+# #' @param debug A boolean. Whether to print markdown table of the the gene fpkms.
+# #' @param print A boolean. Whether to plot the graph before returning the ggplot object.
+# #' @param feature_group A string vector. The result table should contains fpkm columns which has all the feature separated by '_',
+# #'                for exmaple: 101_WT_Hip_Ctrl. This will be split into columns listed in feature_group,
+# #'                which in this case can be c('sample_id','condition','region','treatment'),
+# #' @param filter A string. This will be applied when selecting the samples from the result table. Example: filter="condition=='5xFAD'".
+# #'                If left NULL, all samples will be used.
+# #' @param plot_feature A string vector, indicating the usage of aes on the features in feature_group.
+# #'                The length of the vector should be the same as the feature_group.
+# #' @param plot_label A string. Which feature to be use as label of the points in the plot.
+# #' @param plot_x A string. Which feature to be use as x axis.
+# #' @return ggplot object
+# #' @examples
+# #'plotGeneCount('ENSMUSG00000029816', result_table=result_table,debug=FALSE,print=FALSE,
+# #'              feature_group=c('sample_id','condition','region','treatment'), filter="condition=='5xFAD'",
+# #'              plot_feature=c('','','','color'),
+# #'              plot_label="sample_id",plot_x="region")
+# #'
+# #' genes<-c("ENSMUSG00000029816","ENSMUSG00000073700","ENSMUSG00000034525","ENSMUSG00000032350","ENSMUSG00000026116",
+# #'          "ENSMUSG00000020841" ,"ENSMUSG00000025743","ENSMUSG00000031529","ENSMUSG00000025854","ENSMUSG00000084012","ENSMUSG00000030275")
+# #' p=''
+# #' for(g in split(genes, ceiling(seq_along(genes)/4)) ){
+# #'   for( i in g ){
+# #'     if(nchar(p)==0){
+# #'       p1 <- plotGeneCount(i, result_table=result_table,debug=FALSE,print=FALSE,
+# #'                     feature_group=c('sample_id','condition','region','treatment'), filter="condition=='5xFAD'",
+# #'                     plot_feature=c('','','','color'),
+# #'                     plot_label="sample_id",plot_x="region")
+# #'
+# #'       p<-"p1"
+# #'     }else{
+# #'       p<-str_c(p,'p1',sep = '+')
+# #'     }
+# #'   }
+# #'   if(length(g)<2){
+# #'     p %>% parse_expr() %>% eval() %>% print()
+# #'   }else{
+# #'     str_c(p," plot_layout(ncol = 2)",sep = '+') %>% parse_expr() %>% eval() %>% print()
+# #'   }
+# #'   p=''
+# #' }
+# plotGeneCount <- function(gene_identifier,result_table=NULL,debug=FALSE,print=FALSE,
+#                           feature_group=c(),
+#                           filter=NULL,
+#                           plot_feature=c(),
+#                           plot_label="",
+#                           plot_x=""){
+#   # devtools::install_github("thomasp85/patchwork",force = TRUE)
+#   # devtools::install_github("slowkow/ggrepel")
+#   require(patchwork)
+#   require(ggrepel)
+#   require(knitr)
+#
+#   if(is.null(result_table)) result_table<-read.csv('./results/differential_expression/deseq2_results_fpkm.csv')
+#   if(is_string(result_table)) result_table<-read.csv(result_table)
+#
+#   fpkm_debug <- result_table %>% dplyr::select(gene, gene_name, chromosome, entrez_id, gene_type,
+#                                                dplyr::ends_with("_fpkm"),-dplyr::ends_with("avg_fpkm"),
+#                                                -dplyr::ends_with(".stat")) %>%
+#     dplyr::filter(gene_name==gene_identifier | gene==gene_identifier | entrez_id==gene_identifier )
+#
+#   gene_name=fpkm_debug$gene_name %>% as.vector()
+#
+#   if(debug){
+#     fpkm_debug %>% kable( format = 'markdown', digits=99) %>% print()
+#   }
+#
+#   fpkm_debug_long <- fpkm_debug  %>% as_tibble() %>%
+#     melt(id.var=c("gene","gene_name","chromosome","entrez_id","gene_type"),
+#          variable.name='meta',value.name='fpkm') %>%
+#     tidyr::separate(meta,sep='_',into=c(feature_group,"tmp"),remove=TRUE) %>%
+#     tidyr::unite(col="sample_meta",feature_group,remove = FALSE) %>%
+#     dplyr::select(-tmp)
+#
+#   if(!is.null(filter)){
+#     fpkm_debug_long %>% filter(!!parse_expr(filter))
+#   }
+#
+#   p <- fpkm_debug_long %>% ggplot( mapping=aes_string(y="fpkm",x=plot_x))
+#   for(i in which(plot_feature!='')){
+#     switch(plot_feature[i],
+#            'color' = p <- p + aes_string(color=feature_group[i]),
+#            'shape' = p <- p + aes_string(shape=feature_group[i]),
+#            'size' = p <- p + aes_string(size=feature_group[i])
+#     )
+#   }
+#
+#
+#   p <- p +  geom_point(size=3) + geom_text_repel(aes(label=!!parse_expr(plot_label)),nudge_x=-0.35,direction="y",hjust= 0.5,segment.size= 0.1,size=3) +
+#     ggtitle(gene_identifier %>% str_c(gene_name,sep=':')) + theme(legend.position="top")
+#
+#   if(print) p %>% print()
+#   p
+# }
 
 
 

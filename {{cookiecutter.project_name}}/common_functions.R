@@ -580,11 +580,11 @@ get_res <- function(comparison_name, tpms, species,qSVA=FALSE,use_tx=FALSE,quant
       extract2("sample_info"))
 
 
-    pdf(str_c('results/differential_expression/graphs/pca_',x$comparison,'.pdf',sep = ''),width=6,height=6)
+    pdf(str_c('results/differential_expression/graphs/pca_',x$comparison,'_',species,'.pdf',sep = ''),width=6,height=6)
     vst %>% plot_pca_with_labels(intgroup=x$condition_name) %>% print()
     dev.off()
 
-    pdf(str_c('results/differential_expression/graphs/heatmap_',x$comparison,'.pdf',sep = ''),width=6,height=6)
+    pdf(str_c('results/differential_expression/graphs/heatmap_',x$comparison,'_',species,'.pdf',sep = ''),width=6,height=6)
     vst %>% plot_heat_map(sample_data %>%
                             tidyr::unite(col='sample_info',c(sample_name_tmp,x$condition_name) , sep = ":", remove = FALSE) %>%
                           extract2("sample_info"))

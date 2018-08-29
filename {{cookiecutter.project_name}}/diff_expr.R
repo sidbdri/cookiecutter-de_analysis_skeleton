@@ -18,21 +18,21 @@ if (!dir.exists(output_folder)) dir.create(output_folder,recursive=TRUE)
 total_dds_data <- get_total_dds(SAMPLE_DATA,SPECIES,qSVA=qSVA)
 total_vst <- total_dds_data %>% varianceStabilizingTransformation
 
-pdf("results/differential_expression/graphs/pca_all.pdf",width=6,height=6)
+pdf("results/differential_expression/graphs/pca_all",'_',species,".pdf",width=6,height=6)
 total_vst %>% plot_pca_with_labels(intgroup=PCA_FEATURE)
 dev.off()
 
-pdf("results/differential_expression/graphs/heatmap_all.pdf",width=6,height=6)
+pdf("results/differential_expression/graphs/heatmap_all",'_',species,".pdf",width=6,height=6)
 total_vst %>% plot_heat_map(SAMPLE_DATA %>% tibble::rownames_to_column("tmp_sample_name") %>%
                             tidyr::unite(col='sample_info', c(tmp_sample_name,HEAT_MAP_FEATURE), sep = ":", remove = FALSE) %>% extract2("sample_info"))
 
 dev.off()
 
-pdf("results/differential_expression/graphs/count_distribution_norm.pdf",width=6,height=6)
+pdf("results/differential_expression/graphs/count_distribution_norm",'_',species,".pdf",width=6,height=6)
 plot_count_distribution(total_dds_data, norm=T)
 dev.off()
 
-pdf("results/differential_expression/graphs/count_distribution.pdf",width=6,height=6)
+pdf("results/differential_expression/graphs/count_distribution",'_',species,".pdf",width=6,height=6)
 plot_count_distribution(total_dds_data, norm=F)
 dev.off()
 

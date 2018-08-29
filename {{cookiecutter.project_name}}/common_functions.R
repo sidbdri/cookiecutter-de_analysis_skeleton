@@ -573,8 +573,9 @@ get_res <- function(comparison_name,sample_data,comparison_table, tpms, species,
   if(!use_tx){
     vst <- dds %>% varianceStabilizingTransformation
     vst %>% plot_pca_with_labels(intgroup=c(x$condition_name)) %>% print
-    vst %>% plot_heat_map(sample_data %>%
-      mutate(sample_info=str_c(!!parse_expr(x$condition_name), sample_id, sep=":")) %>%
+    vst %>% plot_heat_map(sample_data %<>%
+      tibble::rownames_to_column(var = "tmp_sample_id") %>%
+      mutate(sample_info=str_c(!!parse_expr(x$condition_name), tmp_sample_id, sep=":")) %>%
       extract2("sample_info"))
 
 

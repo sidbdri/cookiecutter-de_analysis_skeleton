@@ -581,7 +581,7 @@ get_res <- function(comparison_name, tpms, species,qSVA=FALSE,use_tx=FALSE,quant
 
 
     pdf(str_c('results/differential_expression/graphs/pca_',x$comparison,'.pdf',sep = ''),width=6,height=6)
-    vst %>% plot_pca_with_labels(intgroup=x$condition_name)
+    vst %>% plot_pca_with_labels(intgroup=x$condition_name) %>% print()
     dev.off()
 
     pdf(str_c('results/differential_expression/graphs/heatmap_',x$comparison,'.pdf',sep = ''),width=6,height=6)

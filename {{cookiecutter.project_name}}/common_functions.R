@@ -640,50 +640,6 @@ get_total_dds_tximport <- function(sample_data,quant_method='salmon',tx_level=TR
   total_dds
 }
 
-get_res_tx <- function(comparison_name,quant_method='salmon',tx_level=FALSE) {
-  comparison_table <- COMPARISON_TABLE
-  x=comparison_table %>% filter(comparison==comparison_name)
-  sample_data <- SAMPLE_SAMPLE_DATA %>%
-  tibble::rownames_to_column(var = "tmp_row_names") %>%
-    mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
-    filter(!!parse_expr(x$filter)) %>%
-    mutate(sample_name_tmp=tmp_row_names) %>%
-    tibble::column_to_rownames(var = "tmp_row_names")
-
-  ##Ensure that conditions to be used in GSA comparisons are factors with
-  # the correct base level set.
-  sample_data[,x$condition_name] %<>% relevel(x$condition_base)
-
-  txi<-get_tximport(sample_data,quant_method,tx_level)
-
-  dds <- DESeqDataSetFromTximport(txi, sample_data, x$formula %>% as.formula())
-  dds <- dds[rowSums(counts(dds)) > 1, ]
-  dds <- DESeq(dds)
-
-  res <- dds %>%
-    get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
-    left_join(dds %>% get_raw_l2fc_tx(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
-
-  #fill summary table
-  SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>%
-  add_row(Comparison = x$comparison, DESeq_model_formula = design(dds) %>% format(),
-  Condition_tested = x$condition_name,
-  Total_number_of_samples_data=sample_data %>% nrow(),
-  Base_level_condition=x$condition_base,
-  Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
-  Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name_tmp) %>% str_c(collapse = ','),
-  Comparison_level_condition=x$condition,
-  Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
-  Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name_tmp) %>% str_c(collapse = ','),
-  p.adj.cutoff=0.05,
-  Up_regulated=res %>% filter( padj < 0.05 & log2FoldChange > 0 ) %>% nrow(),
-  Down_regulated=res %>% filter( padj < 0.05 & log2FoldChange < 0 ) %>% nrow(),
-  D.E.total=res %>% filter( padj < 0.05) %>% nrow())
-
-  assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
-
-  list(res, dds)
-}
 
 
 checkFormula <- function(){

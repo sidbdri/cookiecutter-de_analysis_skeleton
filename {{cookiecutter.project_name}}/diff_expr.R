@@ -23,7 +23,9 @@ total_vst %>% plot_pca_with_labels(intgroup=PCA_FEATURE)
 dev.off()
 
 pdf("results/differential_expression/graphs/heatmap_all.pdf",width=6,height=6)
-total_vst %>% plot_heat_map(SAMPLE_DATA %>%  tidyr::unite(col='sample_info', HEAT_MAP_FEATURE, sep = ":", remove = FALSE) %>% extract2("sample_info"))
+total_vst %>% plot_heat_map(SAMPLE_DATA %>% tibble::rownames_to_column("tmp_sample_name") %>%
+                            tidyr::unite(col='sample_info', c(tmp_sample_name,HEAT_MAP_FEATURE), sep = ":", remove = FALSE) %>% extract2("sample_info"))
+
 dev.off()
 
 pdf("results/differential_expression/graphs/count_distribution_norm.pdf",width=6,height=6)
@@ -53,7 +55,7 @@ results %<>%
 ##run all get_res functions and add to results object
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   res_name<-str_c(x,'res',sep = '_')
-  assign(str_c(x,'res',sep = '_'), get_res(x,SAMPLE_DATA,COMPARISON_TABLE,fpkms,SPECIES,qSVA=qSVA),envir = .GlobalEnv)
+  assign(str_c(x,'res',sep = '_'), get_res(x,fpkms,SPECIES,qSVA=qSVA),envir = .GlobalEnv)
   
   res <-get(res_name, envir = .GlobalEnv)
   results<-get("results",envir = .GlobalEnv) %>% 

@@ -530,12 +530,14 @@ get_total_dds <- function(sample_data, species, filter_low_counts=FALSE, qSVA=FA
 
 
 #get res for given condition name
-get_res <- function(comparison_name,sample_data,comparison_table, tpms, species,qSVA=FALSE,use_tx=FALSE,quant_method='salmon',tx_level=FALSE) {
+get_res <- function(comparison_name, tpms, species,qSVA=FALSE,use_tx=FALSE,quant_method='salmon',tx_level=FALSE) {
+  comparison_table <- COMPARISON_TABLE
   x=comparison_table %>% filter(comparison==comparison_name)
-  sample_data %<>%
+  sample_data <- SAMPLE_DATA %>%
     tibble::rownames_to_column(var = "tmp_row_names") %>%
     mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
     filter(!!parse_expr(x$filter)) %>%
+    mutate(sample_name_tmp=tmp_row_names) %>%
     tibble::column_to_rownames(var = "tmp_row_names")
   
   ##Ensure that conditions to be used in GSA comparisons are factors with
@@ -573,9 +575,8 @@ get_res <- function(comparison_name,sample_data,comparison_table, tpms, species,
   if(!use_tx){
     vst <- dds %>% varianceStabilizingTransformation
     vst %>% plot_pca_with_labels(intgroup=c(x$condition_name)) %>% print
-    vst %>% plot_heat_map(sample_data %<>%
-      tibble::rownames_to_column(var = "tmp_sample_id") %>%
-      mutate(sample_info=str_c(!!parse_expr(x$condition_name), tmp_sample_id, sep=":")) %>%
+    vst %>% plot_heat_map(sample_data %>%
+      mutate(sample_info=str_c(!!parse_expr(x$condition_name), sample_name_tmp, sep=":")) %>%
       extract2("sample_info"))
 
 
@@ -584,8 +585,8 @@ get_res <- function(comparison_name,sample_data,comparison_table, tpms, species,
     dev.off()
 
     pdf(str_c('results/differential_expression/graphs/heatmap_',x$comparison,'.pdf',sep = ''),width=6,height=6)
-    vst %>% plot_heat_map(sample_data %>% tibble::rownames_to_column(var = "id_label") %>%
-                            tidyr::unite(col='sample_info',c(id_label,x$condition_name) , sep = ":", remove = FALSE) %>%
+    vst %>% plot_heat_map(sample_data %>%
+                            tidyr::unite(col='sample_info',c(sample_name_tmp,x$condition_name) , sep = ":", remove = FALSE) %>%
                           extract2("sample_info"))
     dev.off()
   }
@@ -597,10 +598,10 @@ get_res <- function(comparison_name,sample_data,comparison_table, tpms, species,
             Total_number_of_samples_data=sample_data %>% nrow(),
             Base_level_condition=x$condition_base,
             Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
-            Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name) %>% str_c(collapse = ','),
+            Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name_tmp) %>% str_c(collapse = ','),
             Comparison_level_condition=x$condition,
             Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
-            Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name) %>% str_c(collapse = ','),
+            Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name_tmp) %>% str_c(collapse = ','),
             p.adj.cutoff=0.05,
             Up_regulated=res %>% filter( padj < 0.05 & log2FoldChange > 0 ) %>% nrow(),
             Down_regulated=res %>% filter( padj < 0.05 & log2FoldChange < 0 ) %>% nrow(),
@@ -639,12 +640,14 @@ get_total_dds_tximport <- function(sample_data,quant_method='salmon',tx_level=TR
   total_dds
 }
 
-get_res_tx <- function(comparison_name,sample_data,comparison_table,quant_method='salmon',tx_level=FALSE) {
+get_res_tx <- function(comparison_name,quant_method='salmon',tx_level=FALSE) {
+  comparison_table <- COMPARISON_TABLE
   x=comparison_table %>% filter(comparison==comparison_name)
-  sample_data %<>%
+  sample_data <- SAMPLE_SAMPLE_DATA %>%
   tibble::rownames_to_column(var = "tmp_row_names") %>%
     mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
     filter(!!parse_expr(x$filter)) %>%
+    mutate(sample_name_tmp=tmp_row_names) %>%
     tibble::column_to_rownames(var = "tmp_row_names")
 
   ##Ensure that conditions to be used in GSA comparisons are factors with
@@ -668,10 +671,10 @@ get_res_tx <- function(comparison_name,sample_data,comparison_table,quant_method
   Total_number_of_samples_data=sample_data %>% nrow(),
   Base_level_condition=x$condition_base,
   Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
-  Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name) %>% str_c(collapse = ','),
+  Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name_tmp) %>% str_c(collapse = ','),
   Comparison_level_condition=x$condition,
   Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
-  Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name) %>% str_c(collapse = ','),
+  Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name_tmp) %>% str_c(collapse = ','),
   p.adj.cutoff=0.05,
   Up_regulated=res %>% filter( padj < 0.05 & log2FoldChange > 0 ) %>% nrow(),
   Down_regulated=res %>% filter( padj < 0.05 & log2FoldChange < 0 ) %>% nrow(),
@@ -702,7 +705,7 @@ checkFormula <- function(){
   }
 }
 
-
+#####check plotCounts(total_dds_data,'ENSG00000223972',intgroup = PCA_FEATURE)
 # ###############################
 # #' Plot the gene fpkm graph of samples.
 # #'

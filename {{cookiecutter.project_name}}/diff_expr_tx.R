@@ -95,7 +95,7 @@ if(TX_LEVEL){
 ##run all get_res functions and add to results object
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   res_name<-str_c(x,'res',sep = '_')
-  assign(str_c(x,'res',sep = '_'), get_res(x,SAMPLE_DATA,COMPARISON_TABLE,tpms,use_tx=USE_TX,quant_method=QUANT_METHOD,tx_level=TX_LEVEL),envir = .GlobalEnv)
+  assign(str_c(x,'res',sep = '_'), get_res(x,tpms,use_tx=USE_TX,quant_method=QUANT_METHOD,tx_level=TX_LEVEL),envir = .GlobalEnv)
 
   res <-get(res_name, envir = .GlobalEnv)
   results<-get("results",envir = .GlobalEnv) %>%

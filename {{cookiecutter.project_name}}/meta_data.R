@@ -1,7 +1,7 @@
 source("load_packages.R")
 source("common_functions.R")
 
-SPECIES={{cookiecutter.species}}
+SPECIES="{{cookiecutter.species}}"
 
 SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
   outer(c(rep1, rep2, etc), str_c, sep="todo") %>%

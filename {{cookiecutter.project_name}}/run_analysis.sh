@@ -202,133 +202,110 @@ for sample in ${SAMPLES}; do
 done
 wait $(jobs -p)
 
+
+{% if cookiecutter.qSVA == "yes" %}
 ##### Pre-processing for qSVA
-if [ "${qSVA}" != "no" ]; then
-    for sample in ${SAMPLES}; do
-        for species in ${!SPECIES[@]}; do
-            checkBusy
-            sambamba index -t ${NUM_THREADS_PER_SAMPLE} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam &
-        done
-    done
-    wait
-
-    for sample in ${SAMPLES}; do
-        for species in ${!SPECIES[@]}; do
-            checkBusy
-            python ${REGION_MATRIX_DIR}/region_matrix.py \
-                    --regions ${REGION_MATRIX_DIR}/sorted_polyA_degradation_regions_v2.bed \
-                    --bams ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam \
-                    --wiggletools ${WIGGLETOOLS} > ${COUNTS_DIR}/${sample}.${SPECIES[$species]}.dm.tsv &
-        done
-    done
-    wait
-fi
-
-
-
-
-
-{% if cookiecutter.sargasso == "yes" %}
-# convert bam to fastq before salmon/kallisto
-BAM2READS_DIR=${RESULTS_DIR}/bam2reads
-mkdir -p ${BAM2READS_DIR}
-for species in ${!SPECIES[@]};do
-    for sample in ${SAMPLES}; do
-        reads_dir=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}
-        mkdir -p ${reads_dir}
-        bam=${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam
-        ln ${bam} ${reads_dir}
-    done
-done
-find ${BAM2READS_DIR} -name '*.bam' | xargs -t -n 1 -P ${NUM_TOTAL_THREADS} -I % java -jar /opt/picard-tools-2.17.6/picard.jar SamToFastq I=% F=%_1.fastq F2=%_2.fastq
-find ${BAM2READS_DIR} -name '*.fastq' | xargs -t -n 1 -P ${NUM_TOTAL_THREADS} gzip
-
-for species in ${!SPECIES[@]};do
-    mkdir -p ${SALMON_QUANT_DIR}/${SPECIES[$species]}
-    for sample in ${SAMPLES}; do
-        read_1=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}.${SPECIES[$species]}.bam_1.fastq.gz
-        read_2=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}.${SPECIES[$species]}.bam_2.fastq.gz
+for sample in ${SAMPLES}; do
+    for species in ${!SPECIES[@]}; do
         checkBusy
-        if [ $PAIRED_END_READ = "yes" ]; then
-            salmon quant -i ${SALMON_INDEX[$species]} -l A -1 ${read_1} -2 ${read_2} -o ${SALMON_QUANT_DIR}/${SPECIES[$species]}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
-        else
-            echo "not implement"
-            #salmon quant -i ${SALMON_INDEX[$species]} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.fastq.gz) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
-        fi
-
-    done
-done
-
-for species in ${!SPECIES[@]};do
-    mkdir -p ${KALLISTO_QUANT_DIR}/${SPECIES[$species]}
-    for sample in ${SAMPLES}; do
-        read_1=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}.${SPECIES[$species]}.bam_1.fastq.gz
-        read_2=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}.${SPECIES[$species]}.bam_2.fastq.gz
-        checkBusy
-        if [ $PAIRED_END_READ = "yes" ]; then
-            kallisto quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${SPECIES[$species]}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} ${read_1} ${read_2} &
-        else
-            echo "not implement"
-        fi
-
+        sambamba index -t ${NUM_THREADS_PER_SAMPLE} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam &
     done
 done
 wait
 
-{% else %}
-mkdir -p ${SALMON_QUANT_DIR}/${SPECIES[0]}
-
 for sample in ${SAMPLES}; do
-    checkBusy
-    if [ $PAIRED_END_READ = "yes" ]; then
-        salmon quant -i ${SALMON_INDEX[$species]} -l A -1 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz) -2 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_2.fastq.gz) -o ${SALMON_QUANT_DIR}/${SPECIES[0]}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
-    else
-        echo "not tested"
-        #salmon quant -i ${SALMON_INDEX[$species]} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.fastq.gz) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
-   fi
-done
-
-##### Quantify transcript expression with Kallisto
-mkdir -p ${KALLISTO_QUANT_DIR}/${SPECIES[0]}
-
-for sample in ${SAMPLES}; do
-    checkBusy
-    if [ $PAIRED_END_READ = "yes" ]; then
-        kallisto quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${SPECIES[0]}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*)01_1.fastq.gz/\101_2.fastq.gz/' | tr '\n' ' ') &
-    else
-        echo "not tested"
-        #kallisto quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --single -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*.fastq.gz ) &
-    fi
+    for species in ${!SPECIES[@]}; do
+        checkBusy
+        python ${REGION_MATRIX_DIR}/region_matrix.py \
+                --regions ${REGION_MATRIX_DIR}/sorted_polyA_degradation_regions_v2.bed \
+                --bams ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam \
+                --wiggletools ${WIGGLETOOLS} > ${COUNTS_DIR}/${sample}.${SPECIES[$species]}.dm.tsv &
+    done
 done
 wait
-
 {% endif %}
 
 
-###### Quantify transcript expression with Salmon
-#mkdir -p ${SALMON_QUANT_DIR}
+
+
+##################Alternative splicing
+{% if cookiecutter.sargasso == "yes" %}
+###### convert bam to fastq before salmon/kallisto
+#BAM2READS_DIR=${RESULTS_DIR}/bam2reads
+#mkdir -p ${BAM2READS_DIR}
+#for species in ${!SPECIES[@]};do
+#    for sample in ${SAMPLES}; do
+#        reads_dir=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}
+#        mkdir -p ${reads_dir}
+#        bam=${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam
+#        ln ${bam} ${reads_dir}
+#    done
+#done
+#find ${BAM2READS_DIR} -name '*.bam' | xargs -t -n 1 -P ${NUM_TOTAL_THREADS} -I % java -jar /opt/picard-tools-2.17.6/picard.jar SamToFastq I=% F=%_1.fastq F2=%_2.fastq
+#find ${BAM2READS_DIR} -name '*.fastq' | xargs -t -n 1 -P ${NUM_TOTAL_THREADS} gzip
+#
+#for species in ${!SPECIES[@]};do
+#    mkdir -p ${SALMON_QUANT_DIR}/${SPECIES[$species]}
+#    for sample in ${SAMPLES}; do
+#        read_1=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}.${SPECIES[$species]}.bam_1.fastq.gz
+#        read_2=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}.${SPECIES[$species]}.bam_2.fastq.gz
+#        checkBusy
+#        if [ $PAIRED_END_READ = "yes" ]; then
+#            salmon quant -i ${SALMON_INDEX[$species]} -l A -1 ${read_1} -2 ${read_2} -o ${SALMON_QUANT_DIR}/${SPECIES[$species]}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
+#        else
+#            echo "not implement"
+#            #salmon quant -i ${SALMON_INDEX[$species]} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.fastq.gz) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
+#        fi
+#
+#    done
+#done
+#
+#for species in ${!SPECIES[@]};do
+#    mkdir -p ${KALLISTO_QUANT_DIR}/${SPECIES[$species]}
+#    for sample in ${SAMPLES}; do
+#        read_1=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}.${SPECIES[$species]}.bam_1.fastq.gz
+#        read_2=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}.${SPECIES[$species]}.bam_2.fastq.gz
+#        checkBusy
+#        if [ $PAIRED_END_READ = "yes" ]; then
+#            kallisto quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${SPECIES[$species]}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} ${read_1} ${read_2} &
+#        else
+#            echo "not implement"
+#        fi
+#
+#    done
+#done
+#wait
+
+{% else %}
+#mkdir -p ${SALMON_QUANT_DIR}/${SPECIES[0]}
 #
 #for sample in ${SAMPLES}; do
 #    checkBusy
 #    if [ $PAIRED_END_READ = "yes" ]; then
-#        salmon quant -i ${SALMON_INDEX} -l A -1 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) -2 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
+#        salmon quant -i ${SALMON_INDEX[$species]} -l A -1 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz) -2 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_2.fastq.gz) -o ${SALMON_QUANT_DIR}/${SPECIES[0]}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
 #    else
-#        salmon quant -i ${SALMON_INDEX} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}}) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
+#        echo "not tested"
+#        #salmon quant -i ${SALMON_INDEX[$species]} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.fastq.gz) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
 #   fi
 #done
 #
 ###### Quantify transcript expression with Kallisto
-#mkdir -p ${KALLISTO_QUANT_DIR}
+#mkdir -p ${KALLISTO_QUANT_DIR}/${SPECIES[0]}
 #
 #for sample in ${SAMPLES}; do
 #    checkBusy
 #    if [ $PAIRED_END_READ = "yes" ]; then
-#        kallisto quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}} | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*){{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}/\1{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}/' | tr '\n' ' ') &
+#        kallisto quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${SPECIES[0]}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*)01_1.fastq.gz/\101_2.fastq.gz/' | tr '\n' ' ') &
 #    else
-#        kallisto quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --single -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}} ) &
+#        echo "not tested"
+#        #kallisto quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --single -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*.fastq.gz ) &
 #    fi
 #done
 #wait
+
+{% endif %}
+
+
 
 ##### Gather all QC data
 multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargasso ${RESULTS_DIR}
@@ -342,20 +319,20 @@ exit;
 
 Rscript diff_expr.R > de_expr.log 2>&1 &
 #Rscript diff_expr_tx.R &
-Rscript rMATS.R > rMATS.log  2>&1 &
-
-# when decided which to use, we then only need to run that tx analysis
-for TX_LEVEL in TRUE FALSE; do
-    for QUANT_METHOD in salmon kallisto; do
-        file=./_${QUANT_METHOD}_${TX_LEVEL}.R
-        echo -n "" > ${file}
-        echo QUANT_METHOD=\"${QUANT_METHOD}\" >> ${file}
-        echo TX_LEVEL=${TX_LEVEL} >> ${file}
-        cat diff_expr_tx.R >> ${file}
-        Rscript ${file} > ${QUANT_METHOD}_${TX_LEVEL}.log  2>&1 &
-#       rm ${file}
-    done
-done
+#Rscript rMATS.R > rMATS.log  2>&1 &
+#
+## when decided which to use, we then only need to run that tx analysis
+#for TX_LEVEL in TRUE FALSE; do
+#    for QUANT_METHOD in salmon kallisto; do
+#        file=./_${QUANT_METHOD}_${TX_LEVEL}.R
+#        echo -n "" > ${file}
+#        echo QUANT_METHOD=\"${QUANT_METHOD}\" >> ${file}
+#        echo TX_LEVEL=${TX_LEVEL} >> ${file}
+#        cat diff_expr_tx.R >> ${file}
+#        Rscript ${file} > ${QUANT_METHOD}_${TX_LEVEL}.log  2>&1 &
+##       rm ${file}
+#    done
+#done
 
 wait
 

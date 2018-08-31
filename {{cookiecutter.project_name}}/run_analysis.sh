@@ -308,7 +308,7 @@ wait
 
 
 ##### Gather all QC data
-multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargasso ${RESULTS_DIR}
+multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargasso -m picard ${RESULTS_DIR}
 
 ##### Perform differential expression
 mkdir -p ${DIFF_EXPR_DIR}/go

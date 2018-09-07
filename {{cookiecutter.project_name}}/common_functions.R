@@ -477,7 +477,7 @@ get_quality_surrogate_variables <- function(dds) {
   sample_names <- sample_data %>% rownames()
 
   quality_surrogate_variables <- sample_names %>%
-    str_c("results/read_counts/", ., ".dm.tsv") %>%
+    str_c("results/read_counts/", ., ".", SPECIES, ".dm.tsv") %>%
     read.degradation.matrix(
       sampleNames=sample_names,
       totalMapped=dds %>% counts %>% colSums,

@@ -23,7 +23,9 @@ RNASEQ_DIR=${DATA_DIR}/rnaseq
 PICARD_DATA=${DATA_DIR}/picard
 
 REGION_MATRIX_DIR=/opt/region_matrix
-WIGGLETOOLS=/opt/WiggleTools/bin/wiggletools
+WIGGLETOOLS=/usr/local/bin/wiggletools
+
+
 
 TMP_DIR=${MAIN_DIR}/tmp
 RESULTS_DIR=${MAIN_DIR}/results

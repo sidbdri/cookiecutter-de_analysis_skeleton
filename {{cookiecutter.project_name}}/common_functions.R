@@ -100,7 +100,7 @@ plot_pca_with_labels <- function(vst, intgroup=c("condition")) {
               position=position_nudge(y = 1), size=3) + 
     xlab(str_c("PC1: ", percent_var[1], "% variance")) +
     ylab(str_c("PC2: ", percent_var[2], "% variance")) + 
-    theme(legend.position="none")
+    theme(legend.position="right")
 }
 
 plot_heat_map <- function(vst, sample_names) {

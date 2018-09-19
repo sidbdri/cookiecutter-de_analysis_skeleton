@@ -283,6 +283,12 @@ get_gene_info <- function(species) {
     ungroup
 }
 
+get_gene_lengths <- function(species) {
+  species %>% 
+    str_c("data/", ., "_ensembl_{{cookiecutter.ensembl_version}}/gene_lengths.csv") %>% 
+    read_csv
+}
+
 get_fpkms <- function(all_counts, gene_lengths, samples, col_suffix) {
   all_counts %<>% inner_join(gene_lengths)
   

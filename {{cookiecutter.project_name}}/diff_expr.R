@@ -25,8 +25,12 @@ total_vst %>% plot_pca_with_labels(intgroup=PCA_FEATURE)
 end_plot()
 
 start_plot("heatmap_all")
-total_vst %>% plot_heat_map(SAMPLE_DATA %>% tibble::rownames_to_column("tmp_sample_name") %>%
-                            tidyr::unite(col='sample_info', c(tmp_sample_name,HEAT_MAP_FEATURE), sep = ":", remove = FALSE) %>% extract2("sample_info"))
+total_vst %>% plot_heat_map(
+  SAMPLE_DATA %>% 
+    tibble::rownames_to_column("tmp_sample_name") %>%
+    tidyr::unite(col='sample_info', c(tmp_sample_name, HEAT_MAP_FEATURE), 
+                 sep = ":", remove = FALSE) %>% 
+    extract2("sample_info"))
 end_plot()
 
 start_plot("count_distribution_norm")
@@ -40,7 +44,19 @@ end_plot()
 #####
 
 gene_info <- get_gene_info(SPECIES)
-gene_lengths <- read_csv(str_c("data/",SPECIES,"_ensembl_",{{cookiecutter.ensembl_version}},"/gene_lengths.csv", sep=""))
+gene_lengths <- read_csv(str_c("data/", SPECIES, "_ensembl_", 
+                               {{cookiecutter.ensembl_version}}, 
+                               "/gene_lengths.csv", sep=""))
+
+get_gene_lengths <- function(species) {
+  species %>%
+    str_c("data/", ., "_ensembl_{{cookiecutter.ensembl_version}}/genes.tsv") %>% 
+    read_tsv(col_names = c("gene", "description", "chromosome", "gene_name", "entrez_id", "gene_type"),
+             col_types = list(chromosome = col_character())) %>% 
+    group_by(gene) %>% 
+    filter(row_number()==1) %>% 
+    ungroup
+}
 
 results <- total_dds_data %>% get_count_data() 
 

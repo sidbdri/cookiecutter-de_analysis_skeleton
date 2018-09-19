@@ -102,91 +102,86 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk (
 # results %<>% left_join(rat_only_mapping_info, by=c("gene" = "rat_gene"))
 ###########
 
-
 #save results
 results %>% 
-  dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
-                gene_length, max_transcript_length,
-                everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(OUTPUT_DIR,"/deseq2_results_count_",SPECIES,".csv"))
-
+  dplyr::select(
+    gene, gene_name, chromosome, description, entrez_id, gene_type,
+    gene_length, max_transcript_length,
+    everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat")) %>%
+  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_count_", SPECIES, ".csv"))
 
 results %>% 
-  dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
-                gene_length, max_transcript_length,
-         dplyr::contains("_fpkm"), 
-         COMPARISON_TABLE %>% pull(comparison) %>%
-           sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
-           as.vector() %>% unique(), 
-         -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(OUTPUT_DIR,"/deseq2_results_fpkm_",SPECIES,".csv"))
+  dplyr::select(
+    gene, gene_name, chromosome, description, entrez_id, gene_type,
+    gene_length, max_transcript_length,
+    dplyr::contains("_fpkm"), 
+    COMPARISON_TABLE %>% 
+      pull(comparison) %>%
+      sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>%
+      as.vector() %>% 
+      unique(), 
+    -dplyr::ends_with(".stat")) %>%
+  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_fpkm_", SPECIES, ".csv"))
 
 SUMMARY_TB %>%
-  write_csv(str_c(OUTPUT_DIR,"/de_summary_",SPECIES,".csv"))
+  write_csv(str_c(OUTPUT_DIR, "/de_summary_", SPECIES, ".csv"))
 
 ##### GO analyses
 
-expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts=TRUE) %>% get_count_data()
+expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts=TRUE) %>% 
+  get_count_data()
 
-COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
-  p_str=str_c(x,'padj',sep = '.')
-  l2fc_str=str_c(x,'l2fc',sep = '.')
+COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
+  p_str <- str_c(comparison_name, '.padj')
+  l2fc_str <- str_c(comparison_name, '.l2fc')
   
-  get("results",envir = .GlobalEnv) %>% 
-    filter( get(p_str) < 0.05 ) %>% 
-    perform_go_analyses(expressed_genes, x, SPECIES)
+  results <- get("results",envir = .GlobalEnv)
   
-  get("results",envir = .GlobalEnv) %>%
-    filter( get(p_str) < 0.05  & get(l2fc_str) > 0 ) %>% 
-    perform_go_analyses(expressed_genes, str_c(x,'up',sep = '.'),SPECIES)
+  results %>% 
+    filter(get(p_str) < 0.05) %>% 
+    perform_go_analyses(expressed_genes, comparison_name, SPECIES)
   
-  get("results",envir = .GlobalEnv) %>%
-    filter( get(p_str) < 0.05  & get(l2fc_str) < 0 ) %>% 
-    perform_go_analyses(expressed_genes, str_c(x,'down',sep = '.'),SPECIES)
+  results %>%
+    filter(get(p_str) < 0.05 & get(l2fc_str) > 0) %>% 
+    perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
+  
+  results %>%
+    filter(get(p_str) < 0.05 & get(l2fc_str) < 0) %>% 
+    perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
 })
 
 ##### Gene set enrichment analysis
 
 gene_set_categories <- list("CURATED", "MOTIF", "GO")
 
-gene_sets <- gene_set_categories %>% 
-  map(function(x) get_gene_sets(SPECIES, x))
+list_of_gene_sets <- gene_set_categories %>% 
+  map(function(category) get_gene_sets(SPECIES, category))
 
-
-COMPARISON_TABLE %>% pull(comparison) %>% walk( function(x){
-  x <- COMPARISON_TABLE %>% filter(x==comparison)
-  res<-str_c(x$comparison,'res',sep = '_') %>% get(envir = .GlobalEnv)
+COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
+  res <- str_c(comparison_name, 'res', sep = '_') %>% get(envir = .GlobalEnv)
   
-  camera_results <- get('gene_sets',envir = .GlobalEnv) %>% 
-    map(function(y) get_camera_results( res[[2]],y,gene_info))
+  camera_results <- list_of_gene_sets %>% 
+    map(function(category_gene_sets) {
+      get_camera_results(res[[2]], category_gene_sets, gene_info)
+    })
   
-  assign(str_c(x$comparison,'camera_results',sep = '_'),camera_results,envir = .GlobalEnv)
+  assign(str_c(comparison_name, 'camera_results', sep = '_'), 
+         camera_results, envir = .GlobalEnv)
   
   for (category in seq(1:length(gene_set_categories))) {
     de_res <- results %>% dplyr::select(
       gene, gene_name, entrez_id, 
-      starts_with(str_c(x$comparison, ".")), 
-      -starts_with(str_c(x$comparison, ".stat")))  
+      starts_with(str_c(comparison_name, ".")), 
+      -starts_with(str_c(comparison_name, ".stat")))  
     write_camera_results(
-      gene_set_categories[[category]], gene_sets[[category]], x$comparison, SPECIES,
+      gene_set_categories[[category]], list_of_gene_sets[[category]], 
+      comparison_name, SPECIES,
       de_res, camera_results[[category]])
   }
 })
 
-
-
-
-
-
-
-
-
-
-
-
-
-# results %>% plot_gene_set(gene_sets[[3]], "GO_<go_term>", "condition.stat")
-# results %>% get_gene_set_results(gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head
+# results %>% plot_gene_set(list_of_gene_sets[[3]], "GO_<go_term>", "condition.stat")
+# results %>% get_gene_set_results(list_of_gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head
 
 ##### Salmon/tximport analysis
 

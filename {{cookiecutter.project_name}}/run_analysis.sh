@@ -25,8 +25,6 @@ PICARD_DATA=${DATA_DIR}/picard
 REGION_MATRIX_DIR=/opt/region_matrix
 WIGGLETOOLS=/usr/local/bin/wiggletools
 
-
-
 TMP_DIR=${MAIN_DIR}/tmp
 RESULTS_DIR=${MAIN_DIR}/results
 
@@ -60,7 +58,6 @@ KALLISTO_INDEX+=(${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{
 SPECIES_PARA+=("{{ s }} ${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecutter.assembly_names[s]}}")
 {% endfor %}
 
-
 STAR_EXECUTABLE=STAR{{cookiecutter.star_version}}
 
 NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}
@@ -81,7 +78,6 @@ addSample2tsv ${MAIN_DIR}/sample.tsv {{ cookiecutter.rnaseq_samples_dir }} \
 {{ cookiecutter.paired_end_read}} {{cookiecutter.rnaseq_samples}}
 {% endif %}
 
-
 #### Create gene lengths CSV files
 for species in ${!SPECIES[@]}; do
     get_gene_lengths <(tail -n +6 ${GTF_FILE[$species]}) > ${ENSEMBL_DIR[$species]}/gene_lengths.csv &
@@ -91,6 +87,7 @@ done
 wait
 
 #### Perform QC on raw reads
+
 #mkdir -p ${QC_DIR}
 #
 #for sample in ${SAMPLES}; do
@@ -101,15 +98,12 @@ wait
 #done
 #wait $(jobs -p)
 
-#### Perform QC on raw reads
 mkdir -p ${QC_DIR}
 echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_TOTAL_THREADS} -I % bash -c \
 "mkdir -p ${QC_DIR}/%; zcat ${RNASEQ_DIR}/%/*.{{cookiecutter.fastq_suffix}} | fastqc --outdir=${QC_DIR}/% stdin" &
 wait
 
-
 {% if cookiecutter.sargasso == "yes" %}
-####map reads
 #### Run Sargasso
 species_separator --star-executable ${STAR_EXECUTABLE} --sambamba-sort-tmp-dir=${HOME}/tmp \
         --${STRATEGY} --num-threads-per-sample ${NUM_THREADS_PER_SAMPLE} \
@@ -117,7 +111,6 @@ species_separator --star-executable ${STAR_EXECUTABLE} --sambamba-sort-tmp-dir=$
         ${SAMPLE_TSV} ${SARGASSO_RESULTS_DIR} ${SPECIES_PARA[@]}
 cd ${SARGASSO_RESULTS_DIR} && make &
 wait $(jobs -p)
-
 
 mkdir -p ${FINAL_BAM_DIR}
 for species in ${!SPECIES[@]};do
@@ -133,7 +126,6 @@ for species in ${!SPECIES[@]};do
 done
 wait
 {% else %}
-
 ##### Map reads
 mkdir -p ${MAPPING_DIR}
 mkdir -p ${FINAL_BAM_DIR}
@@ -162,11 +154,7 @@ for species in ${!SPECIES[@]};do
         ln -s ${MAPPING_DIR}/${sample}.sorted.bam ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam
     done
 done
-
 {% endif %}
-
-
-
 
 #### Run Picard alignment metrics summary
 for species in ${!SPECIES[@]};do
@@ -181,8 +169,6 @@ for species in ${!SPECIES[@]};do
 #    "source functions.sh; picard_rnaseq_metrics % ${FINAL_BAM_DIR}/%.${SPECIES[$species]}.bam ${PICARD_DIR}/${SPECIES[$species]} ${REF_FLAT[$species]} ${PICARD_DATA}/${SPECIES[$species]}"
 done
 wait
-
-
 
 ##### Count reads
 mkdir -p ${COUNTS_DIR}
@@ -203,7 +189,6 @@ for sample in ${SAMPLES}; do
     done
 done
 wait $(jobs -p)
-
 
 {% if cookiecutter.qSVA == "yes" %}
 ##### Pre-processing for qSVA
@@ -227,10 +212,7 @@ done
 wait
 {% endif %}
 
-
-
-
-##################Alternative splicing
+##### Alternative splicing
 {% if cookiecutter.sargasso == "yes" %}
 ###### convert bam to fastq before salmon/kallisto
 #BAM2READS_DIR=${RESULTS_DIR}/bam2reads
@@ -277,7 +259,6 @@ wait
 #    done
 #done
 #wait
-
 {% else %}
 #mkdir -p ${SALMON_QUANT_DIR}/${SPECIES[0]}
 #
@@ -304,10 +285,7 @@ wait
 #    fi
 #done
 #wait
-
 {% endif %}
-
-
 
 ##### Gather all QC data
 multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargasso -m picard ${RESULTS_DIR}
@@ -342,4 +320,3 @@ for de_results in $(find ${DIFF_EXPR_DIR} -name 'de**.csv'); do
     clean_de_results ${de_results} &
 done
 wait
-

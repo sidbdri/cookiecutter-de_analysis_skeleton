@@ -102,7 +102,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk (
 # results %<>% left_join(rat_only_mapping_info, by=c("gene" = "rat_gene"))
 ###########
 
-#save results
+# save results
 results %>% 
   dplyr::select(
     gene, gene_name, chromosome, description, entrez_id, gene_type,
@@ -182,71 +182,3 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
 
 # results %>% plot_gene_set(list_of_gene_sets[[3]], "GO_<go_term>", "condition.stat")
 # results %>% get_gene_set_results(list_of_gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head
-
-##### Salmon/tximport analysis
-
-# results_salmon <- get_total_dds_tximport("salmon") %>% 
-#   get_count_data()
-# 
-# salmon_tpms <- SAMPLE_NAMES %>%
-#   map(get_salmon_tpms) %>%
-#   purrr::reduce(inner_join)
-# 
-# results_salmon %<>% 
-#   inner_join(fpkms) %>%
-#   inner_join(gene_info) %>% 
-#   inner_join(gene_lengths)
-# 
-# results_salmon %<>% 
-#   left_join(get_condition_res_tximport("salmon", "quant.sf"), by="gene") %>%
-#   dplyr::rename(condition.l2fc=log2FoldChange,
-#                 condition.raw_l2fc=l2fc,
-#                 condition.pval=pvalue,
-#                 condition.padj=padj)
-# 
-# results_salmon %>% 
-#   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
-#                 gene_length, max_transcript_length,
-#                 everything(), -dplyr::contains("_tpm")) %>%
-#   write_csv("results/differential_expression/deseq2_salmon_results.csv")
-#            
-# results_salmon %>% 
-#   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
-#                 gene_length, max_transcript_length,
-#          dplyr::contains("_tpm"), 
-#          starts_with(condition), etc.) %>% 
-#   write_csv("results/differential_expression/deseq2_salmon_results_fpkm.csv")
-# 
-# ##### Kallisto/tximport analysis
-# 
-# results_kallisto <- get_total_dds_tximport("kallisto") %>% 
-#   get_count_data() 
-# 
-# kallisto_tpms <- SAMPLE_NAMES %>%
-#   map(get_kallisto_tpms) %>%
-#   purrr::reduce(inner_join)
-# 
-# results_kallisto %<>% 
-#   inner_join(kallisto_tpms) %>%
-#   inner_join(gene_info) %>% 
-#   inner_join(gene_lengths)
-# 
-# results_kallisto %<>% 
-#   left_join(get_condition_res_tximport("kallisto", "abundance.tsv"), by="gene") %>%
-#   dplyr::rename(condition.l2fc=log2FoldChange,
-#                 condition.raw_l2fc=l2fc,
-#                 condition.pval=pvalue,
-#                 condition.padj=padj)
-# 
-# results_kallisto %>% 
-#   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
-#                 gene_length, max_transcript_length,
-#                 everything(), -dplyr::contains("_tpm")) %>%
-#   write_csv("results/differential_expression/deseq2_kallisto_results.csv")
-#            
-# results_kallisto %>% 
-#   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
-#                 gene_length, max_transcript_length,
-#          dplyr::contains("_tpm"), 
-#          starts_with(condition), etc.) %>% 
-#   write_csv("results/differential_expression/deseq2_kallisto_results_fpkm.csv")

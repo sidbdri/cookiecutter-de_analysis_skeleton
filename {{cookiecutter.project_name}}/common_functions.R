@@ -156,15 +156,15 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
                             mutate(sample_info=str_c(!!parse_expr(x$condition_name), sample_name_tmp, sep=":")) %>%
                             extract2("sample_info"))
     
-    pdf(str_c('results/differential_expression/graphs/pca_',x$comparison,'_',species,'.pdf',sep = ''),width=6,height=6)
+    start_plot(str_c("pca_", x$comparison))
     vst %>% plot_pca_with_labels(intgroup=x$condition_name) %>% print()
-    dev.off()
-    
-    pdf(str_c('results/differential_expression/graphs/heatmap_',x$comparison,'_',species,'.pdf',sep = ''),width=6,height=6)
+    end_plot()
+
+    start_plot(str_c("heatmap_", x$comparison))
     vst %>% plot_heat_map(sample_data %>%
                             tidyr::unite(col='sample_info',c(sample_name_tmp,x$condition_name) , sep = ":", remove = FALSE) %>%
                             extract2("sample_info"))
-    dev.off()
+    end_plot()
   }
   
   #fill summary table
@@ -193,6 +193,20 @@ get_count_data <- function(dds, norm=T) {
     counts(normalized=norm) %>%
     as.data.frame() %>%
     tibble::rownames_to_column(var="gene")
+}
+
+start_plot <- function(prefix) {
+  if (PLOT_TO_FILE) {
+    prefix %>% 
+      str_c(GRAPHS_DIR, ., "_", SPECIES, ".pdf") %>% 
+      pdf(width=6, height=6)
+  }
+}
+
+end_plot <- function() {
+  if (PLOT_TO_FILE) {
+    dev.off() 
+  }
 }
 
 plot_pca_with_labels <- function(vst, intgroup=c("condition")) {
@@ -610,9 +624,9 @@ write_camera_results <- function(
       gene_set_results %>% write_csv(str_c(sub_dir, "/", x, ".csv"))
       
       if (barcodeplots) {
-        pdf(str_c(sub_dir, "/", x, ".pdf"))
+        start_plot(str_c(sub_dir, "/", x))
         plot_gene_set(de_results, gene_set_collection, x, comparison_name)
-        dev.off()
+        end_plot()
       }
     })
 }

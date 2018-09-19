@@ -1,40 +1,41 @@
 source("meta_data.R")
 
-SPECIES="{{cookiecutter.species}}"
+SPECIES <- "{{cookiecutter.species}}"
 
 {% if cookiecutter.qSVA !="no" %}
-qSVA<-TRUE
+qSVA <- TRUE
 {% else %}
-qSVA<-FALSE
+qSVA <- FALSE
 {% endif %}
+PLOT_TO_FILE <- TRUE
 
-output_folder = 'results/differential_expression/de_gene'
-if (!dir.exists(output_folder)) dir.create(output_folder,recursive=TRUE)
+OUTPUT_DIR <- 'results/differential_expression/de_gene/'
+if (!dir.exists(OUTPUT_DIR)) dir.create(OUTPUT_DIR, recursive=TRUE)
 
-
+GRAPHS_DIR <- 'results/differential_expression/graphs/'
+if (!dir.exists(GRAPHS_DIR)) dir.create(GRAPHS_DIR, recursive=TRUE)
 
 #####
 
-total_dds_data <- get_total_dds(SAMPLE_DATA,SPECIES,qSVA=qSVA)
+total_dds_data <- get_total_dds(SAMPLE_DATA, SPECIES, qSVA=qSVA)
 total_vst <- total_dds_data %>% varianceStabilizingTransformation
 
-pdf("results/differential_expression/graphs/pca_all",'_',SPECIES,".pdf",width=6,height=6)
+start_plot("pca_all")
 total_vst %>% plot_pca_with_labels(intgroup=PCA_FEATURE)
-dev.off()
+end_plot()
 
-pdf("results/differential_expression/graphs/heatmap_all",'_',SPECIES,".pdf",width=6,height=6)
+start_plot("heatmap_all")
 total_vst %>% plot_heat_map(SAMPLE_DATA %>% tibble::rownames_to_column("tmp_sample_name") %>%
                             tidyr::unite(col='sample_info', c(tmp_sample_name,HEAT_MAP_FEATURE), sep = ":", remove = FALSE) %>% extract2("sample_info"))
+end_plot()
 
-dev.off()
-
-pdf("results/differential_expression/graphs/count_distribution_norm",'_',SPECIES,".pdf",width=6,height=6)
+start_plot("count_distribution_norm")
 plot_count_distribution(total_dds_data, norm=T)
-dev.off()
+end_plot()
 
-pdf("results/differential_expression/graphs/count_distribution",'_',SPECIES,".pdf",width=6,height=6)
+start_plot("count_distribution")
 plot_count_distribution(total_dds_data, norm=F)
-dev.off()
+end_plot()
 
 #####
 
@@ -100,7 +101,7 @@ results %>%
   dplyr::select(gene, gene_name, chromosome, description, entrez_id, gene_type,
                 gene_length, max_transcript_length,
                 everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(output_folder,"/deseq2_results_count_",SPECIES,".csv"))
+  write_csv(str_c(OUTPUT_DIR,"/deseq2_results_count_",SPECIES,".csv"))
 
 
 results %>% 
@@ -111,10 +112,10 @@ results %>%
            sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
            as.vector() %>% unique(), 
          -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(output_folder,"/deseq2_results_fpkm_",SPECIES,".csv"))
+  write_csv(str_c(OUTPUT_DIR,"/deseq2_results_fpkm_",SPECIES,".csv"))
 
 SUMMARY_TB %>%
-  write_csv(str_c(output_folder,"/de_summary_",SPECIES,".csv"))
+  write_csv(str_c(OUTPUT_DIR,"/de_summary_",SPECIES,".csv"))
 
 ##### GO analyses
 

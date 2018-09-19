@@ -44,47 +44,38 @@ end_plot()
 #####
 
 gene_info <- get_gene_info(SPECIES)
-gene_lengths <- read_csv(str_c("data/", SPECIES, "_ensembl_", 
-                               {{cookiecutter.ensembl_version}}, 
-                               "/gene_lengths.csv", sep=""))
-
-get_gene_lengths <- function(species) {
-  species %>%
-    str_c("data/", ., "_ensembl_{{cookiecutter.ensembl_version}}/genes.tsv") %>% 
-    read_tsv(col_names = c("gene", "description", "chromosome", "gene_name", "entrez_id", "gene_type"),
-             col_types = list(chromosome = col_character())) %>% 
-    group_by(gene) %>% 
-    filter(row_number()==1) %>% 
-    ungroup
-}
+gene_lengths <- get_gene_lengths(SPECIES)
 
 results <- total_dds_data %>% get_count_data() 
 
 fpkms <- results %>% 
   get_fpkms(gene_lengths, colnames(results) %>% tail(-1), "_fpkm")
 
-
 results %<>% 
   left_join(fpkms) %>%
   left_join(gene_info) %>%
   left_join(gene_lengths)
 
-##run all get_res functions and add to results object
-COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
-  res_name<-str_c(x,'res',sep = '_')
-  assign(str_c(x,'res',sep = '_'), get_res(x,fpkms,SPECIES,qSVA=qSVA),envir = .GlobalEnv)
-  
-  res <-get(res_name, envir = .GlobalEnv)
-  results<-get("results",envir = .GlobalEnv) %>% 
-    left_join(res[[1]], by="gene") %>%
-    dplyr::rename(!!str_c(x,'l2fc',sep = '.'):=log2FoldChange,
-                  !!str_c(x,'raw_l2fc',sep = '.'):=raw_l2fc,
-                  !!str_c(x,'stat',sep = '.'):=stat,
-                  !!str_c(x,'pval',sep = '.'):=pvalue,
-                  !!str_c(x,'padj',sep = '.'):=padj)
-  plot_pvalue_distribution(results, str_c(x,'pval',sep = '.'))
-  assign("results", results,envir = .GlobalEnv)
-})
+# run all get_res() functions and add to main "results" object
+COMPARISON_TABLE %>% pull(comparison) %>% walk (
+  function(comparison_name) {
+    res <- get_res(comparison_name, fpkms, SPECIES, qSVA=qSVA)
+    
+    results <- get("results", envir = .GlobalEnv) %>% 
+      left_join(res[[1]], by="gene") %>%
+      dplyr::rename(!!str_c(comparison_name, '.l2fc') := log2FoldChange,
+                    !!str_c(comparison_name, '.raw_l2fc') := raw_l2fc,
+                    !!str_c(comparison_name, '.stat') := stat,
+                    !!str_c(comparison_name, '.pval') := pvalue,
+                    !!str_c(comparison_name, '.padj') := padj)
+    
+    plot_pvalue_distribution(results, str_c(comparison_name, '.pval'))
+    
+    assign("results", results,envir = .GlobalEnv)
+    
+    comparison_name %>% str_c('res', sep = '_') %>% assign(res, envir = .GlobalEnv)
+  }
+)
 
 ###########
 ## workout sargasso error ratio

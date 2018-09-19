@@ -1,7 +1,27 @@
 KALLISTO <- "kallisto"
 SALMON <- "salmon"
 
-##### FUNCTIONS
+##### Gene-level D. E. analyses
+
+checkFormula <- function(){
+  for (r in COMPARISON_TABLE%>%rownames()) {
+    row <- COMPARISON_TABLE[r,]
+    f <- row$formula %>% as.formula() %>% terms()
+    condition <- row$condition_name
+    
+    if(labels(f) %>% length() > 1){
+      deciding_condition<-labels(f)[-1]
+    }else{
+      deciding_condition<-labels(f)[1]
+    }
+    
+    if(condition != deciding_condition) {
+      print(row)
+      stop("The fomular ends with a label which is different to the one specified in the condition_name column.
+           This will cause the gsea algorithm picking up the wrong condition.")
+    }
+  }
+}
 
 filter_with_rownames <- function(.data, ...) {
   .data %>%
@@ -18,6 +38,19 @@ read_counts <- function(sample, species) {
 remove_gene_column <- function(count_data) {
   row.names(count_data) <- count_data$gene
   count_data %>% dplyr::select(-gene)
+}
+
+get_total_dds <- function(sample_data, species, filter_low_counts=FALSE, qSVA=FALSE) {
+  # Collate count data
+  total_count_data <- sample_data %>%
+    row.names() %>%
+    map(read_counts,species) %>%
+    purrr::reduce(inner_join) %>%
+    remove_gene_column()
+  
+  get_deseq2_dataset(
+    total_count_data, sample_data,
+    filter_low_counts=filter_low_counts, design_formula=~1, qSVA=qSVA)
 }
 
 get_deseq2_dataset <- function(count_data, sample_data, filter_low_counts=TRUE, 
@@ -70,6 +103,89 @@ get_deseq2_results_name <- function(dds, name, alpha=0.05) {
   res %>% as.data.frame() %>%
     tibble::rownames_to_column(var="gene") %>%
     dplyr::select(-baseMean, -lfcSE, -stat)
+}
+
+# get differential expression results for a given comparison name
+get_res <- function(comparison_name, tpms, species, qSVA=FALSE, 
+                    use_tx=FALSE, quant_method='salmon', tx_level=FALSE) {
+  
+  comparison_table <- COMPARISON_TABLE
+  x=comparison_table %>% filter(comparison == comparison_name)
+  sample_data <- SAMPLE_DATA %>%
+    tibble::rownames_to_column(var = "tmp_row_names") %>%
+    mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
+    filter(!!parse_expr(x$filter)) %>%
+    mutate(sample_name_tmp=tmp_row_names) %>%
+    tibble::column_to_rownames(var = "tmp_row_names")
+  
+  ##Ensure that conditions to be used in GSA comparisons are factors with
+  # the correct base level set.
+  sample_data[,x$condition_name] %<>% relevel(x$condition_base)
+  
+  if(use_tx){
+    txi<-get_tximport(sample_data,quant_method,tx_level)
+    dds <- DESeqDataSetFromTximport(txi, sample_data, x$formula %>% as.formula())
+    dds <- dds[rowSums(counts(dds)) > 1, ]
+    dds <- DESeq(dds, betaPrior = TRUE)
+  }else{
+    dds <- sample_data %>%
+      row.names() %>%
+      map(read_counts,species) %>%
+      purrr::reduce(inner_join) %>%
+      remove_gene_column() %>%
+      get_deseq2_dataset(sample_data, design_formula = x$formula %>% as.formula(),qSVA=qSVA)
+  }
+  
+  # res contains transcripts, rather than genes
+  if(use_tx & tx_level){
+    res <- dds %>%
+      get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
+      left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition)))) %>%
+      dplyr::rename(transcript=gene)
+  }else{
+    res <- dds %>%
+      get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
+      left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
+  }
+  
+  # we plot pca and heatmap for this comparison
+  if(!use_tx){
+    vst <- dds %>% varianceStabilizingTransformation
+    vst %>% plot_pca_with_labels(intgroup=c(x$condition_name)) %>% print
+    vst %>% plot_heat_map(sample_data %>%
+                            mutate(sample_info=str_c(!!parse_expr(x$condition_name), sample_name_tmp, sep=":")) %>%
+                            extract2("sample_info"))
+    
+    pdf(str_c('results/differential_expression/graphs/pca_',x$comparison,'_',species,'.pdf',sep = ''),width=6,height=6)
+    vst %>% plot_pca_with_labels(intgroup=x$condition_name) %>% print()
+    dev.off()
+    
+    pdf(str_c('results/differential_expression/graphs/heatmap_',x$comparison,'_',species,'.pdf',sep = ''),width=6,height=6)
+    vst %>% plot_heat_map(sample_data %>%
+                            tidyr::unite(col='sample_info',c(sample_name_tmp,x$condition_name) , sep = ":", remove = FALSE) %>%
+                            extract2("sample_info"))
+    dev.off()
+  }
+  
+  #fill summary table
+  SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>% 
+    add_row(Comparison = x$comparison, DESeq_model_formula = design(dds) %>% format(),
+            Condition_tested = x$condition_name,
+            Total_number_of_samples_data=sample_data %>% nrow(),
+            Base_level_condition=x$condition_base,
+            Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
+            Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name_tmp) %>% str_c(collapse = ','),
+            Comparison_level_condition=x$condition,
+            Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
+            Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name_tmp) %>% str_c(collapse = ','),
+            p.adj.cutoff=0.05,
+            Up_regulated=res %>% filter( padj < 0.05 & log2FoldChange > 0 ) %>% nrow(),
+            Down_regulated=res %>% filter( padj < 0.05 & log2FoldChange < 0 ) %>% nrow(),
+            D.E.total=res %>% filter( padj < 0.05) %>% nrow())
+  
+  assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
+  
+  list(res, dds)
 }
 
 get_count_data <- function(dds, norm=T) {
@@ -166,8 +282,35 @@ get_fpkms <- function(all_counts, gene_lengths, samples, col_suffix) {
   }
 
   fpkms<-all_counts %>% dplyr::select(gene, dplyr::contains(col_suffix))
-  # workout average fpkm
+  
+  # work out average fpkm
   fpkms %>% left_join(get_avg_fpkm(fpkms))
+}
+
+get_avg_fpkm <- function(fpkms) {
+  for (g in AVG_FPKM_GROUP) {
+    sample_data <- SAMPLE_DATA
+    sample_data %<>% tibble::rownames_to_column(var = "tmp_row_names") %>% 
+      group_by(.dots=g) %>%
+      summarise(samples=str_c(tmp_row_names, '_fpkm', sep = '', collapse = ',')) %>%
+      tidyr::unite('avg_name', g, sep='_')
+    
+    for (avg in sample_data %>% pull(avg_name)) {
+      samples <- sample_data %>%
+        filter(avg_name == avg) %>%
+        pull(samples) %>%
+        str_split(',') %>% 
+        unlist()
+      
+      avg_fpkm <- fpkms %>% dplyr::select(one_of(samples)) %>%
+        mutate(avg_fpkm=rowMeans(.)) %>%
+        dplyr::pull(avg_fpkm)
+      
+      fpkms %<>% mutate(!!str_c(avg,'_avg_fpkm',sep='') := avg_fpkm)
+    }
+  }
+  
+  fpkms %>% dplyr::select(gene, contains('avg'))
 }
 
 read_de_results <- function(filename, num_samples, num_conditions, num_comparisons, extra_columns="") {
@@ -215,6 +358,60 @@ get_kallisto_tpms <- function(sample) {
     group_by(gene) %>% 
     summarise(tpm = sum(tpm)) %>%
     rename_(.dots = setNames(names(.), c("gene", str_c(sample, "_tpm"))))
+}
+
+get_tximport <- function(sample_data, quant_method='salmon', tx_level=TRUE) {
+  quant_file <- get_transcript_quant_file(quant_method)
+  quant_dirs <- sample_data %>%
+    tibble::rownames_to_column(var="tmp") %>%
+    pull("tmp")
+  
+  quant_files <- str_c("results/",quant_method,"_quant/", SPECIES, "/",  quant_dirs, "/", quant_file)
+  names(quant_files) <- quant_dirs
+  
+  txi <- tximport(quant_files, type=quant_method, txOut = tx_level, tx2gene=get_transcripts_to_genes(SPECIES), dropInfReps = TRUE)
+
+    txi$Length <- read.csv(quant_files[1],sep = '\t',stringsAsFactors = FALSE) %>%
+    dplyr::select(id=1,length=2) %>%
+    tibble::remove_rownames() %>%
+    tibble::column_to_rownames(var='id')
+  
+  txi
+}
+
+get_total_dds_tximport <- function(sample_data, quant_method='salmon', tx_level=TRUE) {
+  txi <- get_tximport(sample_data, quant_method, tx_level)
+  
+  total_dds <- DESeqDataSetFromTximport(txi, sample_data, ~1)
+  total_dds <- DESeq(total_dds)
+  
+  total_dds
+}
+
+get_avg_tpm <- function(tpms, tx_level) {
+  sample_data = SAMPLE_DATA
+  sample_data %<>% tibble::rownames_to_column(var = "tmp_row_names") %>% 
+    group_by(.dots=AVG_FPKM_GROUP) %>%
+    summarise(samples=str_c(tmp_row_names, '_tpm', sep = '', collapse = ',')) %>%
+    tidyr::unite('avg_name', AVG_FPKM_GROUP, sep='_')
+  
+  for (avg in sample_data %>% pull(avg_name)) {
+    samples <- sample_data %>%
+      filter(avg_name == avg) %>%
+      pull(samples) %>%
+      str_split(',') %>% 
+      unlist()
+    
+    avg_tpm <- tpms %>% dplyr::select(one_of(samples)) %>%
+      mutate(avg_tpm=rowMeans(.)) %>%
+      dplyr::pull(avg_tpm)
+    
+    tpms %<>% mutate(!!str_c(avg, '_avg_tpm', sep='') := avg_tpm)
+  }
+  
+  id_column <- ifelse(tx_level, 'transcript', 'gene')
+  
+  tpms %>% dplyr::select(!!id_column, contains('avg'))
 }
 
 ##### Gene ontology enrichment analyses
@@ -383,7 +580,7 @@ get_gene_set_results <- function(results, gene_sets, gene_set_name, pvalue) {
 }
 
 write_camera_results <- function(
-gene_set_collection_name, gene_set_collection, comparison_name, species, de_results, camera_results,
+  gene_set_collection_name, gene_set_collection, comparison_name, species, de_results, camera_results,
   barcodeplots=FALSE) {
   
   camera_results %<>% 
@@ -420,60 +617,11 @@ gene_set_collection_name, gene_set_collection, comparison_name, species, de_resu
     })
 }
 
-get_avg_fpkm <- function(fpkms){
-  for (g in AVG_FPKM_GROUP){
-    sample_data <- SAMPLE_DATA
-    sample_data %<>% tibble::rownames_to_column(var = "tmp_row_names") %>% group_by(.dots=g) %>%
-      summarise(samples=str_c(tmp_row_names,'_fpkm',sep = '',collapse = ',')) %>%
-      tidyr::unite('avg_name',g,sep='_')
-
-    for (avg in sample_data %>% pull(avg_name)){
-      samples <- sample_data %>%
-        filter(avg_name == avg) %>%
-        pull(samples) %>%
-        str_split(',') %>% unlist()
-
-      avg_fpkm <- fpkms %>% dplyr::select(one_of(samples)) %>%
-        mutate(avg_fpkm=rowMeans(.)) %>%
-        dplyr::pull(avg_fpkm)
-
-      fpkms %<>% mutate(!!str_c(avg,'_avg_fpkm',sep='') := avg_fpkm)
-    }
-  }
-  fpkms %>% dplyr::select(gene,contains('avg'))
-}
-
-
-
-get_avg_tpm<-function(tpms,tx_level){
-  sample_data = SAMPLE_DATA
-  sample_data %<>% tibble::rownames_to_column(var = "tmp_row_names") %>% group_by(.dots=AVG_FPKM_GROUP) %>%
-    summarise(samples=str_c(tmp_row_names,'_tpm',sep = '',collapse = ',')) %>%
-    tidyr::unite('avg_name',AVG_FPKM_GROUP,sep='_')
-
-  for (avg in sample_data %>% pull(avg_name)){
-    samples <- sample_data %>%
-      filter(avg_name == avg) %>%
-      pull(samples) %>%
-      str_split(',') %>% unlist()
-
-    avg_tpm <- tpms %>% dplyr::select(one_of(samples)) %>%
-      mutate(avg_tpm=rowMeans(.)) %>%
-      dplyr::pull(avg_tpm)
-
-    tpms %<>% mutate(!!str_c(avg,'_avg_tpm',sep='') := avg_tpm)
-  }
-
-  id_column=ifelse(tx_level,'transcript','gene')
-
-
-  tpms %>% dplyr::select(!!id_column,contains('avg'))
-
-}
+##### Quality surrogate variable analysis
 
 get_quality_surrogate_variables <- function(dds) {
-  design_formula = dds %>% design()
-  sample_data<- dds %>% colData()
+  design_formula <- dds %>% design()
+  sample_data <- dds %>% colData()
   sample_names <- sample_data %>% rownames()
 
   quality_surrogate_variables <- sample_names %>%
@@ -492,12 +640,9 @@ get_quality_surrogate_variables <- function(dds) {
 }
 
 get_qsva_dds <- function(dds) {
-
-  design_formula = dds %>% design()
-  sample_data<- dds %>% colData()
-
+  design_formula <- dds %>% design()
+  sample_data <- dds %>% colData()
   quality_surrogate_variables <- get_quality_surrogate_variables(dds)
-
 
   if (is.vector(quality_surrogate_variables)) {
    quality_surrogate_variables %<>% data.frame(qSVA=.)
@@ -511,154 +656,6 @@ get_qsva_dds <- function(dds) {
     reformulate
   
   dds
-}
-
-
-get_total_dds <- function(sample_data, species, filter_low_counts=FALSE, qSVA=FALSE) {
-  # Collate count data
-  total_count_data <- sample_data %>%
-    row.names() %>%
-    map(read_counts,species) %>%
-    purrr::reduce(inner_join) %>%
-    remove_gene_column()
-
-  get_deseq2_dataset(
-  total_count_data, sample_data,
-  filter_low_counts=filter_low_counts, design_formula=~1,qSVA=qSVA)
-}
-
-
-
-#get res for given condition name
-get_res <- function(comparison_name, tpms, species,qSVA=FALSE,use_tx=FALSE,quant_method='salmon',tx_level=FALSE) {
-  comparison_table <- COMPARISON_TABLE
-  x=comparison_table %>% filter(comparison==comparison_name)
-  sample_data <- SAMPLE_DATA %>%
-    tibble::rownames_to_column(var = "tmp_row_names") %>%
-    mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
-    filter(!!parse_expr(x$filter)) %>%
-    mutate(sample_name_tmp=tmp_row_names) %>%
-    tibble::column_to_rownames(var = "tmp_row_names")
-  
-  ##Ensure that conditions to be used in GSA comparisons are factors with
-  # the correct base level set.
-  sample_data[,x$condition_name] %<>% relevel(x$condition_base)
-
-  if(use_tx){
-    txi<-get_tximport(sample_data,quant_method,tx_level)
-    dds <- DESeqDataSetFromTximport(txi, sample_data, x$formula %>% as.formula())
-    dds <- dds[rowSums(counts(dds)) > 1, ]
-    dds <- DESeq(dds, betaPrior = TRUE)
-  }else{
-    dds <- sample_data %>%
-      row.names() %>%
-      map(read_counts,species) %>%
-      purrr::reduce(inner_join) %>%
-      remove_gene_column() %>%
-      get_deseq2_dataset(sample_data, design_formula = x$formula %>% as.formula(),qSVA=qSVA)
-  }
-  
-
-  #res contains transcript, rather than gene
-  if(use_tx & tx_level){
-    res <- dds %>%
-        get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
-        left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition)))) %>%
-        dplyr::rename(transcript=gene)
-  }else{
-    res <- dds %>%
-        get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
-        left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
-  }
-
-  #we plot pca and heatmap for this comparison
-  if(!use_tx){
-    vst <- dds %>% varianceStabilizingTransformation
-    vst %>% plot_pca_with_labels(intgroup=c(x$condition_name)) %>% print
-    vst %>% plot_heat_map(sample_data %>%
-      mutate(sample_info=str_c(!!parse_expr(x$condition_name), sample_name_tmp, sep=":")) %>%
-      extract2("sample_info"))
-
-
-    pdf(str_c('results/differential_expression/graphs/pca_',x$comparison,'_',species,'.pdf',sep = ''),width=6,height=6)
-    vst %>% plot_pca_with_labels(intgroup=x$condition_name) %>% print()
-    dev.off()
-
-    pdf(str_c('results/differential_expression/graphs/heatmap_',x$comparison,'_',species,'.pdf',sep = ''),width=6,height=6)
-    vst %>% plot_heat_map(sample_data %>%
-                            tidyr::unite(col='sample_info',c(sample_name_tmp,x$condition_name) , sep = ":", remove = FALSE) %>%
-                          extract2("sample_info"))
-    dev.off()
-  }
-  
-  #fill summary table
-  SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>% 
-    add_row(Comparison = x$comparison, DESeq_model_formula = design(dds) %>% format(),
-            Condition_tested = x$condition_name,
-            Total_number_of_samples_data=sample_data %>% nrow(),
-            Base_level_condition=x$condition_base,
-            Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
-            Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name_tmp) %>% str_c(collapse = ','),
-            Comparison_level_condition=x$condition,
-            Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
-            Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name_tmp) %>% str_c(collapse = ','),
-            p.adj.cutoff=0.05,
-            Up_regulated=res %>% filter( padj < 0.05 & log2FoldChange > 0 ) %>% nrow(),
-            Down_regulated=res %>% filter( padj < 0.05 & log2FoldChange < 0 ) %>% nrow(),
-            D.E.total=res %>% filter( padj < 0.05) %>% nrow())
-  
-  assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
-  
-  list(res, dds)
-}
-
-
-get_tximport<-function(sample_data,quant_method='salmon',tx_level=TRUE){
-  quant_file <- get_transcript_quant_file(quant_method)
-  quant_dirs <- sample_data %>%
-    tibble::rownames_to_column(var="tmp") %>%
-    pull("tmp")
-
-  quant_files <- str_c("results/",quant_method,"_quant/", SPECIES, "/",  quant_dirs, "/", quant_file)
-  names(quant_files) <- quant_dirs
-
-  txi <- tximport(quant_files, type=quant_method, txOut = tx_level, tx2gene=get_transcripts_to_genes(SPECIES), dropInfReps = TRUE)
-  txi$Length <- read.csv(quant_files[1],sep = '\t',stringsAsFactors = FALSE) %>%
-    dplyr::select(id=1,length=2) %>%
-    tibble::remove_rownames() %>%
-    tibble::column_to_rownames(var='id')
-  txi
-}
-
-get_total_dds_tximport <- function(sample_data,quant_method='salmon',tx_level=TRUE) {
-
-  txi <- get_tximport(sample_data,quant_method,tx_level)
-
-  total_dds <- DESeqDataSetFromTximport(txi, sample_data, ~1)
-  total_dds <- DESeq(total_dds)
-
-  total_dds
-}
-
-
-
-checkFormula <- function(){
-  for(r in COMPARISON_TABLE%>%rownames()){
-    row <- COMPARISON_TABLE[r,]
-    f <- row$formula %>% as.formula() %>% terms()
-    condition <- row$condition_name
-    if(labels(f) %>% length() > 1){
-      deciding_condition<-labels(f)[-1]
-    }else{
-      deciding_condition<-labels(f)[1]
-    }
-
-    if(condition != deciding_condition){
-      print(row)
-      stop("The fomular ends with a label which is different to the one specified in the condition_name column.
-           This will cause the gsea algorithm picking up the wrong condition.")
-    }
-  }
 }
 
 #####check plotCounts(total_dds_data,'ENSG00000223972',intgroup = PCA_FEATURE)
@@ -762,8 +759,6 @@ checkFormula <- function(){
 #   if(print) p %>% print()
 #   p
 # }
-
-
 
 ########
 ## functions to workout sargasso error assign ratio.

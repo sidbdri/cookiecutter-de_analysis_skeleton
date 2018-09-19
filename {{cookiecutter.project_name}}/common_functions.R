@@ -3,19 +3,19 @@ SALMON <- "salmon"
 
 ##### Gene-level D. E. analyses
 
-checkFormula <- function(){
+check_formulas <- function(){
   for (r in COMPARISON_TABLE%>%rownames()) {
     row <- COMPARISON_TABLE[r,]
     f <- row$formula %>% as.formula() %>% terms()
     condition <- row$condition_name
     
-    if(labels(f) %>% length() > 1){
-      deciding_condition<-labels(f)[-1]
-    }else{
-      deciding_condition<-labels(f)[1]
+    if (labels(f) %>% length() > 1) {
+      deciding_condition <- labels(f)[-1]
+    } else {
+      deciding_condition <- labels(f)[1]
     }
     
-    if(condition != deciding_condition) {
+    if (condition != deciding_condition) {
       print(row)
       stop("The fomular ends with a label which is different to the one specified in the condition_name column.
            This will cause the gsea algorithm picking up the wrong condition.")

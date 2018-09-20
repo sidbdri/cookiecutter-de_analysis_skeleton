@@ -27,6 +27,16 @@ start_plot("pca_all_tx")
 total_vst %>% plot_pca_with_labels(intgroup=c("condition"))
 end_plot()
 
+start_plot("pca_features_tx")
+#This is to plot individually every feature defined in the SAMPLE_DATA table
+SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>%
+  walk(function(feature){
+    total_vst %>% plot_pca(intgroup=c(feature),FALSE) %>%
+                  add_to_patchwork(plot_var_name='pathworkplot')
+})
+pathworkplot
+end_plot()
+
 start_plot("heatmap_all_tx")
 total_vst %>% plot_heat_map(SAMPLE_DATA %>% 
                             mutate(sample_info=str_c(condition, ..., sep=":")) %>% 
@@ -105,13 +115,19 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk (
                     !!str_c(comparison_name, '.pval') := pvalue,
                     !!str_c(comparison_name, '.padj') := padj)
 
-    plot_pvalue_distribution(results, str_c(comparison_name, '.pval'))
-  
+    p_plot<-plot_pvalue_distribution(results, str_c(comparison,'.pval'))
+
+    add_to_patchwork(p_plot,plot_var_name='all_comparison_pvalue_distribution')
+
     assign("results", results, envir = .GlobalEnv)
 
     comparison_name %>% str_c('res', sep = '_') %>% assign(res, envir = .GlobalEnv)
   }
 )
+
+start_plot("all_comparison_pvalue_distribution")
+all_comparison_pvalue_distribution
+end_plot()
 
 # save results
 

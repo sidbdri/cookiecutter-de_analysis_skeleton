@@ -291,6 +291,7 @@ plot_pvalue_distribution <- function(results, pvalue_column) {
     geom_histogram(binwidth=0.025) 
   
   print(p)
+  p
 }
 
 get_gene_info <- function(species) {

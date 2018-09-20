@@ -17,6 +17,7 @@ library(tximport)
 library(rlang)
 library(sva)
 library(knitr)
+library(patchwork)
 
 sessionInfo()
 

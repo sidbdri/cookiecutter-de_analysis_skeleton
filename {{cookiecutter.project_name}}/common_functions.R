@@ -209,29 +209,49 @@ end_plot <- function() {
   }
 }
 
-plot_pca_with_labels <- function(vst, intgroup=c("condition")) {
+add_to_patchwork<-function(feature,plot_var_name='pathworkplot'){
+  if(exists(plot_var_name,where = .GlobalEnv)){
+    p<-get(plot_var_name,.GlobalEnv)
+    p<-p + total_vst %>% plot_pca(intgroup=c(feature),FALSE)
+  }else{
+    p<-total_vst %>% plot_pca(intgroup=c(feature),FALSE)
+  }
+  assign(plot_var_name,p,.GlobalEnv)
+}
+
+
+plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE){
   pca_data <- vst %>% plotPCA(intgroup=intgroup, returnData=TRUE)
-  
+
   percent_var <- round(100 * attr(pca_data, "percentVar"))
-  
+
   intgroup.df <- as.data.frame(colData(vst)[, intgroup, drop = FALSE])
   group <- if (length(intgroup) > 1) {
     factor(apply(intgroup.df, 1, paste, collapse = " : "))
-  }
-  else {
+  }else {
     colData(vst)[[intgroup]]
-  } 
-  
-  pca_data %>% 
-    ggplot(aes(PC1, PC2, color=group)) +
-    geom_point(size=3) +
-    geom_text(aes(label = name), 
-              colour="darkgrey", 
-              position=position_nudge(y = 1), size=3) + 
+  }
+
+  p <- pca_data %>%
+  ggplot(aes(PC1, PC2, color=group)) + geom_point(size=3) +
     xlab(str_c("PC1: ", percent_var[1], "% variance")) +
-    ylab(str_c("PC2: ", percent_var[2], "% variance")) + 
+    ylab(str_c("PC2: ", percent_var[2], "% variance")) +
     theme(legend.position="right")
+
+  if(plot_label)
+  p <- p + geom_text(aes(label = name), colour="darkgrey", position=position_nudge(y = 1), size=3)
+
+  if(length(intgroup) == 1){
+    p <- p + guides(color=guide_legend(title=intgroup))
+  }
+
+  p
 }
+
+plot_pca_with_labels <- function(vst, intgroup=c("condition")) {
+  plot_pca(vst, intgroup,plot_label=TRUE,plot_legend=-TRUE)
+}
+
 
 plot_heat_map <- function(vst, sample_names) {
   distsRL <- vst %>% assay %>% t %>% dist

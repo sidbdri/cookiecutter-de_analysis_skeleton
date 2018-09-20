@@ -27,6 +27,13 @@ start_plot("pca_all_tx")
 total_vst %>% plot_pca_with_labels(intgroup=c("condition"))
 end_plot()
 
+start_plot("pca_features_tx")
+#This is to plot individually every feature defined in the SAMPLE_DATA table
+SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>%
+                walk(add_to_patchwork,plot_var_name='patchworkplot')
+patchworkplot
+end_plot()
+
 start_plot("heatmap_all_tx")
 total_vst %>% plot_heat_map(SAMPLE_DATA %>% 
                             mutate(sample_info=str_c(condition, ..., sep=":")) %>% 

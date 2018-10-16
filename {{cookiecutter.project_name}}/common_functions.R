@@ -209,12 +209,12 @@ end_plot <- function() {
   }
 }
 
-add_to_patchwork<-function(feature,plot_var_name='pathworkplot'){
+add_to_patchwork<-function(plot2add,plot_var_name='pathworkplot'){
   if(exists(plot_var_name,where = .GlobalEnv)){
     p<-get(plot_var_name,.GlobalEnv)
-    p<-p + total_vst %>% plot_pca(intgroup=c(feature),FALSE)
+    p<-p + plot2add
   }else{
-    p<-total_vst %>% plot_pca(intgroup=c(feature),FALSE)
+    p<-plot2add
   }
   assign(plot_var_name,p,.GlobalEnv)
 }

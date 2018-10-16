@@ -115,7 +115,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk (
                     !!str_c(comparison_name, '.pval') := pvalue,
                     !!str_c(comparison_name, '.padj') := padj)
 
-    p_plot<-plot_pvalue_distribution(results, str_c(comparison,'.pval'))
+    p_plot<-plot_pvalue_distribution(results, str_c(comparison_name,'.pval'))
 
     add_to_patchwork(p_plot,plot_var_name='all_comparison_pvalue_distribution')
 

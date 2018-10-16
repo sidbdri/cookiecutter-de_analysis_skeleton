@@ -249,7 +249,7 @@ plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE){
 }
 
 plot_pca_with_labels <- function(vst, intgroup=c("condition")) {
-  plot_pca(vst, intgroup,plot_label=TRUE,plot_legend=-TRUE)
+  plot_pca(vst, intgroup,plot_label=TRUE)
 }
 
 

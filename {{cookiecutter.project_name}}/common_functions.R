@@ -700,7 +700,7 @@ get_qsva_dds <- function(dds) {
 }
 
 
-########## gene mis-assigned precentage
+########## gene mis-assigned percentage
 calculate_cili<-function(samples,species){
   cili <- samples %>%
     map(read_counts, species) %>%
@@ -782,7 +782,7 @@ calculate_percentage <- function(ref_fpkm,d,target_fpkm,reference_samples,target
 }
 
 
-calculate_pre_gene_error_assign_precentage <- function(target_samples,target_species,reference_samples,reference_species,debug_output=FALSE){
+calculate_pre_gene_error_assign_percentage <- function(target_samples,target_species,reference_samples,reference_species,debug_output=FALSE){
   #30
   # gene               J4NAC K4NAC L4NAC gene_length max_transcript_length
   # <chr>              <int> <int> <int>       <int>                 <int>
@@ -881,7 +881,7 @@ calculate_pre_gene_error_assign_precentage <- function(target_samples,target_spe
   ret
 }
 
-get_misassigned_precentage<- function(comparison_name){
+get_misassigned_percentage<- function(comparison_name){
   x <- COMPARISON_TABLE %>% filter(comparison == comparison_name)
 
   ret <- {}
@@ -908,7 +908,7 @@ get_misassigned_precentage<- function(comparison_name){
 
     reference_species <- y$misassignment_sample_species %>% strsplit(',') %>% extract2(1) %>% c(target_species) %>% unique()
 
-    P_condition <-calculate_pre_gene_error_assign_precentage(target_samples,target_species,reference_samples,reference_species,debug_output=FALSE)
+    P_condition <-calculate_pre_gene_error_assign_percentage(target_samples,target_species,reference_samples,reference_species,debug_output=FALSE)
   }else{
     reference_samples=NA
     P_condition= get("results_sargasso", envir = .GlobalEnv)  %>% mutate(p=0) %>% dplyr::select(gene,p)
@@ -938,7 +938,7 @@ get_misassigned_precentage<- function(comparison_name){
 
     reference_species <- y$misassignment_sample_species %>% strsplit(',') %>% extract2(1) %>% c(target_species) %>% unique()
 
-    P_condition_base <-calculate_pre_gene_error_assign_precentage(target_samples,target_species,reference_samples,reference_species,debug_output=FALSE)
+    P_condition_base <-calculate_pre_gene_error_assign_percentage(target_samples,target_species,reference_samples,reference_species,debug_output=FALSE)
   }else{
     reference_samples=NA
     P_condition_base = get("results_sargasso", envir = .GlobalEnv)  %>% mutate(p=0) %>% dplyr::select(gene,p)

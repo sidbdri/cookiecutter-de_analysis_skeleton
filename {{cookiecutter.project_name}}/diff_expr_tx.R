@@ -118,9 +118,9 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk (
                     !!str_c(comparison_name, '.pval') := pvalue,
                     !!str_c(comparison_name, '.padj') := padj)
 
-    ##work out misassigned precentage
+    ##work out misassigned percentage
     if(MISASSIGNMENT_PRECENTAGE){
-        P<-get_misassigned_precentage(comparison_name)
+        P<-get_misassigned_percentage(comparison_name)
 
         results_sargasso %<>% left_join(P$P_condition %>% dplyr::select(gene,!!str_c(comparison_name, '.perc.',COMPARISON_TABLE %>% filter(comparison==comparison_name) %>% pull(condition)) := p))
         results_sargasso %<>% left_join(P$P_condition_base %>% dplyr::select(gene,!!str_c(comparison_name, '.perc.',COMPARISON_TABLE %>% filter(comparison==comparison_name) %>% pull(condition_base)) := p))

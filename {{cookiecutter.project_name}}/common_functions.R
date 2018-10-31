@@ -699,6 +699,256 @@ get_qsva_dds <- function(dds) {
   dds
 }
 
+
+########## gene mis-assigned precentage
+calculate_cili<-function(samples,species){
+  cili <- samples %>%
+    map(read_counts, species) %>%
+    purrr::reduce(inner_join) %>%
+    inner_join(gene_lengths)
+  cili
+}
+
+calculate_R <- function(samples,species){
+  R<-samples %>%
+    map_dbl(function(sa){
+      species %>% map(~read_counts(sa, .) %>%
+        dplyr::pull(2) %>%
+        sum()) %>%
+        purrr::reduce(sum)
+    }) %>% set_names(samples)
+  R
+}
+
+fpkm_fml = function(ci,li,R){
+  10^9 * as.double(ci) / as.double(li) / as.double(R)
+}
+
+calculate_fpkm <- function(samples,cili,R){
+  samples %>%
+    map(function(sa){
+      ci = cili %>% pull(sa)
+      li = cili %>% pull(max_transcript_length)
+      cili %>% dplyr::select(gene) %>% mutate(!!sa:=fpkm_fml(ci,li,R[[sa]]))
+    }) %>% reduce(inner_join)
+}
+
+calculate_d <- function(target_species){
+  sargasso_filtering_summary<-read_overall_filtering_summary()
+
+  tmp <- sargasso_filtering_summary %>% dplyr::select(starts_with('Assigned-Reads'))
+  index <- match(str_c('Assigned-Reads-',target_species), names(tmp))
+
+  tmp  %>%
+    mutate( toTargetRatio = (rowSums(.)-.[[index]])/.[[index]] ) %>%
+    dplyr::select(toTargetRatio) %>% mutate(Sample=sargasso_filtering_summary$Sample) %>%
+    dplyr::select(Sample,toTargetRatio)
+}
+
+read_overall_filtering_summary <-function(){
+  str_c("results/sargasso/filtered_reads/overall_filtering_summary.txt") %>%
+  read_csv
+}
+
+calculate_percentage <- function(ref_fpkm,d,target_fpkm,reference_samples,target_samples){
+
+  f1 <- ref_fpkm %>% arrange(gene) %>% mutate(fpkm_1 = rowMeans(.[,reference_samples])) %>% dplyr::select(gene,fpkm_1)
+  d1 <- d %>% filter(Sample %in% target_samples) %>% (function(df) {df$toTargetRatio %>% setNames(df$Sample)})
+  f2 <- target_fpkm %>% arrange(gene)
+
+  if(!all(f1$gene == f2$gene))
+  stop('gene in reference are not the same as gene in target.')
+
+
+
+  # f2 %>% mutate_at(.vars = target_samples, .funs = funs( ./ )
+  #   inner_join(f1)
+  numerator <- (f1 %>% tibble::column_to_rownames(var = 'gene') %>% as.matrix()) %*% (d1 %>% as.matrix() %>% t())
+  denominator <- f2 %>% tibble::column_to_rownames(var = 'gene') %>% dplyr::select( names(d1)) %>% as.matrix()
+
+
+  per_sample_p<- numerator /  denominator
+  per_sample_p %>% as.data.frame() %>%
+    tibble::rownames_to_column('gene') %>%
+    mutate(p = rowMeans(.[,target_samples])) %>%
+    dplyr::select(gene,p) %>%
+    mutate(p = if_else(is.na(p), 0, p))
+
+  per_sample_p %>% as.data.frame() %>%
+    tibble::rownames_to_column('gene') %>%
+    mutate_at(.vars = target_samples, funs(replace(., is.infinite(.),NaN))) %>%
+    mutate(p = rowMeans(.[,target_samples],na.rm=TRUE))
+
+}
+
+
+calculate_pre_gene_error_assign_precentage <- function(target_samples,target_species,reference_samples,reference_species,debug_output=FALSE){
+  #30
+  # gene               J4NAC K4NAC L4NAC gene_length max_transcript_length
+  # <chr>              <int> <int> <int>       <int>                 <int>
+  # 1 ENSRNOG00000046319     0     0     0        2974                  2526
+  # 2 ENSRNOG00000047964     0     0     0        2529                  2529
+  # 3 ENSRNOG00000050370     0     0     0        2526                  2526
+  # 4 ENSRNOG00000032365     0     0     0        2529                  2529
+  # 5 ENSRNOG00000040300     0     0     0        1185                  1185
+  ref_cili<-calculate_cili(reference_samples,target_species)
+
+  # J4NAC    K4NAC    L4NAC
+  # 54881027 54609100 67372365
+  ref_R<-calculate_R(reference_samples,reference_species)
+
+  # gene               J4NAC K4NAC L4NAC
+  # <chr>              <dbl> <dbl> <dbl>
+  # 1 ENSRNOG00000046319     0     0     0
+  # 2 ENSRNOG00000047964     0     0     0
+  # 3 ENSRNOG00000050370     0     0     0
+  # 4 ENSRNOG00000032365     0     0     0
+  # 5 ENSRNOG00000040300     0     0     0
+  # 6 ENSRNOG00000058808     0     0     0
+  ref_fpkm <- reference_samples %>%
+    map(function(sa){
+      ci = ref_cili %>% pull(sa)
+      li = ref_cili %>% pull(max_transcript_length)
+      ref_cili %>% dplyr::select(gene) %>% mutate(!!sa:=fpkm_fml(ci,li,ref_R[[sa]]))
+    }) %>% reduce(inner_join)
+
+  #31
+  # gene               E2NAMCon J7NAMC K7NAMC L7NAMC gene_length max_transcript_length
+  # <chr>                 <int>  <int>  <int>  <int>       <int>                 <int>
+  # 1 ENSRNOG00000046319        0      0      0      0        2974                  2526
+  # 2 ENSRNOG00000047964        0      0      0      0        2529                  2529
+  # 3 ENSRNOG00000050370        0      0      0      0        2526                  2526
+  # 4 ENSRNOG00000032365        0      0      0      0        2529                  2529
+  # 5 ENSRNOG00000040300        0      3      0      0        1185                  1185
+  # 6 ENSRNOG00000058808        0      0      0      0         122                   122
+  target_cili <- calculate_cili(target_samples,target_species)
+
+  # E2NAMCon   J7NAMC   K7NAMC   L7NAMC
+  # 29275363  9732248  6554949  6687548
+  target_R <- calculate_R(target_samples,target_species)
+
+  # gene               E2NAMCon J7NAMC K7NAMC L7NAMC
+  # <chr>                 <dbl>  <dbl>  <dbl>  <dbl>
+  # 1 ENSRNOG00000046319    0      0      0      0
+  # 2 ENSRNOG00000047964    0      0      0      0
+  # 3 ENSRNOG00000050370    0      0      0      0
+  # 4 ENSRNOG00000032365    0      0      0      0
+  # 5 ENSRNOG00000040300    0      0.260  0      0
+  # 6 ENSRNOG00000058808    0      0      0      0
+  # 7 ENSRNOG00000061316    0.369  0.253  0.425  0.784
+  target_fpkm <- calculate_fpkm(target_samples,target_cili,target_R)
+
+  #32
+  # Sample    toTargetRatio
+  # <chr>             <dbl>
+  # 1 L9NAML500     12.7
+  # 2 J7NAMC        10.4
+  # 3 J6NAL500     252.
+  # 4 K9NAML500      1.97
+  # 5 A6AML500       2.00
+  # 6 K5NAL25     1717.
+  # 7 K6NAL500    1303.
+  # 8 B4AMCon        0.334
+  # 9 B1MGCon        0.000496
+  # 10 A4AMCon        1.98
+  # # ... with 46 more rows
+  d <- calculate_d(target_species)
+
+  #33
+  # gene                 J7NAMC      K7NAMC       E2NAMCon     L7NAMC     p
+  # 1 ENSRNOG00000000001 0.000000000 0.000000000 0.0000000000 0.00000000 0.000000000
+  # 2 ENSRNOG00000000007 0.001511795 0.004424946 0.0004049789 0.01277507 0.004779196
+  # 3 ENSRNOG00000000008 0.000000000         NaN 0.0000000000 0.00000000 0.000000000
+  # 4 ENSRNOG00000000009         NaN         NaN          NaN 0.00000000 0.000000000
+  # 5 ENSRNOG00000000010 0.010473550 0.071024857 0.0112336682 0.05028363 0.035753926
+  # 6 ENSRNOG00000000012 0.000000000         NaN 0.0000000000 0.00000000 0.000000000
+  P<-calculate_percentage(ref_fpkm,d,target_fpkm,reference_samples,target_samples)
+
+
+  if(debug_output){
+    ret <- list(
+    'P'=P,
+    'ref_fpkm'=ref_fpkm,
+    'd'=d,
+    'target_fpkm'=target_fpkm,
+    'reference_samples'=reference_samples,
+    'target_samples'=target_samples
+    )
+  }else{
+    ret <- P
+  }
+
+  ret
+}
+
+get_misassigned_precentage<- function(comparison_name){
+  x <- COMPARISON_TABLE %>% filter(comparison == comparison_name)
+
+  ret <- {}
+
+  #for condition
+  y=MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% filter(condition==x$condition)
+  if( x$condition %in% y$condition ){
+
+    target_samples<- SAMPLE_DATA %>%
+      tibble::rownames_to_column(var = "tmp_row_names") %>%
+      mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
+      filter(!!parse_expr(x$filter)) %>%
+      mutate(sample_name_tmp=tmp_row_names) %>%
+      filter(!!parse_expr(x$condition_name) == x$condition) %>%
+      tibble::column_to_rownames(var = "tmp_row_names") %>% rownames()
+
+    target_species = SPECIES
+
+    reference_samples <- SAMPLE_DATA %>%
+      tibble::rownames_to_column(var = "tmp_row_names") %>%
+      filter(!!parse_expr(y$misassignment_samples_filter)) %>%
+      pull(tmp_row_names)
+
+
+    reference_species <- y$misassignment_sample_species %>% strsplit(',') %>% extract2(1) %>% c(target_species) %>% unique()
+
+    P_condition <-calculate_pre_gene_error_assign_precentage(target_samples,target_species,reference_samples,reference_species,debug_output=FALSE)
+  }else{
+    reference_samples=NA
+    P_condition= get("results_sargasso", envir = .GlobalEnv)  %>% mutate(p=0) %>% dplyr::select(gene,p)
+  }
+  ret[['P_condition']] = P_condition
+  ret[['condition_reference_samples']] = reference_samples
+
+
+  #for condition_base
+  y=MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% filter(condition==x$condition_base)
+  if( x$condition_base %in% y$condition ){
+
+    target_samples<- SAMPLE_DATA %>%
+      tibble::rownames_to_column(var = "tmp_row_names") %>%
+      mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
+      filter(!!parse_expr(x$filter)) %>%
+      mutate(sample_name_tmp=tmp_row_names) %>%
+      filter(!!parse_expr(x$condition_name) == x$condition_base) %>%
+      tibble::column_to_rownames(var = "tmp_row_names") %>% rownames()
+
+    target_species = SPECIES
+
+    reference_samples <- SAMPLE_DATA %>%
+      tibble::rownames_to_column(var = "tmp_row_names") %>%
+      filter(!!parse_expr(y$misassignment_samples_filter)) %>%
+      pull(tmp_row_names)
+
+    reference_species <- y$misassignment_sample_species %>% strsplit(',') %>% extract2(1) %>% c(target_species) %>% unique()
+
+    P_condition_base <-calculate_pre_gene_error_assign_precentage(target_samples,target_species,reference_samples,reference_species,debug_output=FALSE)
+  }else{
+    reference_samples=NA
+    P_condition_base = get("results_sargasso", envir = .GlobalEnv)  %>% mutate(p=0) %>% dplyr::select(gene,p)
+  }
+  ret[['P_condition_base']] = P_condition_base
+  ret[['condition_base_reference_samples']] = reference_samples
+
+  ret
+}
+
 #####check plotCounts(total_dds_data,'ENSG00000223972',intgroup = PCA_FEATURE)
 # ###############################
 # #' Plot the gene fpkm graph of samples.

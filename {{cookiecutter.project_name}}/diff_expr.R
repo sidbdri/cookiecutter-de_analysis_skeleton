@@ -136,7 +136,7 @@ results %>%
     dplyr::contains("_fpkm"), 
     COMPARISON_TABLE %>% 
       pull(comparison) %>%
-      sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>%
+      sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>% unlist() %>%
       as.vector() %>% 
       unique(), 
     -dplyr::ends_with(".stat")) %>%

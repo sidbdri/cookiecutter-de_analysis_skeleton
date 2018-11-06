@@ -27,6 +27,7 @@ start_plot("pca_all_tx")
 total_vst %>% plot_pca_with_labels(intgroup=c("condition"))
 end_plot()
 
+if(exists(x = 'pathworkplot')) rm(pathworkplot)
 start_plot("pca_features_tx")
 #This is to plot individually every feature defined in the SAMPLE_DATA table
 SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>%
@@ -102,6 +103,7 @@ if (TX_LEVEL) {
 #                 dplyr::select(gene,avg_gene_tpm) %>% right_join(results)
 
 # run all get_res() functions and add to main "results" object
+if(exists(x = 'all_comparison_pvalue_distribution')) rm(all_comparison_pvalue_distribution)
 COMPARISON_TABLE %>% pull(comparison) %>% walk (
   function(comparison_name) {
     res <- get_res(comparison_name, tpms, use_tx=USE_TX, 
@@ -157,7 +159,7 @@ results %>%
     dplyr::contains("_tpm"), 
     COMPARISON_TABLE %>% 
       pull(comparison) %>%
-      sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>%
+      sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^",x,sep =''))) %>% unlist() %>%
       as.vector() %>% 
       unique(), 
     -dplyr::ends_with(".stat")) %>% 

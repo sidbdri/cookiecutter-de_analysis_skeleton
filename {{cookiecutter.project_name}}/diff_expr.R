@@ -26,6 +26,7 @@ end_plot()
 
 
 start_plot("pca_features")
+if(exists(x = 'pathworkplot')) rm(pathworkplot)
 #This is to plot individually every feature defined in the SAMPLE_DATA table
 SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>%
   walk(function(feature){
@@ -68,6 +69,7 @@ results %<>%
   left_join(gene_lengths)
 
 # run all get_res() functions and add to main "results" object
+if(exists(x = 'all_comparison_pvalue_distribution')) rm(all_comparison_pvalue_distribution)
 COMPARISON_TABLE %>% pull(comparison) %>% walk (
   function(comparison_name) {
     res <- get_res(comparison_name, fpkms, SPECIES, qSVA=qSVA)

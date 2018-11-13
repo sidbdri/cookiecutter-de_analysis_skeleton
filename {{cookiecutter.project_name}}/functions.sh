@@ -100,7 +100,7 @@ function count_reads_for_features_strand_test {
 function clean_de_results {
     DE_RESULTS_FILE=$1
 
-    sed -i "s/-Inf/'-Inf/g;s/,NA,/,,/g;s/,NA,/,,/g;s/,NA$/,/g" ${DE_RESULTS_FILE}
+    sed -i "s/-Inf/'-Inf/g;s/,NA,/,,/g;s/,NA,/,,/g;s/,NA$/,/g;s/,NaN,/,,/g;s/,NaN,/,,/g;s/,NaN$/,/g" ${DE_RESULTS_FILE}
 }
 
 function addSample2tsv {

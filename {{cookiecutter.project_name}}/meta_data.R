@@ -47,6 +47,29 @@ COMPARISON_TABLE<-tribble(
 # condition is the last item in the formula
 check_formulas()
 
+# This table specifies the samples used to estimate the misassignment
+# percentage for each condition.Leave the table blank (row=0) to skip the
+# estimation. Otherwise, two columns will be generated in the results CSV:
+#
+# <comparison_name>.percentage_misassignment_condition, and 
+# <comparison_name>.percentage_misassignment_condition_base
+#
+# The ~condition column matches the condition/condition_base column in the
+# COMPARISON_TABLE.
+# The ~misassignment_samples_filter will be used in dplyr::filter to find out
+# reference samples for the estimation.
+# ~reference_species are the species in the reference samples.
+#
+# For example,
+# "AMCon", "cells=='NA' & treatment=='Con'", "human,mouse",
+#
+# This row specifies that, for the rat sample with condition 'AMCon', we will
+# use the human/mouse samples to estimate the misassignment percentage.
+MISASSIGNMENT_SAMPLE_REFERENCE_TABLE <- tribble(
+  ~condition, ~misassignment_samples_filter, ~reference_species,
+ #"AMCon", "cells=='NA' & treatment=='Con'", "human,mouse",
+)
+
 # Set up PCA and heatmap plots
 PCA_FEATURE<-c('condition')
 HEAT_MAP_FEATURE<-c('condition','treatment')
@@ -66,3 +89,10 @@ SUMMARY_TB <- setNames(data.frame(matrix(ncol = 14, nrow = 0)),
                        "Up_regulated", 
                        "Down_regulated", 
                        "D.E.total"))
+
+# Add columns for reference samples used in calculating misassignment percentage
+# for conditions in comparisons
+if (MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% nrow() > 0) {
+  SUMMARY_TB$Misassignment_samples_in_base_level_condition <- character(0)
+  SUMMARY_TB$Misassignment_samples_in_comparison_level_condition <- character(0)
+}

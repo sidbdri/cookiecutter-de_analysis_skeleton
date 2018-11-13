@@ -12,6 +12,9 @@ qSVA <- TRUE
 qSVA <- FALSE
 {% endif %}
 
+MISASSIGNMENT_PRECENTAGE = MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% nrow() >0
+
+
 OUTPUT_DIR <- 'results/differential_expression/de_tx'
 if (!dir.exists(OUTPUT_DIR)) dir.create(OUTPUT_DIR,recursive=TRUE)
 
@@ -116,6 +119,20 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk (
                     !!str_c(comparison_name, '.stat') := stat,
                     !!str_c(comparison_name, '.pval') := pvalue,
                     !!str_c(comparison_name, '.padj') := padj)
+
+    ##work out misassigned percentage
+    if(MISASSIGNMENT_PRECENTAGE){
+        P<-get_misassigned_percentage(comparison_name)
+
+        results_sargasso %<>% left_join(P$P_condition %>% dplyr::select(gene,!!str_c(comparison_name, '.perc.',COMPARISON_TABLE %>% filter(comparison==comparison_name) %>% pull(condition)) := p))
+        results_sargasso %<>% left_join(P$P_condition_base %>% dplyr::select(gene,!!str_c(comparison_name, '.perc.',COMPARISON_TABLE %>% filter(comparison==comparison_name) %>% pull(condition_base)) := p))
+
+        SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>%
+            mutate(Misassignment_samples_in_comparison_level_condition = ifelse(Comparison == comparison_name,P$condition_reference_samples %>% str_c(collapse = ','),Misassignment_samples_in_comparison_level_condition)) %>%
+            mutate(Misassignment_samples_in_base_level_condition = ifelse(Comparison == comparison_name,P$condition_base_reference_samples %>% str_c(collapse = ','),Misassignment_samples_in_base_level_condition))
+
+        assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
+    }
 
     p_plot<-plot_pvalue_distribution(results, str_c(comparison_name,'.pval'))
 

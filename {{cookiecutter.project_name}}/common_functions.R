@@ -699,6 +699,235 @@ get_qsva_dds <- function(dds) {
   dds
 }
 
+##### Calculate per-gene FPKM misassignment percentages
+
+get_gene_counts_and_lengths <- function(samples, species, gene_lengths, sum_counts=FALSE) {
+  res <- samples %>%  
+    map(read_counts, species) %>%
+    purrr::reduce(inner_join)
+  
+  if (sum_counts) {
+    res %<>% mutate(counts = rowSums(.[,-1])) %>% dplyr::select(gene, counts)
+  }
+  
+  res %>% inner_join(gene_lengths)
+}
+
+calculate_total_reads_for_species <- function(samples, species, sum_counts=FALSE) {
+  res <- samples %>%  
+    map_dbl(function(sample) {
+      species %>% map(~read_counts(sample, .) %>%
+                        dplyr::pull(2) %>%  
+                        sum()) %>%
+        purrr::reduce(sum) 
+    })   
+  
+  if (sum_counts) {
+    res %<>% sum() %>% set_names("counts")
+  } else {
+    res %<>% set_names(samples)
+  }
+}
+
+fpkm_formula <- function(read_counts, gene_lengths, total_reads) {
+  10^9 * as.double(read_counts) / as.double(gene_lengths) / as.double(total_reads)
+}
+
+calculate_fpkm <- function(samples, gene_counts_and_lengths, total_reads){
+  samples %>%  
+    map(function(sa){
+      read_counts = gene_counts_and_lengths %>% pull(sa)
+      gene_lengths = gene_counts_and_lengths %>% pull(max_transcript_length)
+      gene_counts_and_lengths %>%
+        dplyr::select(gene) %>%
+        mutate(!!sa:=10^9 * as.double(read_counts) /
+                 as.double(gene_lengths) /
+                 as.double(total_reads[[sa]]))
+    }) %>% reduce(inner_join)
+}
+
+calculate_species_ratios <- function(target_species){
+  sargasso_filtering_summary <- read_overall_filtering_summary()
+
+  tmp <- sargasso_filtering_summary %>% dplyr::select(starts_with('Assigned-Reads'))
+  index <- match(str_c('Assigned-Reads-',target_species), names(tmp))
+
+  tmp  %>%
+    mutate( toTargetRatio = (rowSums(.)-.[[index]])/.[[index]] ) %>%
+    dplyr::select(toTargetRatio) %>%
+    mutate(Sample=sargasso_filtering_summary$Sample) %>%
+    dplyr::select(Sample, toTargetRatio)
+}
+
+read_overall_filtering_summary <-function(){
+  str_c("results/sargasso/filtered_reads/overall_filtering_summary.txt") %>%
+    read_csv
+}
+
+calculate_percentages <- function(
+  ref_fpkm, species_ratios, target_fpkm, reference_samples, target_samples){
+
+  f1 <- ref_fpkm %>%
+    arrange(gene) %>%
+    mutate(fpkm_1 = counts) %>%
+    dplyr::select(gene, fpkm_1)
+
+  d1 <- species_ratios %>%
+    filter(Sample %in% target_samples) %>%
+    (function(df) {df$toTargetRatio %>% setNames(df$Sample)})
+
+  f2 <- target_fpkm %>% arrange(gene)
+
+  if (!all(f1$gene == f2$gene)) {
+    stop('gene in reference are not the same as gene in target.')
+  }
+
+  # f2 %>% mutate_at(.vars = target_samples, .funs = funs( ./ )
+  #   inner_join(f1)
+  numerator <- (f1 %>%
+                  tibble::column_to_rownames(var = 'gene') %>%
+                  as.matrix()) %*%
+    (d1 %>% as.matrix() %>% t())
+
+  denominator <- f2 %>%
+    tibble::column_to_rownames(var = 'gene') %>%
+    dplyr::select( names(d1)) %>%
+    as.matrix()
+
+  per_sample_p <- 100 * numerator /  denominator
+
+  per_sample_p %>% as.data.frame() %>%
+    tibble::rownames_to_column('gene') %>%
+    mutate_at(.vars = target_samples, funs(replace(., is.infinite(.),NaN))) %>%
+    mutate(p = rowMeans(.[,target_samples],na.rm=TRUE))
+}
+
+calculate_per_gene_misassignment_percentages <- function(
+  target_samples, target_species, reference_samples,
+  reference_species, gene_lengths, debug_output=FALSE) {
+
+  ref_gene_counts_and_lengths <- get_gene_counts_and_lengths(
+    reference_samples, target_species, gene_lengths, sum_counts=TRUE)
+
+  ref_total_reads <- calculate_total_reads_for_species(
+    reference_samples, reference_species, sum_counts=TRUE)
+
+  ref_fpkm <- c("counts") %>%
+    calculate_fpkm(ref_gene_counts_and_lengths, ref_total_reads)
+
+  target_gene_counts_and_lengths <- get_gene_counts_and_lengths(
+    target_samples, target_species, gene_lengths, sum_counts=FALSE)
+
+  target_total_reads <- calculate_total_reads_for_species(
+    target_samples, target_species, sum_counts=FALSE)
+
+  target_fpkm <- target_samples %>%
+    calculate_fpkm(target_gene_counts_and_lengths, target_total_reads)
+
+  species_ratios <- calculate_species_ratios(target_species)
+
+  P <- calculate_percentages(ref_fpkm, species_ratios, target_fpkm,
+                             reference_samples, target_samples)
+
+  if (debug_output) {
+    P <- list(
+      'P'=P,
+      'ref_fpkm'=ref_fpkm,
+      'd'=d,
+      'target_fpkm'=target_fpkm,
+      'reference_samples'=reference_samples,
+      'target_samples'=target_samples
+    )
+  }
+
+  P
+}
+
+get_misassignment_percentages <- function(comparison_name, gene_lengths) {
+  x <- COMPARISON_TABLE %>% filter(comparison == comparison_name)
+
+  ret <- {}
+
+  #for condition
+  y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% filter(condition==x$condition)
+
+  if (x$condition %in% y$condition) {
+
+    target_samples<- SAMPLE_DATA %>%
+      tibble::rownames_to_column(var = "tmp_row_names") %>%
+      mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
+      filter(!!parse_expr(x$filter)) %>%
+      mutate(sample_name_tmp=tmp_row_names) %>%
+      filter(!!parse_expr(x$condition_name) == x$condition) %>%
+      tibble::column_to_rownames(var = "tmp_row_names") %>% rownames()
+
+    target_species = SPECIES
+
+    reference_samples <- SAMPLE_DATA %>%
+      tibble::rownames_to_column(var = "tmp_row_names") %>%
+      filter(!!parse_expr(y$misassignment_samples_filter)) %>%
+      pull(tmp_row_names)
+
+    reference_species <- y$reference_species %>%
+      strsplit(',') %>%
+      extract2(1) %>%
+      c(target_species) %>%
+      unique()
+
+    P_condition <- calculate_per_gene_misassignment_percentages(
+      target_samples, target_species, reference_samples,
+      reference_species, gene_lengths, debug_output=FALSE)
+  } else {
+    reference_samples <- NA
+    P_condition <- get("results_sargasso", envir = .GlobalEnv) %>%
+      mutate(p=0) %>%
+      dplyr::select(gene, p)
+  }
+
+  ret[['P_condition']] = P_condition
+  ret[['condition_reference_samples']] = reference_samples
+
+  #for condition_base
+  y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% filter(condition==x$condition_base)
+
+  if( x$condition_base %in% y$condition ){
+
+    target_samples<- SAMPLE_DATA %>%
+      tibble::rownames_to_column(var = "tmp_row_names") %>%
+      mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
+      filter(!!parse_expr(x$filter)) %>%
+      mutate(sample_name_tmp=tmp_row_names) %>%
+      filter(!!parse_expr(x$condition_name) == x$condition_base) %>%
+      tibble::column_to_rownames(var = "tmp_row_names") %>% rownames()
+
+    target_species = SPECIES
+
+    reference_samples <- SAMPLE_DATA %>%
+      tibble::rownames_to_column(var = "tmp_row_names") %>%
+      filter(!!parse_expr(y$misassignment_samples_filter)) %>%
+      pull(tmp_row_names)
+
+    reference_species <- y$reference_species %>%
+      strsplit(',') %>%
+      extract2(1) %>%
+      c(target_species) %>%
+      unique()
+
+    P_condition_base <- calculate_per_gene_misassignment_percentages(
+      target_samples, target_species, reference_samples,
+      reference_species, gene_lengths, debug_output=FALSE)
+  }else{
+    reference_samples <- NA
+    P_condition_base <- get("results_sargasso", envir = .GlobalEnv) %>%
+      mutate(p=0) %>%
+      dplyr::select(gene,p)
+  }
+
+  ret[['P_condition_base']] = P_condition_base
+  ret[['condition_base_reference_samples']] = reference_samples
+
+  ret
+}
 #####check plotCounts(total_dds_data,'ENSG00000223972',intgroup = PCA_FEATURE)
 # ###############################
 # #' Plot the gene fpkm graph of samples.

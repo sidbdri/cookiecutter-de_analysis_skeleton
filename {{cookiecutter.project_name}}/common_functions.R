@@ -512,6 +512,34 @@ perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix,
   )
 }
 
+##### Reactome pathway analysis
+
+perform_pathway_enrichment <- 
+  function(significant_genes, expressed_genes, file_prefix, species) {
+    
+  gene_info <- get_gene_info(species)
+  
+  universe <- expressed_genes %>% 
+    inner_join(gene_info) %>%
+    filter(!is.na(entrez_id)) %>%
+    pull("entrez_id")
+  
+  gene_list <- significant_genes %>% 
+    filter(!is.na(entrez_id)) %>%
+    pull("entrez_id")
+  
+  pathways <- enrichPathway(
+    gene=gene_list, organism=species, universe=as.character(universe), 
+    pvalueCutoff=0.1, readable=T) %>%
+    as.data.frame()
+  
+  if (pathways %>% nrow() > 0) {
+    pathways %>% 
+      dplyr::select(ID, Description, GeneRatio, BgRatio, pvalue, p.adjust, geneID) %>% 
+      write_csv(str_c("results/differential_expression/reactome/", file_prefix,"_reactome.csv"))
+  }
+}
+
 ##### Camera gene set enrichment analysis
 
 get_human_vs_species_ortholog_info <- function(species) {

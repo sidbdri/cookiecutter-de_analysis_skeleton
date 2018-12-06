@@ -294,6 +294,7 @@ multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargas
 mkdir -p ${DIFF_EXPR_DIR}/go
 mkdir -p ${DIFF_EXPR_DIR}/graphs
 mkdir -p ${DIFF_EXPR_DIR}/gsa
+mkdir -p ${DIFF_EXPR_DIR}/reactome
 
 exit;
 

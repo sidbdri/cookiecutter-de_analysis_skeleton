@@ -199,6 +199,25 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
     perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
 })
 
+##### Reactome pathway analysis
+
+COMPARISON_TABLE %>% pull(comparison) %>% walk(function(x) {
+  p_str=str_c(x, 'padj', sep = '.')
+  l2fc_str=str_c(x, 'l2fc', sep = '.')
+  
+  get("results",envir = .GlobalEnv) %>% 
+    filter(get(p_str) < 0.05) %>% 
+    perform_pathway_enrichment(expressed_genes, x, SPECIES)
+  
+  get("results",envir = .GlobalEnv) %>%
+    filter(get(p_str) < 0.05  & get(l2fc_str) > 0) %>% 
+    perform_pathway_enrichment(expressed_genes, str_c(x, 'up', sep = '.'), SPECIES)
+  
+  get("results",envir = .GlobalEnv) %>%
+    filter(get(p_str) < 0.05  & get(l2fc_str) < 0) %>% 
+    perform_pathway_enrichment(expressed_genes, str_c(x, 'down', sep = '.'), SPECIES)
+})
+
 ##### Gene set enrichment analysis
 
 gene_set_categories <- list("CURATED", "MOTIF", "GO")

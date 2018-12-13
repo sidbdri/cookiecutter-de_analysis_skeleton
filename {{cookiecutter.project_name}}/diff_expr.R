@@ -6,7 +6,7 @@ SPECIES <- "{{cookiecutter.species}}"
 qSVA <- TRUE
 {% else %}
 qSVA <- FALSE
-{% endif %}COMPARISON_TABLE %>%
+{% endif %}
 PLOT_TO_FILE <- TRUE
 
 MISASSIGNMENT_PERCENTAGE <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% nrow() > 0

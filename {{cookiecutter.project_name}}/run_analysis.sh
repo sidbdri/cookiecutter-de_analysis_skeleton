@@ -105,9 +105,10 @@ wait
 
 {% if cookiecutter.sargasso == "yes" %}
 #### Run Sargasso
-species_separator --star-executable ${STAR_EXECUTABLE} --sambamba-sort-tmp-dir=${HOME}/tmp \
-        --${STRATEGY} --num-threads-per-sample ${NUM_THREADS_PER_SAMPLE} \
-        --num-total-threads ${NUM_TOTAL_THREADS} \
+#        --num-threads-per-sample ${NUM_THREADS_PER_SAMPLE} \
+#        --num-total-threads ${NUM_TOTAL_THREADS} \
+species_separator rnaseq --mapper-index-executable ${STAR_EXECUTABLE} --sambamba-sort-tmp-dir=${HOME}/tmp \
+        --${STRATEGY} --num-threads ${NUM_TOTAL_THREADS} \
         ${SAMPLE_TSV} ${SARGASSO_RESULTS_DIR} ${SPECIES_PARA[@]}
 cd ${SARGASSO_RESULTS_DIR} && make &
 wait $(jobs -p)

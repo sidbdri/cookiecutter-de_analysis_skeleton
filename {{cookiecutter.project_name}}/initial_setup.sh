@@ -10,7 +10,7 @@ pip install scipy
 pip install multiqc
 pip install git+https://github.com/sidbdri/transcript-utils.git
 {% if cookiecutter.sargasso == "yes" %}
-pip install git+https://github.com/statbio/Sargasso.git@map_reads_parallel
+pip install git+https://github.com/statbio/Sargasso.git@dev-pre-merge
 {% endif %}
 
 DATA_DIR=data

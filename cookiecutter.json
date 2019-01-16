@@ -14,6 +14,7 @@
     "sargasso": "no",
     "strategy": "conservative",
     "star_version": "2.5.3a",
+    "bowtie2_version": "2.3.4",
     "salmon_version": "0.8.2",
     "kallisto_version": "0.43.1",
     "featurecounts_version": "1.5.2",

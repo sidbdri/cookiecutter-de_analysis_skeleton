@@ -51,6 +51,7 @@ REF_FLAT=()
 SPECIES+=({{ s }})
 ENSEMBL_DIR+=(${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}})
 STAR_INDEX+=(${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/STAR_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.star_version}})
+BOWTIE2_INDEX+=(${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/BOWTIE2_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.bowtie2_version}})
 GTF_FILE+=(${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecutter.gtf_files[s]}})
 REF_FLAT+=(${PICARD_DATA}/{{ s }}/{{cookiecutter.rff_files[s]}})
 SALMON_INDEX+=(${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/SALMON_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.salmon_version}})
@@ -59,6 +60,7 @@ SPECIES_PARA+=("{{ s }} ${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_versi
 {% endfor %}
 
 STAR_EXECUTABLE=STAR{{cookiecutter.star_version}}
+BOWTIE2_EXECUTABLE=kallisto{{cookiecutter.bowtie2_version}}
 SALMON_EXECUTABLE=salmon{{cookiecutter.salmon_version}}
 KALLISTO_EXECUTABLE=kallisto{{cookiecutter.kallisto_version}}
 

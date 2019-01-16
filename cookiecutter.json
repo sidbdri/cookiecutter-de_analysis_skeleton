@@ -1,5 +1,6 @@
 {
     "project_name": "newproject",
+    "data_type": "rnaseq",
     "rnaseq_samples_dir": "",
     "rnaseq_samples": "",
     "fastq_suffix": "fastq.gz",

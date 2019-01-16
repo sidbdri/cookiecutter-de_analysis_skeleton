@@ -30,11 +30,11 @@ REF_FLAT=${PICARD_DATA}/{{ s }}/{{cookiecutter.rff_files[s]}}
 GTF_FILE=${GENOME_DATA_DIR}/{{cookiecutter.gtf_files[s]}}
 
 mkdir -p ${ENSEMBL_DIR}
-ln -s ${GENOME_DATA_DIR}/STAR_indices/{{cookiecutter.assembly_names[s]}} ${ENSEMBL_DIR}
+ln -s ${GENOME_DATA_DIR}/STAR_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.gtf_files[s]}} ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/genes.tsv ${ENSEMBL_DIR}
-ln -s ${GENOME_DATA_DIR}/{{cookiecutter.salmon_index}} ${ENSEMBL_DIR}
-ln -s ${GENOME_DATA_DIR}/{{cookiecutter.kallisto_index}} ${ENSEMBL_DIR}
+ln -s ${GENOME_DATA_DIR}/SALMON_indices ${ENSEMBL_DIR}
+ln -s ${GENOME_DATA_DIR}/KALLISTO_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/*orthologs.tsv  ${ENSEMBL_DIR}
 
 # Generating refFlat file for Picard RNA-seq metrics

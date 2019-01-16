@@ -14,10 +14,10 @@
     "sargasso": "no",
     "strategy": "conservative",
     "star_version": "2.5.3a",
+    "salmon_version": "0.8.2",
+    "kallisto_version": "0.43.1",
     "featurecounts_version": "1.5.2",
     "picard_version": "2.17.6",
-    "salmon_index": "salmon_index",
-    "kallisto_index": "kallisto_index",
     "projects_base": "projects",
     "virtualenv_home": ".virtualenvs",
     "gtf_files": {

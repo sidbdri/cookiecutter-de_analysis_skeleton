@@ -69,14 +69,21 @@ function count_reads_for_features {
     FEATURES_GTF=$2
     BAM_FILE=$3
     COUNTS_OUTPUT_FILE=$4
+    STRANDNESS_FLAG=$5
 
     counts_tmp=.$(basename "${BAM_FILE}").counts_tmp
 
-    ${FEATURE_COUNTS} -T ${NUM_THREADS} -p -a ${FEATURES_GTF} -o ${counts_tmp} -s 2 ${BAM_FILE}
+    ${FEATURE_COUNTS} -T ${NUM_THREADS} -p -a ${FEATURES_GTF} -o ${counts_tmp} -s ${STRANDNESS_FLAG} ${BAM_FILE}
     tail -n +3 ${counts_tmp} | cut -f 1,7 > ${COUNTS_OUTPUT_FILE}
 
     rm ${counts_tmp}
     mv ${counts_tmp}.summary ${COUNTS_OUTPUT_FILE}.summary
+}
+
+function detect_stranness {
+    DIR=$1
+    STRANDNESS_FLAG="$(grep Assigned ${DIR}/*testsummary* | awk '{print $2,$1}' | sort -nr | head -1 | grep '\.[012]\.' -o | sed 's/\.//g')"
+    echo ${STRANDNESS_FLAG}
 }
 
 function count_reads_for_features_strand_test {

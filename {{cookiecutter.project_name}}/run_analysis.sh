@@ -186,11 +186,20 @@ for sample in ${SAMPLES}; do
         for species in ${!SPECIES[@]}; do
             count_reads_for_features_strand_test ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/strand_test.${sample}.${SPECIES[$species]}.counts
         done
+
+        ##detect the right setting for feature count -s flag
+        strandness_flag="$(detect_stranness ${COUNTS_DIR})"
+        case $strandness_flag in
+            "0") echo "It seems that the reads are **UNSTRANDED**, setting the featureCount -s to 0" ;;
+            "1") echo "It seems that the reads are **STRANDED**, setting the featureCount -s to 1" ;;
+            "2") echo "It seems that the reads are **REVERSELY STRANDED**, setting the featureCount -s to 2";;
+            *) echo "Unrecognized strandness. Please check the ${COUNTS_DIR}"; exit 1 ;;
+        esac
     }
 
     for species in ${!SPECIES[@]}; do
         checkBusy
-        count_reads_for_features ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/${sample}.${SPECIES[$species]}.counts &
+        count_reads_for_features ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/${sample}.${SPECIES[$species]}.counts ${strandness_flag} &
     done
 done
 wait $(jobs -p)

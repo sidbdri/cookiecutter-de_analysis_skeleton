@@ -62,6 +62,8 @@ gene_lengths <- get_gene_lengths(SPECIES)
 
 results <- total_dds_data %>% get_count_data()
 
+## Result table contains transcript id, thus now suitable to use this for function check_cell_type
+
 txi <- get_tximport(SAMPLE_DATA, QUANT_METHOD, TX_LEVEL)
 tpms <- txi$abundance %>% 
   as.data.frame() %>%

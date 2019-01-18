@@ -70,6 +70,9 @@ results %<>%
   left_join(gene_info) %>%
   left_join(gene_lengths)
 
+# We want to generate plots of the fpkm of the marker genes in the samples
+check_cell_type(results, fpkm_check_cutoff=5, print_check_log=TRUE, print_fpkm_table=FALSE)
+
 # run all get_res() functions and add to main "results" object
 if(exists(x = 'all_comparison_pvalue_distribution')) rm(all_comparison_pvalue_distribution)
 COMPARISON_TABLE %>% pull(comparison) %>% walk (

@@ -96,3 +96,20 @@ if (MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% nrow() > 0) {
   SUMMARY_TB$Misassignment_samples_in_base_level_condition <- character(0)
   SUMMARY_TB$Misassignment_samples_in_comparison_level_condition <- character(0)
 }
+
+# This table is used to perform a qc check on cell type specific genes
+# The fpkm of each gene in the table will be plotted for each sample
+# This table is currently generated manually but once we update to R 3.5
+# we will be able to use, for example, biomaRt to query orthology
+# https://support.bioconductor.org/p/46475/
+GENE_MARKERS=tribble(
+  ~human, ~mouse, ~rat, ~gene_name,~cell_type,
+  "ENSG00000066336","ENSMUSG00000002111","ENSRNOG00000012172","Sfpi1", "microglia",
+  "ENSG00000204472","ENSMUSG00000024397","ENSRNOG00000000853","Aif1", "microglia",
+  "ENSG00000100146","ENSMUSG00000033006","ENSRNOG00000011305","Sox10", "oligodendrocyte",
+  "ENSG00000197971","ENSMUSG00000041607","ENSRNOG00000016516","Mbp", "oligodendrocyte",
+  "ENSG00000102003","ENSMUSG00000031144","ENSRNOG00000059720","Syp", "neuron",
+  "ENSG00000167281","ENSMUSG00000025576","ENSRNOG00000003386","Rbfox3", "neuron",
+  "ENSG00000171885","ENSMUSG00000024411","ENSRNOG00000016043","Aqp4", "astrocyte",
+  "ENSG00000131095","ENSMUSG00000020932","ENSRNOG00000002919","Gfap", "astrocyte"
+)

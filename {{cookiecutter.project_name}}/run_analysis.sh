@@ -27,6 +27,7 @@ WIGGLETOOLS=/usr/local/bin/wiggletools
 
 TMP_DIR=${MAIN_DIR}/tmp
 RESULTS_DIR=${MAIN_DIR}/results
+LOG_DIR=${RESULTS_DIR}/logs
 
 QC_DIR=${RESULTS_DIR}/fastqc
 MAPPING_DIR=${RESULTS_DIR}/mapped_reads
@@ -55,8 +56,12 @@ BOWTIE2_INDEX+=(${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/BOW
 GTF_FILE+=(${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecutter.gtf_files[s]}})
 REF_FLAT+=(${PICARD_DATA}/{{ s }}/{{cookiecutter.rff_files[s]}})
 SALMON_INDEX+=(${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/SALMON_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.salmon_version}})
-KALLISTO_INDEX+=(${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/KALLISTO_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.kallisto}})
-SPECIES_PARA+=("{{ s }} ${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecutter.assembly_names[s]}}")
+KALLISTO_INDEX+=(${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/KALLISTO_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.kallisto_version}})
+{% if cookiecutter.data_type == "rnaseq" %}
+SPECIES_PARA+=("{{ s }} ${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/STAR_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.star_version}}")
+{% else %}
+SPECIES_PARA+=("{{ s }} ${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/BOWTIE2_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.bowtie2_version}}")
+{% endif %}
 {% endfor %}
 
 STAR_EXECUTABLE=STAR{{cookiecutter.star_version}}
@@ -83,8 +88,10 @@ addSample2tsv ${MAIN_DIR}/sample.tsv {{ cookiecutter.rnaseq_samples_dir }} \
 {% endif %}
 
 #### Create gene lengths CSV files
+echo "Running get_gene_lengths for species ...."
 for species in ${!SPECIES[@]}; do
-    get_gene_lengths <(tail -n +6 ${GTF_FILE[$species]}) > ${ENSEMBL_DIR[$species]}/gene_lengths.csv &
+    mkdir -p ${LOG_DIR}/get_gene_lengths
+    get_gene_lengths <(tail -n +6 ${GTF_FILE[$species]}) > ${ENSEMBL_DIR[$species]}/gene_lengths.csv 2>${LOG_DIR}/get_gene_lengths/${SPECIES[$species]}.log &
     # Construct transcript->gene mapping file for tximport
     awk '$3=="transcript" {print $14, $10}' ${GTF_FILE[$species]} | sed 's/"//g;s/;//g' > ${ENSEMBL_DIR[$species]}/tx2gene.tsv &
 done
@@ -103,25 +110,28 @@ wait
 #wait $(jobs -p)
 
 mkdir -p ${QC_DIR}
+echo "Running fastqc ...."
 echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_TOTAL_THREADS} -I % bash -c \
-"mkdir -p ${QC_DIR}/%; zcat ${RNASEQ_DIR}/%/*.{{cookiecutter.fastq_suffix}} | fastqc --outdir=${QC_DIR}/% stdin" &
+"mkdir -p ${LOG_DIR}/fastqc ${QC_DIR}/%; zcat ${RNASEQ_DIR}/%/*.fastq.gz | fastqc --outdir=${QC_DIR}/% stdin 2>${LOG_DIR}/fastqc/fastqc.log"  &
 wait
 
 {% if cookiecutter.sargasso == "yes" %}
 #### Run Sargasso
 #        --num-threads-per-sample ${NUM_THREADS_PER_SAMPLE} \
 #        --num-total-threads ${NUM_TOTAL_THREADS} \
-species_separator rnaseq --mapper-index-executable ${STAR_EXECUTABLE} --sambamba-sort-tmp-dir=${HOME}/tmp \
+echo "Running Sargasso ...."
+mkdir -p ${LOG_DIR}/sargasso
+species_separator rnaseq --mapper-executable ${STAR_EXECUTABLE}  --sambamba-sort-tmp-dir=${HOME}/tmp \
         --${STRATEGY} --num-threads ${NUM_TOTAL_THREADS} \
         ${SAMPLE_TSV} ${SARGASSO_RESULTS_DIR} ${SPECIES_PARA[@]}
-cd ${SARGASSO_RESULTS_DIR} && make &
+cd ${SARGASSO_RESULTS_DIR} && make >${LOG_DIR}/sargasso/sargasso.log 2>&1 &
 wait $(jobs -p)
 
 mkdir -p ${FINAL_BAM_DIR}
 for species in ${!SPECIES[@]};do
     for sample in ${SAMPLES}; do
         checkBusy
-        sambamba sort --tmpdir ${TMP_DIR} -t ${NUM_THREADS_PER_SAMPLE} -o ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${FILTERED_DIR}/${sample}_${SPECIES[$species]}_filtered.bam &
+        sambamba sort --tmpdir ${TMP_DIR} -t ${NUM_THREADS_PER_SAMPLE} -o ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${FILTERED_DIR}/${sample}___${SPECIES[$species]}___filtered.bam &
     done
 ######## NEED TEST WHICH IS BETTER IN THE NEXT PROJECT
 #    for species in ${!SPECIES[@]};do
@@ -162,12 +172,13 @@ done
 {% endif %}
 
 #### Run Picard alignment metrics summary
+echo "Running Picard ...."
 for species in ${!SPECIES[@]};do
-    mkdir -p ${PICARD_DIR}/${SPECIES[$species]}
+    mkdir -p ${PICARD_DIR}/${SPECIES[$species]} ${LOG_DIR}/picard
     grep rRNA ${GTF_FILE[$species]}  | cut -s -f 1,4,5,7,9 > ${PICARD_DATA}/${SPECIES[$species]}/intervalListBody.txt
     for sample in ${SAMPLES}; do
         checkBusy
-        picard_rnaseq_metrics ${sample} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${PICARD_DIR}/${SPECIES[$species]} ${REF_FLAT[$species]} ${PICARD_DATA}/${SPECIES[$species]} &
+        picard_rnaseq_metrics ${sample} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${PICARD_DIR}/${SPECIES[$species]} ${REF_FLAT[$species]} ${PICARD_DATA}/${SPECIES[$species]} > ${LOG_DIR}/picard/${SPECIES[$species]}.log 2>&1 &
     done
 ######## NEED TEST WHICH IS BETTER IN THE NEXT PROJECT
 #    echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_TOTAL_THREADS} -I % bash -c \
@@ -176,7 +187,8 @@ done
 wait
 
 ##### Count reads
-mkdir -p ${COUNTS_DIR}
+echo "Running featureCount ...."
+mkdir -p ${COUNTS_DIR} ${LOG_DIR}/featureCount
 
 first_sample="TRUE"
 
@@ -184,8 +196,9 @@ for sample in ${SAMPLES}; do
     [[ "${first_sample}" == "FALSE" ]] || {
         first_sample="FALSE"
         for species in ${!SPECIES[@]}; do
-            count_reads_for_features_strand_test ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/strand_test.${sample}.${SPECIES[$species]}.counts
+            count_reads_for_features_strand_test ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/strand_test.${sample}.${SPECIES[$species]}.counts >${LOG_DIR}/featureCount/test.${SPECIES[$species]}.log 2>&1 &
         done
+        wait
 
         ##detect the right setting for feature count -s flag
         strandness_flag="$(detect_stranness ${COUNTS_DIR})"
@@ -199,7 +212,7 @@ for sample in ${SAMPLES}; do
 
     for species in ${!SPECIES[@]}; do
         checkBusy
-        count_reads_for_features ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/${sample}.${SPECIES[$species]}.counts ${strandness_flag} &
+        count_reads_for_features ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/${sample}.${SPECIES[$species]}.counts ${strandness_flag} >${LOG_DIR}/featureCount/test.${SPECIES[$species]}.log 2>&1 &
     done
 done
 wait $(jobs -p)

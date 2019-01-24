@@ -112,7 +112,7 @@ wait
 mkdir -p ${QC_DIR}
 echo "Running fastqc ...."
 echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_TOTAL_THREADS} -I % bash -c \
-"mkdir -p ${LOG_DIR}/fastqc ${QC_DIR}/%; zcat ${RNASEQ_DIR}/%/*.fastq.gz | fastqc --outdir=${QC_DIR}/% stdin 2>${LOG_DIR}/fastqc/fastqc.log"  &
+"mkdir -p ${LOG_DIR}/fastqc/% ${QC_DIR}/%; zcat ${RNASEQ_DIR}/%/*.fastq.gz | fastqc --outdir=${QC_DIR}/% stdin 2>${LOG_DIR}/fastqc/fastqc.log"  &
 wait
 
 {% if cookiecutter.sargasso == "yes" %}

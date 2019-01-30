@@ -107,7 +107,7 @@ get_deseq2_results_name <- function(dds, name, alpha=0.05) {
 
 # get differential expression results for a given comparison name
 get_res <- function(comparison_name, tpms, species, qSVA=FALSE, 
-                    use_tx=FALSE, quant_method='salmon', tx_level=FALSE) {
+                    use_tx=FALSE, quant_method='salmon', tx_level=FALSE,alpha=0.05) {
   
   comparison_table <- COMPARISON_TABLE
   x=comparison_table %>% filter(comparison == comparison_name)
@@ -139,12 +139,12 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
   # res contains transcripts, rather than genes
   if(use_tx & tx_level){
     res <- dds %>%
-      get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
+      get_deseq2_results(x$condition_name, x$condition, x$condition_base,alpha=alpha) %>%
       left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition)))) %>%
       dplyr::rename(transcript=gene)
   }else{
     res <- dds %>%
-      get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
+      get_deseq2_results(x$condition_name, x$condition, x$condition_base,alpha=alpha) %>%
       left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
   }
   
@@ -971,7 +971,7 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
 #'                for exmaple: 101_WT_Hip_Ctrl_fpkm. This will be split into columns listed in feature_group,
 #'                which in this case can be c('sample_id','condition','region','treatment'),
 #' @param filter_string A string. This will be applied when selecting the samples from the result table.
-#'                Example: filter="condition=='5xFAD'". If left NULL, all samples will be used.
+#'                Example: filter="condition=='5xFAD'" or filter="str_detect(sample_meta, 'SC[0-9]')". If left NULL, all samples will be used.
 #' @param plot_feature A string vector, indicating the usage of aes on the features in feature_group.
 #'                The length of the vector should be the same as the feature_group.
 #' @param plot_label A string from feature_group. Which feature to be use as label of the points in the plot.
@@ -1003,7 +1003,7 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
 #'   p=''
 #' }
 plotGeneCount <- function(gene_identifier,result_table=NULL,debug=FALSE,print_graph=FALSE,
-                          feature_group=c(), filter_string='', plot_feature=c(),plot_label="",plot_x=""){
+                          feature_group=c(), filter_string='', plot_feature=c( ),plot_label="",plot_x=""){
 # devtools::install_github("thomasp85/patchwork",force = TRUE)
 # devtools::install_github("slowkow/ggrepel")
   require(patchwork)
@@ -1016,7 +1016,7 @@ plotGeneCount <- function(gene_identifier,result_table=NULL,debug=FALSE,print_gr
     result_table<-read.csv(result_table)
   }
 
-  fpkm_debug <- result_table %>% dplyr::select(gene, gene_name, chromosome, entrez_id, gene_type,
+  fpkm_debug <- result_table %>% dplyr::select(gene, gene_name, chromosome, entrez_id,
   dplyr::ends_with("_fpkm"),-dplyr::ends_with("avg_fpkm"),
   -dplyr::ends_with(".stat")) %>%
     dplyr::filter(gene_name==gene_identifier | gene==gene_identifier | entrez_id==gene_identifier )
@@ -1024,13 +1024,14 @@ plotGeneCount <- function(gene_identifier,result_table=NULL,debug=FALSE,print_gr
   gene_name=fpkm_debug$gene_name %>% as.vector()
 
   fpkm_debug_long <- fpkm_debug  %>% as_tibble() %>%
-    melt(id.var=c("gene","gene_name","chromosome","entrez_id","gene_type"),
+    melt(id.var=c("gene","gene_name","chromosome","entrez_id"),
     variable.name='sample_meta',value.name='fpkm')
 
   if(feature_group %>% length() == 0){
     ## No feature group provided, we are going to plot the fpkm using the sample name and color.
     plot_x='sample_meta'
     plot_label='sample_meta'
+    if(filter_string!='') fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
     p <- fpkm_debug_long %>% ggplot( mapping=aes_string(y="fpkm",x=plot_x)) + aes_string(color=plot_x)+ geom_point(size=3) +
       geom_text_repel(aes(label=!!parse_expr(plot_label)),nudge_x=-0.35,direction="y",hjust= 0.5,segment.size= 0.1,size=3) +
       ggtitle(gene_identifier %>% str_c(gene_name,sep=':')) + theme(legend.position='none') +
@@ -1043,7 +1044,7 @@ plotGeneCount <- function(gene_identifier,result_table=NULL,debug=FALSE,print_gr
       dplyr::select(-tmp)
 
     ## We want to plot only these samples
-    if(filter_string!='') fpkm_debug_long %>% filter(!!parse_expr(filter))
+    if(filter_string!='') fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
 
     p <- fpkm_debug_long %>% ggplot( mapping=aes_string(y="fpkm",x=plot_x))
 

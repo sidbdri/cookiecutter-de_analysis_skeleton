@@ -71,8 +71,11 @@ KALLISTO_EXECUTABLE=kallisto{{cookiecutter.kallisto_version}}
 
 NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}
 NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
+NUM_PARALLEL_JOBS=$(awk '{print int($1/$2)}' <<< "${NUM_TOTAL_THREADS} ${NUM_THREADS_PER_SAMPLE}")
 THREAD_USING=0
 MEM_USING=0
+
+
 
 qSVA="{{cookiecutter.qSVA}}"
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
@@ -121,7 +124,7 @@ wait
 #        --num-total-threads ${NUM_TOTAL_THREADS} \
 echo "Running Sargasso ...."
 mkdir -p ${LOG_DIR}/sargasso
-species_separator rnaseq --mapper-executable ${STAR_EXECUTABLE}  --sambamba-sort-tmp-dir=${HOME}/tmp \
+species_separator rnaseq --mapper-executable ${STAR_EXECUTABLE}  --sambamba-sort-tmp-dir=${TMP_DIR} \
         --${STRATEGY} --num-threads ${NUM_TOTAL_THREADS} \
         ${SAMPLE_TSV} ${SARGASSO_RESULTS_DIR} ${SPECIES_PARA[@]}
 cd ${SARGASSO_RESULTS_DIR} && make >${LOG_DIR}/sargasso/sargasso.log 2>&1 &
@@ -135,34 +138,29 @@ for species in ${!SPECIES[@]};do
     done
 ######## NEED TEST WHICH IS BETTER IN THE NEXT PROJECT
 #    for species in ${!SPECIES[@]};do
-#        echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P $(awk '{print int($1/$2)}' <<< "${NUM_TOTAL_THREADS} ${NUM_THREADS_PER_SAMPLE}") -I % bash -c \
+#        echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c \
 #        "sambamba sort -t ${NUM_THREADS_PER_SAMPLE} -o ${FINAL_BAM_DIR}/%.${SPECIES[$species]}.bam ${FILTERED_DIR}/%.${SPECIES[$species]}_filtered.bam"
 #    done
 done
 wait
 {% else %}
-##### Map reads
+##### Map reads for single species
 mkdir -p ${MAPPING_DIR}
 mkdir -p ${FINAL_BAM_DIR}
 
-for sample in ${SAMPLES}; do
-    checkBusy
-    {% if cookiecutter.paired_end_read == "yes" %}
-    map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS_PER_SAMPLE} $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) $(listFiles , ${RNASEQ_DIR}/${sample}/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) ${MAPPING_DIR} &
-    {% else %}
-    map_reads ${sample} ${STAR_INDEX} ${NUM_THREADS_PER_SAMPLE} $(listFiles , ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}}) "" ${MAPPING_DIR} &
-    {% endif %}
-done
-wait
-
-######## NEED TEST WHICH IS BETTER IN THE NEXT PROJECT
-#{% if cookiecutter.sargasso == "yes" %}
-#echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P $(awk '{print int($1/$2)}' <<< "${NUM_TOTAL_THREADS} ${NUM_THREADS_PER_SAMPLE}") -I % bash -c \
-#"map_reads % ${STAR_INDEX} ${NUM_THREADS_PER_SAMPLE} $(listFiles , ${RNASEQ_DIR}/%/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) $(listFiles , ${RNASEQ_DIR}/%/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) ${MAPPING_DIR}"
-#{% else %}
-#echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P $(awk '{print int($1/$2)}' <<< "${NUM_TOTAL_THREADS} ${NUM_THREADS_PER_SAMPLE}") -I % bash -c \
-#"map_reads % ${STAR_INDEX} ${NUM_THREADS_PER_SAMPLE} $(listFiles , ${RNASEQ_DIR}/%/*.{{cookiecutter.fastq_suffix}}) "" ${MAPPING_DIR}"
-#{% endif %}
+{% if cookiecutter.paired_end_read == "yes" %}
+echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c \
+    "map_reads % ${STAR_INDEX} ${THREADS_PRE_SAMPLE} \
+    \$(listFiles , ${RNASEQ_DIR}/%/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) \
+    \$(listFiles , ${RNASEQ_DIR}/%/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) \
+    ${MAPPING_DIR} > ${LOG_DIR}/star/%.log 2>&1 "
+{% else %}
+echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c \
+    "map_reads % ${STAR_INDEX} ${THREADS_PRE_SAMPLE} \
+    \$(listFiles , ${RNASEQ_DIR}/%/*.{{cookiecutter.fastq_suffix}}) \
+    "" \
+    ${MAPPING_DIR} > ${LOG_DIR}/star/%.log 2>&1 "
+{% endif %}
 
 for species in ${!SPECIES[@]};do
     for sample in ${SAMPLES}; do

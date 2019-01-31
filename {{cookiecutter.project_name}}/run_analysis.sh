@@ -15,7 +15,10 @@ set -o nounset
 set -o errexit
 set -o xtrace
 
+#we want to export all function to be used by xargs sub-shell
+set -a
 source functions.sh
+set +a
 
 MAIN_DIR=${HOME}/{{cookiecutter.projects_base}}/{{cookiecutter.project_name}}
 DATA_DIR=${MAIN_DIR}/data
@@ -188,32 +191,59 @@ wait
 echo "Running featureCount ...."
 mkdir -p ${COUNTS_DIR} ${LOG_DIR}/featureCount
 
-first_sample="TRUE"
+# run the test
+for species in ${!SPECIES[@]}; do
+    echo "count_reads_for_features_strand_test ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} \
+    ${FINAL_BAM_DIR}/${SAMPLES%% *}.${SPECIES[$species]}.bam \
+    ${COUNTS_DIR}/strand_test.${SAMPLES%% *}.${SPECIES[$species]}.counts >${LOG_DIR}/featureCount/test.${SPECIES[$species]}.log 2>&1 "
+done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 
-for sample in ${SAMPLES}; do
-    [[ "${first_sample}" == "FALSE" ]] || {
-        first_sample="FALSE"
-        for species in ${!SPECIES[@]}; do
-            count_reads_for_features_strand_test ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/strand_test.${sample}.${SPECIES[$species]}.counts >${LOG_DIR}/featureCount/test.${SPECIES[$species]}.log 2>&1 &
-        done
-        wait
+##detect the right setting for feature count -s flag
+strandness_flag="$(detect_stranness ${COUNTS_DIR})"
+case $strandness_flag in
+    "0") echo "It seems that the reads are **UNSTRANDED**, setting the featureCount -s to 0" ;;
+    "1") echo "It seems that the reads are **STRANDED**, setting the featureCount -s to 1" ;;
+    "2") echo "It seems that the reads are **REVERSELY STRANDED**, setting the featureCount -s to 2";;
+    *) echo "Unrecognized strandness. Please check the ${COUNTS_DIR}"; exit 1 ;;
+esac
 
-        ##detect the right setting for feature count -s flag
-        strandness_flag="$(detect_stranness ${COUNTS_DIR})"
-        case $strandness_flag in
-            "0") echo "It seems that the reads are **UNSTRANDED**, setting the featureCount -s to 0" ;;
-            "1") echo "It seems that the reads are **STRANDED**, setting the featureCount -s to 1" ;;
-            "2") echo "It seems that the reads are **REVERSELY STRANDED**, setting the featureCount -s to 2";;
-            *) echo "Unrecognized strandness. Please check the ${COUNTS_DIR}"; exit 1 ;;
-        esac
-    }
-
-    for species in ${!SPECIES[@]}; do
-        checkBusy
-        count_reads_for_features ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/${sample}.${SPECIES[$species]}.counts ${strandness_flag} >${LOG_DIR}/featureCount/test.${SPECIES[$species]}.log 2>&1 &
+# run the test
+for species in ${!SPECIES[@]}; do
+    for sample in ${SAMPLES}; do
+        echo "count_reads_for_features ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} \
+        ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/${sample}.${SPECIES[$species]}.counts \
+        ${strandness_flag} >${LOG_DIR}/featureCount/test.${SPECIES[$species]}.log 2>&1"
     done
-done
-wait $(jobs -p)
+done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
+
+# @todo This is the old code, commented out, and can be remove after testing the above code in the next project
+###############
+#first_sample="TRUE"
+#
+#for sample in ${SAMPLES}; do
+#    [[ "${first_sample}" == "FALSE" ]] || {
+#        first_sample="FALSE"
+#        for species in ${!SPECIES[@]}; do
+#            count_reads_for_features_strand_test ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/strand_test.${sample}.${SPECIES[$species]}.counts >${LOG_DIR}/featureCount/test.${SPECIES[$species]}.log 2>&1 &
+#        done
+#        wait
+#
+#        ##detect the right setting for feature count -s flag
+#        strandness_flag="$(detect_stranness ${COUNTS_DIR})"
+#        case $strandness_flag in
+#            "0") echo "It seems that the reads are **UNSTRANDED**, setting the featureCount -s to 0" ;;
+#            "1") echo "It seems that the reads are **STRANDED**, setting the featureCount -s to 1" ;;
+#            "2") echo "It seems that the reads are **REVERSELY STRANDED**, setting the featureCount -s to 2";;
+#            *) echo "Unrecognized strandness. Please check the ${COUNTS_DIR}"; exit 1 ;;
+#        esac
+#    }
+#
+#    for species in ${!SPECIES[@]}; do
+#        checkBusy
+#        count_reads_for_features ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/${sample}.${SPECIES[$species]}.counts ${strandness_flag} >${LOG_DIR}/featureCount/test.${SPECIES[$species]}.log 2>&1 &
+#    done
+#done
+#wait $(jobs -p)
 
 {% if cookiecutter.qSVA == "yes" %}
 ##### Pre-processing for qSVA

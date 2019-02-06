@@ -80,11 +80,28 @@ function count_reads_for_features {
     mv ${counts_tmp}.summary ${COUNTS_OUTPUT_FILE}.summary
 }
 
+
 function detect_stranness {
+    ## If 1 is close to 2, then it is 0
+    ## Otherwise, it is the larger one among 1 and 2.
     DIR=$1
-    STRANDNESS_FLAG="$(grep Assigned ${DIR}/*testsummary* | awk '{print $2,$1}' | sort -nr | head -1 | grep '\.[012]\.' -o | sed 's/\.//g')"
-    echo ${STRANDNESS_FLAG}
-}
+    SAMPLE_NAME=${2:-''}
+
+    zero="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[0].testsummary* | awk '{print $2}')"
+    one="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[1].testsummary* | awk '{print $2}')"
+    two="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[2].testsummary* | awk '{print $2}')"
+#    echo -n ${SAMPLE_NAME}: ${zero} ${one} ${two} ""
+#    echo ${one} ${two} | awk '{print ($1-$2)/($1+$2)}'
+
+    echo ${one} ${two} | awk 'function abs(v) {return v < 0 ? -v : v}
+                                { d=($1-$2)/($1+$2)
+                                if( abs(d)<0.2) {print 0}
+                                else if(d>0.5) {print 1}
+                                else if(d<-0.5) {print 2}
+                                else {print -1}
+                                }'
+    }
+
 
 function count_reads_for_features_strand_test {
     NUM_THREADS=$1

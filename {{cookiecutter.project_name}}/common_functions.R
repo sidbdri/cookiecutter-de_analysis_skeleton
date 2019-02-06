@@ -36,7 +36,8 @@ read_counts <- function(sample, species) {
 }
 
 remove_gene_column <- function(count_data) {
-  row.names(count_data) <- count_data$gene
+  #Setting row names on a tibble is deprecated.
+  #row.names(count_data) <- count_data$gene
   count_data %>% dplyr::select(-gene)
 }
 
@@ -195,11 +196,11 @@ get_count_data <- function(dds, norm=T) {
     tibble::rownames_to_column(var="gene")
 }
 
-start_plot <- function(prefix) {
+start_plot <- function(prefix,width=6, height=6) {
   if (PLOT_TO_FILE) {
     prefix %>% 
       str_c(GRAPHS_DIR, ., "_", SPECIES, ".pdf") %>% 
-      pdf(width=6, height=6)
+      pdf(width=width, height=height)
   }
 }
 
@@ -1086,6 +1087,7 @@ check_cell_type <- function(result_table, fpkm_check_cutoff=5,
     for( i in genes ){
       plot_name<-str_c(cell_type,'_',i)
       l<-plotGeneCount(i, result_table=result_table, debug=FALSE, print=FALSE)
+      l$graph <- l$graph + geom_hline(yintercept=fpkm_check_cutoff, linetype="dashed", color = "black")
       assign(plot_name,l$graph)
       fpkm_info <- l$info %>% mutate(gene_marker_cell_tpye=cell_type) %>%
         rbind(fpkm_info)
@@ -1135,7 +1137,7 @@ check_cell_type <- function(result_table, fpkm_check_cutoff=5,
     ## For each sample, amount all the cell tpyes, which cell type has the most gene markers passed the cutoff?
     check_result %<>% group_by(sample,gene_marker_cell_tpye) %>%
       summarise(like=sum(is)-n()) %>%
-      summarise(is=gene_marker_cell_tpye[which.max(like)])
+      summarise(is=gene_marker_cell_tpye[which(like == max(like))] %>% paste(collapse = ' / '))
 
 
     cat("Cell type check result:\n")

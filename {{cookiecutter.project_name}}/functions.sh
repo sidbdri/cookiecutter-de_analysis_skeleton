@@ -52,16 +52,26 @@ function map_reads {
 }
 
 function picard_rnaseq_metrics {
-  SAMPLE=$1
-  INPUT_BAM=$2
-  OUTPUT_DIR=$3
-  REF_FLAT=$4
-  RIBOSOMAL_DIR=$5
+    SAMPLE=$1
+    INPUT_BAM=$2
+    OUTPUT_DIR=$3
+    REF_FLAT=$4
+    RIBOSOMAL_DIR=$5
+    STRANDNESS_FLAG=${6:-2}
 
-  sambamba view -H ${INPUT_BAM} > ${RIBOSOMAL_DIR}/${SAMPLE}_header.txt
-  cat ${RIBOSOMAL_DIR}/${SAMPLE}_header.txt ${RIBOSOMAL_DIR}/intervalListBody.txt > ${RIBOSOMAL_DIR}/${SAMPLE}.txt
+    S=''
 
-  java -jar ${PICARD} CollectRnaSeqMetrics I=${INPUT_BAM} O=${OUTPUT_DIR}/${SAMPLE}.txt REF_FLAT=${REF_FLAT} STRAND=SECOND_READ_TRANSCRIPTION_STRAND RIBOSOMAL_INTERVALS=${RIBOSOMAL_DIR}/${SAMPLE}.txt
+    case ${STRANDNESS_FLAG} in
+    "0") S=NONE ;;
+    "1") S=FIRST_READ_TRANSCRIPTION_STRAND ;;
+    "2") S=SECOND_READ_TRANSCRIPTION_STRAND ;;
+    *) echo "Unrecognized strandness: ${STRANDNESS_FLAG}. Can only be {0,1,2}"; exit 1 ;;
+    esac
+
+    sambamba view -H ${INPUT_BAM} > ${RIBOSOMAL_DIR}/${SAMPLE}_header.txt
+    cat ${RIBOSOMAL_DIR}/${SAMPLE}_header.txt ${RIBOSOMAL_DIR}/intervalListBody.txt > ${RIBOSOMAL_DIR}/${SAMPLE}.txt
+
+    java -jar ${PICARD} CollectRnaSeqMetrics I=${INPUT_BAM} O=${OUTPUT_DIR}/${SAMPLE}.txt REF_FLAT=${REF_FLAT} STRAND=${S} RIBOSOMAL_INTERVALS=${RIBOSOMAL_DIR}/${SAMPLE}.txt
 }
 
 function count_reads_for_features {
@@ -69,7 +79,8 @@ function count_reads_for_features {
     FEATURES_GTF=$2
     BAM_FILE=$3
     COUNTS_OUTPUT_FILE=$4
-    STRANDNESS_FLAG=$5
+    STRANDNESS_FLAG=${5:-2}
+
 
     counts_tmp=.$(basename "${BAM_FILE}").counts_tmp
 

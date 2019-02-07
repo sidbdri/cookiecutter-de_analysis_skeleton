@@ -103,24 +103,17 @@ for species in ${!SPECIES[@]}; do
 done
 wait
 
+####################################################################################
 #### Perform QC on raw reads
-
-#mkdir -p ${QC_DIR}
-#
-#for sample in ${SAMPLES}; do
-#    output_dir=${QC_DIR}/${sample}
-#    mkdir -p ${output_dir}
-#    checkBusy
-#    (zcat ${RNASEQ_DIR}/${sample}/*.{{cookiecutter.fastq_suffix}} | fastqc --outdir=${output_dir} stdin) &
-#done
-#wait $(jobs -p)
-
 mkdir -p ${QC_DIR}
 echo "Running fastqc ...."
 echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c \
 "mkdir -p ${LOG_DIR}/fastqc/% ${QC_DIR}/%; zcat ${RNASEQ_DIR}/%/*.fastq.gz | fastqc --outdir=${QC_DIR}/% stdin 2>${LOG_DIR}/fastqc/fastqc.log"  &
 wait
 
+
+####################################################################################
+#### MAPPING
 {% if cookiecutter.sargasso == "yes" %}
 #### Run Sargasso
 #        --num-threads-per-sample ${NUM_THREADS_PER_SAMPLE} \
@@ -170,22 +163,9 @@ for species in ${!SPECIES[@]};do
 done
 {% endif %}
 
-#### Run Picard alignment metrics summary
-echo "Running Picard ...."
-for species in ${!SPECIES[@]};do
-    mkdir -p ${PICARD_DIR}/${SPECIES[$species]} ${LOG_DIR}/picard
-    grep rRNA ${GTF_FILE[$species]}  | cut -s -f 1,4,5,7,9 > ${PICARD_DATA}/${SPECIES[$species]}/intervalListBody.txt
-    for sample in ${SAMPLES}; do
-        checkBusy
-        picard_rnaseq_metrics ${sample} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${PICARD_DIR}/${SPECIES[$species]} ${REF_FLAT[$species]} ${PICARD_DATA}/${SPECIES[$species]} > ${LOG_DIR}/picard/${SPECIES[$species]}.log 2>&1 &
-    done
-######## NEED TEST WHICH IS BETTER IN THE NEXT PROJECT
-#    echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_TOTAL_THREADS} -I % bash -c \
-#    "source functions.sh; picard_rnaseq_metrics % ${FINAL_BAM_DIR}/%.${SPECIES[$species]}.bam ${PICARD_DIR}/${SPECIES[$species]} ${REF_FLAT[$species]} ${PICARD_DATA}/${SPECIES[$species]}"
-done
-wait
 
-##### Count reads
+####################################################################################
+##### featureCount
 echo "Running featureCount ...."
 mkdir -p ${COUNTS_DIR} ${LOG_DIR}/featureCount
 
@@ -214,34 +194,24 @@ for species in ${!SPECIES[@]}; do
     done
 done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 
-# @todo This is the old code, commented out, and can be remove after testing the above code in the next project
-###############
-#first_sample="TRUE"
-#
-#for sample in ${SAMPLES}; do
-#    [[ "${first_sample}" == "FALSE" ]] || {
-#        first_sample="FALSE"
-#        for species in ${!SPECIES[@]}; do
-#            count_reads_for_features_strand_test ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/strand_test.${sample}.${SPECIES[$species]}.counts >${LOG_DIR}/featureCount/test.${SPECIES[$species]}.log 2>&1 &
-#        done
-#        wait
-#
-#        ##detect the right setting for feature count -s flag
-#        strandness_flag="$(detect_stranness ${COUNTS_DIR})"
-#        case $strandness_flag in
-#            "0") echo "It seems that the reads are **UNSTRANDED**, setting the featureCount -s to 0" ;;
-#            "1") echo "It seems that the reads are **STRANDED**, setting the featureCount -s to 1" ;;
-#            "2") echo "It seems that the reads are **REVERSELY STRANDED**, setting the featureCount -s to 2";;
-#            *) echo "Unrecognized strandness. Please check the ${COUNTS_DIR}"; exit 1 ;;
-#        esac
-#    }
-#
-#    for species in ${!SPECIES[@]}; do
-#        checkBusy
-#        count_reads_for_features ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/${sample}.${SPECIES[$species]}.counts ${strandness_flag} >${LOG_DIR}/featureCount/test.${SPECIES[$species]}.log 2>&1 &
-#    done
-#done
-#wait $(jobs -p)
+
+####################################################################################
+#### Run Picard alignment metrics summary
+echo "Running Picard ...."
+mkdir -p ${PICARD_DIR} ${LOG_DIR}/picard
+
+for species in ${!SPECIES[@]};do
+    echo "mkdir -p ${PICARD_DIR}/${SPECIES[$species]}; grep rRNA ${GTF_FILE[$species]}  | cut -s -f 1,4,5,7,9 > ${PICARD_DATA}/${SPECIES[$species]}/intervalListBody.txt"
+done |  xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
+
+
+for species in ${!SPECIES[@]};do
+    for sample in ${SAMPLES}; do
+        echo "picard_rnaseq_metrics ${sample} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${PICARD_DIR}/${SPECIES[$species]} ${REF_FLAT[$species]} ${PICARD_DATA}/${SPECIES[$species]} ${strandness_flag} > ${LOG_DIR}/picard/${SPECIES[$species]}.log 2>&1"
+    done
+done |  xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
+
+
 
 {% if cookiecutter.qSVA == "yes" %}
 ##### Pre-processing for qSVA

@@ -117,7 +117,7 @@ wait
 
 mkdir -p ${QC_DIR}
 echo "Running fastqc ...."
-echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_TOTAL_THREADS} -I % bash -c \
+echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c \
 "mkdir -p ${LOG_DIR}/fastqc/% ${QC_DIR}/%; zcat ${RNASEQ_DIR}/%/*.fastq.gz | fastqc --outdir=${QC_DIR}/% stdin 2>${LOG_DIR}/fastqc/fastqc.log"  &
 wait
 
@@ -148,9 +148,7 @@ done
 wait
 {% else %}
 ##### Map reads for single species
-mkdir -p ${MAPPING_DIR}
-mkdir -p ${FINAL_BAM_DIR}
-
+mkdir -p ${MAPPING_DIR} ${FINAL_BAM_DIR} ${LOG_DIR}/star
 {% if cookiecutter.paired_end_read == "yes" %}
 echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c \
     "map_reads % ${STAR_INDEX} ${THREADS_PRE_SAMPLE} \

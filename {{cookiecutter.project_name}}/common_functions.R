@@ -37,7 +37,7 @@ read_counts <- function(sample, species) {
 
 remove_gene_column <- function(count_data) {
   #Setting row names on a tibble is deprecated.
-  #row.names(count_data) <- count_data$gene
+  row.names(count_data) <- count_data$gene
   count_data %>% dplyr::select(-gene)
 }
 
@@ -196,7 +196,7 @@ get_count_data <- function(dds, norm=T) {
     tibble::rownames_to_column(var="gene")
 }
 
-start_plot <- function(prefix,width=6, height=6) {
+start_plot <- function(prefix,width=12, height=12) {
   if (PLOT_TO_FILE) {
     prefix %>% 
       str_c(GRAPHS_DIR, ., "_", SPECIES, ".pdf") %>% 
@@ -1137,7 +1137,8 @@ check_cell_type <- function(result_table, fpkm_check_cutoff=5,
     ## For each sample, amount all the cell tpyes, which cell type has the most gene markers passed the cutoff?
     check_result %<>% group_by(sample,gene_marker_cell_tpye) %>%
       summarise(like=sum(is)-n()) %>%
-      summarise(is=gene_marker_cell_tpye[which(like == max(like))] %>% paste(collapse = ' / '))
+      # summarise(is=gene_marker_cell_tpye[which(like == max(like) )] %>% paste(collapse = ' / '))
+      summarise(is=gene_marker_cell_tpye[which(like >=0.5  )] %>% paste(collapse = ' / '))
 
 
     cat("Cell type check result:\n")
@@ -1152,6 +1153,39 @@ check_cell_type <- function(result_table, fpkm_check_cutoff=5,
 
   if(print_fpkm_table){
     fpkm_info %>% print()
+  }
+}
+
+
+save_results_by_group <- function(results){
+  # This function will, for each group defined in the COMPARISON_TABLE,  save the comparisons into
+  # a csv file, prefix with the group name.
+  for (g in COMPARISON_TABLE %>% pull(group) %>% unique() ){
+    comparisons <- COMPARISON_TABLE %>% filter(group==g) %>% pull(comparison)
+    n_comparisons <- COMPARISON_TABLE %>% filter(group!=g) %>% pull(comparison) %>% str_c(collapse = '|')
+    # save results
+    results %>%
+      dplyr::select(
+      gene, gene_name, chromosome, description, entrez_id, gene_type,
+      gene_length, max_transcript_length,
+      everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat"), -matches(n_comparisons) ) %>%
+      write_csv(str_c(OUTPUT_DIR, "/",g,"_deseq2_results_count_", SPECIES, ".csv"))
+
+    results %>%
+      dplyr::select(
+      gene, gene_name, chromosome, description, entrez_id, gene_type,
+      gene_length, max_transcript_length,
+      dplyr::contains("_fpkm"),
+      COMPARISON_TABLE %>%
+        pull(comparison) %>%
+        sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>% unlist() %>%
+        as.vector() %>%
+        unique(),
+      -dplyr::ends_with(".stat"), -matches(n_comparisons)) %>%
+      write_csv(str_c(OUTPUT_DIR, "/",g,"_deseq2_results_fpkm_", SPECIES, ".csv"))
+
+    SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
+      write_csv(str_c(OUTPUT_DIR, "/",g,"_de_summary_", SPECIES, ".csv"))
   }
 }
 

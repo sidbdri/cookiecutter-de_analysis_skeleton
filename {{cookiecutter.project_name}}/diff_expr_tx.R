@@ -30,16 +30,20 @@ start_plot("pca_all_tx")
 total_vst %>% plot_pca_with_labels(intgroup=c("condition"))
 end_plot()
 
-if(exists(x = 'pathworkplot')) rm(pathworkplot)
+
+num_features <- SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>% length()
+pdf_scale_factor <- 6
 start_plot("pca_features_tx")
+if(exists(x = 'patchworkplot')) rm(patchworkplot)
 #This is to plot individually every feature defined in the SAMPLE_DATA table
 SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>%
-  walk(function(feature){
-    total_vst %>% plot_pca(intgroup=c(feature),FALSE) %>%
-                  add_to_patchwork(plot_var_name='pathworkplot')
+    walk(function(feature){
+        total_vst %>% plot_pca(intgroup=c(feature),FALSE) %>%
+        add_to_patchwork(plot_var_name='patchworkplot')
 })
-pathworkplot
+patchworkplot
 end_plot()
+
 
 start_plot("heatmap_all_tx")
 total_vst %>% plot_heat_map(SAMPLE_DATA %>% 

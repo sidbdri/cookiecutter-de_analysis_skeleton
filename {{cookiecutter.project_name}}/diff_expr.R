@@ -26,7 +26,8 @@ start_plot("pca_all")
 total_vst %>% plot_pca_with_labels(intgroup=PCA_FEATURE)
 end_plot()
 
-
+num_features <- SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>% length()
+pdf_scale_factor <- 6
 start_plot("pca_features")
 if(exists(x = 'patchworkplot')) rm(patchworkplot)
 #This is to plot individually every feature defined in the SAMPLE_DATA table

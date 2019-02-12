@@ -155,6 +155,8 @@ end_plot()
 # results %<>% left_join(rat_only_mapping_info, by=c("gene" = "rat_gene"))
 ###########
 
+if(COMPARISON_TABLE %>% pull(group) %>% unique()%>% length() > 1) save_results_by_group(results)
+
 # save results
 results %>% 
   dplyr::select(

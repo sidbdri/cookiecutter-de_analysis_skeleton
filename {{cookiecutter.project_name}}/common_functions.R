@@ -640,51 +640,76 @@ plot_gene_set <- function(results, gene_sets, gene_set_name, prefix) {
     barcodeplot(index=idx, quantiles = c(-1,1)*(-log10(0.05)))
 }
 
-get_gene_set_results <- function(results, gene_sets, gene_set_name, pvalue) {
-  idx <- gene_sets %>% 
-    extract2(gene_set_name) %>% 
-    match(results$entrez_id) %>% 
+get_gene_set_results_matrix <- function(results, gene_sets, gene_set_name) {
+  idx <- gene_sets %>%
+    extract2(gene_set_name) %>%
+    match(results$entrez_id) %>%
     na.omit
-  
-    results %>% magrittr::extract(idx, ) %>% arrange_(pvalue)
+
+  genes_in_set <- results %>%
+    extract(idx, ) %>%
+    dplyr::select(gene) %>%
+    group_by(gene) %>%
+    filter(row_number()==1) %>%
+    ungroup
+
+  genes_in_set[gene_set_name] = "T"
+
+  results %>%
+    dplyr::select(gene) %>%
+    left_join(genes_in_set) %>%
+    dplyr::select(-gene)
 }
+
 
 write_camera_results <- function(
   gene_set_collection_name, gene_set_collection, comparison_name, species, de_results, camera_results,
   barcodeplots=FALSE) {
-  
-  camera_results %<>% 
-    tibble::rownames_to_column(var="GeneSet") %>% 
-    filter(FDR < 0.1)
-  
+
+  camera_results %<>%
+  tibble::rownames_to_column(var="GeneSet") %>%
+  filter(FDR < 0.1)
+
   if ((camera_results %>% nrow) == 0) {
     return()
   }
-  
+
   top_dir <- str_c("results/differential_expression/gsa/",species, "/", comparison_name)
   if (!dir.exists(top_dir)) {
     dir.create(top_dir,recursive=TRUE)
   }
-  
+
   camera_results %>% write_csv(str_c(top_dir, "/", gene_set_collection_name, "_enriched_sets.csv"))
-  
+
   sub_dir <- str_c(top_dir, "/", gene_set_collection_name)
   if (!dir.exists(sub_dir)) {
     dir.create(sub_dir,recursive=TRUE)
   }
-  
-  camera_results %>% 
-    extract2("GeneSet") %>% 
+
+  camera_results %>%
+    extract2("GeneSet") %>%
     walk(function(x) {
       gene_set_results <- de_results %>% get_gene_set_results(gene_set_collection, x, str_c(comparison_name, ".pval"))
-      gene_set_results %>% write_csv(str_c(sub_dir, "/", x, ".csv"))
-      
+      # gene_set_results %>% write_csv(str_c(sub_dir, "/", x, ".csv"))
+
       if (barcodeplots) {
         start_plot(str_c(sub_dir, "/", x))
         plot_gene_set(de_results, gene_set_collection, x, comparison_name)
         end_plot()
       }
     })
+
+  # we merge all gsea results into one file
+  gene_set_names <- camera_results %>% extract2("GeneSet") %>% sort
+  gene_set_results <- gene_set_names %>%
+    map_dfc(function(x) {
+      de_results %>% get_gene_set_results_matrix(gene_set_collection, x)
+    }) %>%
+    setNames(gene_set_names)
+
+  de_results %>%
+    cbind(gene_set_results) %>%
+    write_csv(str_c(top_dir, "/", gene_set_collection_name, "_genes_in_sets.csv"))
 }
 
 ##### Quality surrogate variable analysis

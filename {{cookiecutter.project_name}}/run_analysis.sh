@@ -84,9 +84,9 @@ qSVA="{{cookiecutter.qSVA}}"
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
 PAIRED_END_READ="{{cookiecutter.paired_end_read}}"
 USE_SARGASSO="{{cookiecutter.sargasso}}"
-STRATEGY="{{cookiecutter.strategy}}"
 
 {% if cookiecutter.sargasso == "yes" %}
+STRATEGY="{{cookiecutter.strategy}}"
 #### Create Sargasso samples.tsv file
 addSample2tsv ${MAIN_DIR}/sample.tsv {{ cookiecutter.rnaseq_samples_dir }} \
 {{ cookiecutter.read1_identifier}} {{ cookiecutter.read2_identifier}} {{ cookiecutter.fastq_suffix }} \
@@ -144,13 +144,13 @@ wait
 mkdir -p ${MAPPING_DIR} ${FINAL_BAM_DIR} ${LOG_DIR}/star
 {% if cookiecutter.paired_end_read == "yes" %}
 echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c \
-    "map_reads % ${STAR_INDEX} ${THREADS_PRE_SAMPLE} \
+    "map_reads % ${STAR_INDEX} ${NUM_THREADS_PER_SAMPLE} \
     \$(listFiles , ${RNASEQ_DIR}/%/*{{cookiecutter.read1_identifier}}.{{cookiecutter.fastq_suffix}}) \
     \$(listFiles , ${RNASEQ_DIR}/%/*{{cookiecutter.read2_identifier}}.{{cookiecutter.fastq_suffix}}) \
     ${MAPPING_DIR} > ${LOG_DIR}/star/%.log 2>&1 "
 {% else %}
 echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c \
-    "map_reads % ${STAR_INDEX} ${THREADS_PRE_SAMPLE} \
+    "map_reads % ${STAR_INDEX} ${NUM_THREADS_PER_SAMPLE} \
     \$(listFiles , ${RNASEQ_DIR}/%/*.{{cookiecutter.fastq_suffix}}) \
     "" \
     ${MAPPING_DIR} > ${LOG_DIR}/star/%.log 2>&1 "

@@ -23,20 +23,20 @@ total_dds_data <- get_total_dds(SAMPLE_DATA, SPECIES, qSVA=qSVA)
 total_vst <- total_dds_data %>% varianceStabilizingTransformation
 
 start_plot("pca_all")
-total_vst %>% plot_pca_with_labels(intgroup=PCA_FEATURE)
+total_vst %>% plot_pca_with_labels(intgroup=PCA_FEATURE) %>% print()
 end_plot()
 
 num_features <- SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>% length()
 pdf_scale_factor <- 6
 start_plot("pca_features")
-if(exists(x = 'patchworkplot')) rm(patchworkplot)
+if(exists(x = 'patchworkplot',where = .GlobalEnv)) rm(patchworkplot,envir=.GlobalEnv)
 #This is to plot individually every feature defined in the SAMPLE_DATA table
 SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>%
   walk(function(feature){
     total_vst %>% plot_pca(intgroup=c(feature),FALSE) %>%
                   add_to_patchwork(plot_var_name='patchworkplot')
 })
-patchworkplot
+patchworkplot %>% print()
 end_plot()
 
 start_plot("heatmap_all")

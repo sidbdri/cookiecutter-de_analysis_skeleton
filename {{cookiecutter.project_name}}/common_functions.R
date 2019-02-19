@@ -1157,7 +1157,7 @@ check_cell_type <- function(result_table, fpkm_check_cutoff=5,
     # 9 IN_AE63_fpkm astrocyte
     ## For each sample, amount all the cell tpyes, which cell type has the most gene markers passed the cutoff?
     check_result %<>% group_by(sample,gene_marker_cell_tpye) %>%
-      summarise(like=sum(is)-n()) %>%
+      summarise(like=sum(is)/n()) %>%
       # summarise(is=gene_marker_cell_tpye[which(like == max(like) )] %>% paste(collapse = ' / '))
       summarise(is=gene_marker_cell_tpye[which(like >=0.5  )] %>% paste(collapse = ' / '))
 

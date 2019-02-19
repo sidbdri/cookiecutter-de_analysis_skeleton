@@ -228,13 +228,13 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
                   Comparison_level_condition=x$condition,
                   Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
                   Sample_names_in_comparison_level_condition=sample_data %>% tibble::rownames_to_column(var = "tmp_row_names") %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(tmp_row_names) %>% str_c(collapse = ','),
-                  p.adj.cutoff=0.05,
-                  Up_regulated= result.table %>% filter(FDR < 0.05 & IncLevelDifference < 0 ) %>% nrow(),
-                  Down_regulated=result.table %>% filter(FDR < 0.05 & IncLevelDifference > 0) %>% nrow(),
-                  D.E.total=result.table %>% filter(FDR < 0.05) %>% nrow(),
-                  Up_regulated_gene = result.table %>% filter(FDR < 0.05 & IncLevelDifference < 0)  %>% pull(gene) %>% unique() %>% length(),
-                  Down_regulated_gene = result.table %>% filter(FDR < 0.05 & IncLevelDifference > 0) %>% pull(gene) %>% unique() %>% length(),
-                  D.E.total_gene = result.table %>% filter(FDR < 0.05) %>% pull(gene) %>% unique() %>% length()
+                  p.adj.cutoff=P.ADJ.CUTOFF,
+                  Up_regulated= result.table %>% filter(FDR < P.ADJ.CUTOFF & IncLevelDifference < 0 ) %>% nrow(),
+                  Down_regulated=result.table %>% filter(FDR < P.ADJ.CUTOFF & IncLevelDifference > 0) %>% nrow(),
+                  D.E.total=result.table %>% filter(FDR < P.ADJ.CUTOFF) %>% nrow(),
+                  Up_regulated_gene = result.table %>% filter(FDR < P.ADJ.CUTOFF & IncLevelDifference < 0)  %>% pull(gene) %>% unique() %>% length(),
+                  Down_regulated_gene = result.table %>% filter(FDR < P.ADJ.CUTOFF & IncLevelDifference > 0) %>% pull(gene) %>% unique() %>% length(),
+                  D.E.total_gene = result.table %>% filter(FDR < P.ADJ.CUTOFF) %>% pull(gene) %>% unique() %>% length()
           )
         assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
 

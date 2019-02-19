@@ -211,15 +211,15 @@ if (!USE_TX | !TX_LEVEL) {
      results <- get("results", envir = .GlobalEnv)
 
      results %>%
-       filter(get(p_str) < 0.05) %>%
+       filter(get(p_str) < P.ADJ.CUTOFF) %>%
        perform_go_analyses(expressed_genes, comparison_name, SPECIES)
 
      results %>%
-      filter(get(p_str) < 0.05  & get(l2fc_str) > 0) %>%
+      filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) > 0) %>%
       perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
 
     results %>%
-      filter(get(p_str) < 0.05  & get(l2fc_str) < 0) %>%
+      filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) < 0) %>%
       perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
   })
 

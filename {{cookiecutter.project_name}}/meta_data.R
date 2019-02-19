@@ -3,6 +3,8 @@ source("common_functions.R")
 
 SPECIES="{{cookiecutter.species}}"
 
+P.ADJ.CUTOFF=0.05
+
 SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
   outer(c(rep1, rep2, etc), str_c, sep="todo") %>%
   t %>%

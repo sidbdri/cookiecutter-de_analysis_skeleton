@@ -193,15 +193,15 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
   results <- get("results",envir = .GlobalEnv)
   
   results %>% 
-    filter(get(p_str) < 0.05) %>% 
+    filter(get(p_str) < P.ADJ.CUTOFF) %>%
     perform_go_analyses(expressed_genes, comparison_name, SPECIES)
   
   results %>%
-    filter(get(p_str) < 0.05 & get(l2fc_str) > 0) %>% 
+    filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0) %>%
     perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
   
   results %>%
-    filter(get(p_str) < 0.05 & get(l2fc_str) < 0) %>% 
+    filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) < 0) %>%
     perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
 })
 
@@ -212,15 +212,15 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk(function(x) {
   l2fc_str=str_c(x, 'l2fc', sep = '.')
   
   get("results",envir = .GlobalEnv) %>% 
-    filter(get(p_str) < 0.05) %>% 
+    filter(get(p_str) < P.ADJ.CUTOFF) %>%
     perform_pathway_enrichment(expressed_genes, x, SPECIES)
   
   get("results",envir = .GlobalEnv) %>%
-    filter(get(p_str) < 0.05  & get(l2fc_str) > 0) %>% 
+    filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) > 0) %>%
     perform_pathway_enrichment(expressed_genes, str_c(x, 'up', sep = '.'), SPECIES)
   
   get("results",envir = .GlobalEnv) %>%
-    filter(get(p_str) < 0.05  & get(l2fc_str) < 0) %>% 
+    filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) < 0) %>%
     perform_pathway_enrichment(expressed_genes, str_c(x, 'down', sep = '.'), SPECIES)
 })
 

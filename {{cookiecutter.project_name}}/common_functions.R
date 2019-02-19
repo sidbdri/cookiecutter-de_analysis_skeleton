@@ -175,10 +175,10 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
             Comparison_level_condition=x$condition,
             Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
             Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name_tmp) %>% str_c(collapse = ','),
-            p.adj.cutoff=0.05,
-            Up_regulated=res %>% filter( padj < 0.05 & log2FoldChange > 0 ) %>% nrow(),
-            Down_regulated=res %>% filter( padj < 0.05 & log2FoldChange < 0 ) %>% nrow(),
-            D.E.total=res %>% filter( padj < 0.05) %>% nrow())
+            p.adj.cutoff=P.ADJ.CUTOFF,
+            Up_regulated=res %>% filter( padj < P.ADJ.CUTOFF & log2FoldChange > 0 ) %>% nrow(),
+            Down_regulated=res %>% filter( padj < P.ADJ.CUTOFF & log2FoldChange < 0 ) %>% nrow(),
+            D.E.total=res %>% filter( padj < P.ADJ.CUTOFF) %>% nrow())
   
   assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
   

@@ -3,7 +3,7 @@
 At the top-level, the main results folder should contain the following files and sub-folders:
 
 - **\*multiqc_report.html** - One or more web pages containing sequence-level and analysis pipeline quality control data.
-- **differential_expression** - Contains differential expression results at the level of gene, transcript and alternate splicing event.
+- **differential_expression** - Contains differential expression results at the level of gene, transcript and (optionally) alternate splicing event.
 - **graphs** - PCA and heatmap plots for each differential expression comparisons, plus overall PCA and heatmap plots for all samples.
 - (plus **sessionInfo.txt** - reproducibility information, for our records).
 
@@ -13,14 +13,14 @@ For each main differential expression comparison made there are two plots descri
 
 There are also PCA and heatmap plots showing all samples.
 
-(n.b. these plots are mainly used to spot gross QC problems and sample mix-ups, but frequently nothing conclusive can be drawn from them.)
+_n.b._ these plots are mainly used to spot gross QC problems and sample mix-ups, but frequently nothing conclusive can be drawn from them.
 
-### Differential gene expression
+### Differential gene expression
 
 Differential gene expression results are in the sub-folder **differential\_expression/de_gene**.
 
-- **deseq2\_results\_fpkm\*.csv** - One or more CSV files (these can be opened directly in Excel) containing results of differential gene expression analysis.
-- **de_summary.csv** - A CSV file containing a summary of the numbers of genes detected as differentially expressed (at a false discovery rate of 5%).
+- **\*deseq2\_results\_fpkm\*.csv** - One or more CSV files (these can be opened directly in Excel) containing results of differential gene expression analysis.
+- **\*de_summary\*.csv** - One or more CSV files containing summaries of the numbers of genes detected as differentially expressed (at a particular false discovery rate - unless otherwise requested, this will normally be 5%).
 
 Each of the one or more main differential gene expression results files (there may be more than one if there are results for multiple species, or a single file was too unwieldy) contains the following columns:
 
@@ -42,15 +42,18 @@ and for each differential expression comparison:
 * **\<comparison\_name\>_padj**: adjusted p-value (i.e. false discovery rate) after correcting for multiple testing.
 * **\<comparison\_name\>\_raw\_l2fc**: raw log2 fold change in gene expression between conditions, calculated directly from normalised read counts (this may be different to the fold change calculated by DESeq2, which does some further processing beyond the raw value).
 
-(In the first instance, the `l2fc` and `padj` columns are the ones to look at.)
+_n.b._:
+
+* In the first instance, the `l2fc` and `padj` columns are the ones to look at.
+* In a comparison named "B\_vs\_A", a positive log2 fold change means that gene expression is higher in the "comparison" condition B than in the "base" condition A, and vice-versa for a negative fold change. If there is any confusion about which are the "comparison" and "base" conditions (e.g. if we have named the comparison incorrectly) then consulting the appropriate entry in the **\*de_summary\*.csv** file will indicate exactly which conditions were used as comparison and base.
 
 ### Gene Ontology enrichment analysis
 
-In the sub-folder **differential_expression/go**, there are Gene Ontology (GO) enrichment analyses for each differential expression comparison (these may be in further species-specific sub-folders if data from multiple species are being sequenced). 
+In the sub-folder **differential_expression/go**, there are Gene Ontology (GO) enrichment analyses for each differential expression comparison (these may be in further species-specific sub-folders). 
 
-For each comparison we take (i) all genes called differentially expressed at false discovery rate < 0.05, (ii) just the up-regulated genes and (iii) just the down-regulated genes. Then for each of the GO categories of "biological process", "cellular compartment" and "molecular function", we use an algorithm to test whether the differentially expressed genes are enriched in genes annotated with particular GO terms, as compared to the background set of all genes expressed in this data. These results can start to give some clue as to the particular biological processes that are being affected, without having to just scan through huge lists of gene expression data.
+For each differential expression comparison we take (i) all genes called differentially expressed at false discovery rate < 0.05, (ii) just the up-regulated genes and (iii) just the down-regulated genes. Then for each of the GO categories of "biological process", "cellular compartment" and "molecular function", we use an algorithm to test whether the differentially expressed genes are enriched in genes annotated with particular GO terms, as compared to the background set of all genes expressed in this data. These results can start to give some clue as to the particular biological processes that are being affected, without having to just scan through huge lists of gene expression data.
 
-(n.b. some of these GO analysis files might not be present, if there were no, or only a few, differentially expressed genes for a particular differential expression comparison.)
+_n.b._ some of these GO analysis files might not be present, if there were no, or only a few, differentially expressed genes for a particular differential expression comparison.
 
 Each GO enrichment results CSV file contains the following columns:
 
@@ -62,15 +65,15 @@ Each GO enrichment results CSV file contains the following columns:
 * **weight_fisher**: A p-value for enrichment of this Gene Ontology term in the differentially expressed set.
 * **Genes**: The differentially expressed genes annotated with this Gene Ontology term. 
 
-Note that the p-values here are _not_ corrected for multiple testing (it's not straightforward to do this, since the statistical tests for different Gene Ontology terms are not independent). A common convention is to consider GO terms with p-value < 0.01 as potentially interesting.
+Note that the p-values here are _not_ corrected for multiple testing (it's not straightforward to do this, since the statistical tests for different Gene Ontology terms are not independent). A common convention, however, is to consider GO terms with p-value < 0.01 as potentially interesting.
 
 ### Gene set enrichment analysis
 
-While GO analyses are useful, they can suffer from our having imposed an arbitrary significance cutoff for the sets of genes considered; but sub-threshold, yet coherent, shifts in the expression of groups of genes between conditions can also be biologically meaningful. These coherent shifts in expression can be investigated using gene set enrichment analyses; results are found in the sub-folder **differential_expression/gsa** (and may be in further species-specific sub-folders if data from multiple species are being sequenced).
+While GO analyses are useful, they can suffer from our having imposed an arbitrary significance cutoff for the sets of genes considered; whereas sub-threshold, yet coherent, shifts in the expression of groups of genes between conditions can also be biologically meaningful. These coherent shifts in expression can be investigated using "gene set enrichment analysis"; results are found in the sub-folder **differential_expression/gsa** (and may be in further species-specific sub-folders).
 
-The analysis method used here is called "Camera" (Wu & Smyth, "Camera: a competitive gene set test accounting for inter-gene correlation", Nucleic Acids Research (2012), https://academic.oup.com/nar/article/40/17/e133/2411151). This implements a "competitive gene set test" - essentially for a particular set of genes of interest, it takes the expression values of all genes and tests whether the fold change between experimental conditions for the genes in the set is different (as a whole) to the genes not in the set. (It also takes into account that fold changes of different genes are not necessarily independent - e.g. in cases where a bunch of genes in a pathway are all coherently differentially regulated), so the p-value obtained should be more robust than some other competitive gene set test methods that are out there.
+The analysis method used here is called "Camera" (Wu & Smyth, ["Camera: a competitive gene set test accounting for inter-gene correlation"](https://academic.oup.com/nar/article/40/17/e133/2411151), Nucleic Acids Research (2012)). This implements a "competitive gene set test" - that is, for a particular set of genes of interest, it takes the expression values of all genes and tests whether the fold change in expression between experimental conditions for the genes in the set is different (as a whole) to the genes not in the set. (It also takes into account that fold changes of different genes are not necessarily independent - e.g. in cases where a bunch of genes in a pathway are all coherently differentially regulated, so the p-value obtained should be more robust than some other competitive gene set test methods that are out there.)
 
-The gene sets used are divided into three categories, and consist of gene sets that have been compiled by the Broad Institute:
+The gene sets we use are divided into three categories, and consist of gene sets that have been compiled by the Broad Institute:
 
 * **CURATED**: gene sets curated from various sources such as online pathway databases, the biomedical literature, and knowledge of domain experts. 
 * **MOTIF**: gene sets representing potential targets of regulation by transcription factors or microRNAs.
@@ -78,7 +81,7 @@ The gene sets used are divided into three categories, and consist of gene sets t
 
 The results for each differential expression comparison are contained in a sub-folder under the `gsa` folder. Each sub-folder contains:
 
-1) up to three CSV files, i.e. _CURATED\_enriched\_sets.csv_, _MOTIF\_enriched\_sets.csv_ and _GO\_enriched\_sets.csv_. These detail, for the particular comparison of experimental conditions, those genes sets in each category which were found by Camera to be significantly differentially expressed, as a whole, when compared to all other genes (with a False Discovery Rate cut-off of 10%). If there were no significant differentially expressed gene sets for a category, then the file for that category will be missing.
+1) up to three CSV files, i.e. _CURATED\_enriched\_sets.csv_, _MOTIF\_enriched\_sets.csv_ and _GO\_enriched\_sets.csv_. These detail, for the particular comparison of experimental conditions, those genes sets in each category which were found by Camera to be significantly differentially expressed, as a whole, when compared to all other genes (with a False Discovery Rate cut-off of **10%**). If there were no significant differentially expressed gene sets for a category, then the file for that category will be missing.
 
 The columns in these CSV files are:
 
@@ -86,13 +89,33 @@ The columns in these CSV files are:
 * **NGenes**: Number of genes in the set.
 * **Direction**: Whether expression of the genes in this set is shifted up or down in this particular comparison of experimental conditions.
 * **PValue**: Raw p-value for the significance of this shift.
-* **FDR**: p-value corrected for multiple testing (i.e. a false discovery rate). Only gene sets with FDR < 0.1 are included (hence all entries in these spreadsheets can be considered significant)s.
+* **FDR**: p-value corrected for multiple testing (i.e. a false discovery rate). Only gene sets with FDR < 0.1 are included (hence all entries in these spreadsheets can be considered significant).
 
-2) further sub-folders (i.e. "CURATED", "MOTIF", "GO") corresponding to those gene set categories for which we got significant results. These folders contain a CSV file for *each* individual significant gene set, which just contains the original differential gene expression results for the genes in this gene set, and just for the appropriate differential expression comparison.
+2) Up to three matching CSV files, i.e. _CURATED\_genes\_in\_sets.csv_, _MOTIF\_genes\_in\_sets.csv_ and _GO\_genes\_in\_sets.csv_, corresponding to those gene categories for which we got significant results. These files can be used to study the behaviour of the actual genes in those significant gene sets.
 
-n.b. for more information about the provenance of a particular gene set, see the [MSigDb](https://software.broadinstitute.org/gsea/msigdb/) database provided by the Broad Institute (free to access, but registration required I think).
+The columns in these CSV files are:
+
+**gene**: Ensembl gene ID.
+**gene_name**	: Ensemble gene name.
+**entrez\_id**: NCBI Gene ID (this is mainly for our internal use).
+**\<comparison\>.l2fc**	, **\<comparison\>.pval**, **\<comparison\>.padj**, **\<comparison\>.raw_l2fc**: Original differential gene expression results for the gene, for the appropriate differential expression comparison. 
+**\<SIGNIFICANT\_GENE\_SET\_1\>, \<SIGNIFICANT\_GENE\_SET\_2\>, etc**: These columns contain a "T" if and only if the gene in this row is contained in the particular significant gene set.
+
+Thus a good way to examine the behaviour of genes in a particular significant gene set is to order the spreadsheet first by the gene set column (e.g. \<SIGNIFICANT\_GENE\_SET\_1\>) and then by the adjusted p-value for the differential expression comparison.
+
+_n.b._ for more information about the provenance of a particular gene set, see the [MSigDb](https://software.broadinstitute.org/gsea/msigdb/) database provided by the Broad Institute (free to access, but registration required I think).
+
+### Reactome
+
+In the sub-folder **differential_expression/reactome**, there are enrichment analyses for pathways defined in the [REACTOME pathway database](https://reactome.org).
+
+These are very similar analyses to those performed for GO annotations. Again we take (i) all genes called differentially expressed at false discovery rate < 0.05, (ii) just the up-regulated genes and (iii) just the down-regulated genes. But now we test whether the differentially expressed genes are enriched in genes annotated as belonging to particular pathways defined in REACTOME.
+
+_n.b._ some REACTOME analysis files might not be present, if there were no, or only a few, differentially expressed genes for a particular differential expression comparison.
 
 ### Differential transcript expression
+
+_Differential transcript expression analysis is optional - let us know if you would like it to be performed._
 
 Differential transcript expression results are in the sub-folder **differential\_expression/de_tx**.
 
@@ -121,6 +144,8 @@ and for each differential expression comparison:
 * **\<comparison\_name\>\_raw\_l2fc**: raw log2 fold change in transcript expression between conditions, calculated directly from normalised read counts (this may be different to the fold change calculated by DESeq2, which does some further processing beyond the raw value).
 
 ### rMATS
+
+_Differential splicing analysis is optional - let us know if you would like it to be performed._
 
 [rmats](http://rnaseq-mats.sourceforge.net/) ([paper](http://www.pnas.org/content/111/51/E5593)) is a tool to detect differential alternative splicing events from RNA-Seq data. 
  
@@ -156,4 +181,3 @@ In the rMATS result folder you will also find a sub-folder for each comparison (
 * **FDR**: A false discovery rate calculated from the p-value.
 
 By default, rMATS outputs _a lot_ of data, and we have observed that it has a tendency to assign very low p-values to AS events supported by very few reads. To attempt to remove some of this noise, we filter out all events supported by an average read count (across the columns **IJC\_SAMPLE_1**, **SJC\_SAMPLE_1**, **IJC\_SAMPLE_2** and **SJC\_SAMPLE_2**) of less than 5.
- 

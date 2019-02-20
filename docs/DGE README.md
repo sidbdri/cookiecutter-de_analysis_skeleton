@@ -95,11 +95,11 @@ The columns in these CSV files are:
 
 The columns in these CSV files are:
 
-**gene**: Ensembl gene ID.
-**gene_name**	: Ensemble gene name.
-**entrez\_id**: NCBI Gene ID (this is mainly for our internal use).
-**\<comparison\>.l2fc**	, **\<comparison\>.pval**, **\<comparison\>.padj**, **\<comparison\>.raw_l2fc**: Original differential gene expression results for the gene, for the appropriate differential expression comparison. 
-**\<SIGNIFICANT\_GENE\_SET\_1\>, \<SIGNIFICANT\_GENE\_SET\_2\>, etc**: These columns contain a "T" if and only if the gene in this row is contained in the particular significant gene set.
+* **gene**: Ensembl gene ID.
+* **gene_name**	: Ensemble gene name.
+* **entrez\_id**: NCBI Gene ID (this is mainly for our internal use).
+* **\<comparison\>.l2fc**	, **\<comparison\>.pval**, **\<comparison\>.padj**, **\<comparison\>.raw_l2fc**: Original differential gene expression results for the gene, for the appropriate differential expression comparison. 
+* **\<SIGNIFICANT\_GENE\_SET\_1\>, \<SIGNIFICANT\_GENE\_SET\_2\>, etc**: These columns contain a "T" if and only if the gene in this row is contained in the particular significant gene set.
 
 Thus a good way to examine the behaviour of genes in a particular significant gene set is to order the spreadsheet first by the gene set column (e.g. \<SIGNIFICANT\_GENE\_SET\_1\>) and then by the adjusted p-value for the differential expression comparison.
 
@@ -181,3 +181,4 @@ In the rMATS result folder you will also find a sub-folder for each comparison (
 * **FDR**: A false discovery rate calculated from the p-value.
 
 By default, rMATS outputs _a lot_ of data, and we have observed that it has a tendency to assign very low p-values to AS events supported by very few reads. To attempt to remove some of this noise, we filter out all events supported by an average read count (across the columns **IJC\_SAMPLE_1**, **SJC\_SAMPLE_1**, **IJC\_SAMPLE_2** and **SJC\_SAMPLE_2**) of less than 5.
+ 

@@ -217,58 +217,83 @@ results %>%
 SUMMARY_TB %>%
   write_csv(str_c(OUTPUT_DIR, "/de_summary_", SPECIES, ".csv"))
 
-##### GO analyses
 
+#####
+## For each comparison, 
+##   for the GO/reactome analysis, we are running all/up/down regulated genes,
+##   for the GSEA, we are running three categories ("CURATED", "MOTIF", "GO")
+## Thus we need to reduce the number of comparison we analysis in parallel to ensure we are not using more cores than specified.
+## The total number of cores used after the following line will be 3 * getOption("mc.cores")
+if(parallel) adjust_parallel_cores()
+
+##### GO analyses
 expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts=TRUE) %>% 
   get_count_data()
 
-##similar parallel trick as above
-##we do not need to merge anything in GO analysis bacause results are directly written to file
 COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunction(function(comparison_name) {
+  ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
+  Sys.sleep ( match(comparison_name,COMPARISON_TABLE %>% pull(comparison)) %% (COMPARISON_TABLE %>% pull(comparison) %>% length()) * 5 )
+
   p_str <- str_c(comparison_name, '.padj')
   l2fc_str <- str_c(comparison_name, '.l2fc')
   
   results <- get("results",envir = .GlobalEnv)
-  
-  #@todo consider parallel this
-  results %>%
-    filter(get(p_str) < 0.05) %>%
-    perform_go_analyses(expressed_genes, comparison_name, SPECIES)
 
-  results %>%
-    filter(get(p_str) < 0.05 & get(l2fc_str) > 0) %>%
-    perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
-  
-  results %>%
-    filter(get(p_str) < 0.05 & get(l2fc_str) < 0) %>% 
-    perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
+  lapplyFunction(str_c((comparison_name),c('','.up','.down'),sep = ''),function(cmp...){
+    if(endsWith(cmp, '.up')){
+      ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
+      Sys.sleep(5)
+      results %>%
+        filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0) %>%
+        perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
+    }else if(endsWith(cmp, '.down')){
+      ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
+      Sys.sleep(10)
+      results %>%
+        filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) < 0) %>%
+        perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
+    }else{
+      ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
+      Sys.sleep(15)
+      results %>%
+        filter(get(p_str) < P.ADJ.CUTOFF) %>%
+        perform_go_analyses(expressed_genes, comparison_name, SPECIES)
+    }
+  },mc.cores=3)
+  'succcess'
 })
 
 ##### Reactome pathway analysis
 
-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunction(function(x) {
-  p_str=str_c(x, 'padj', sep = '.')
-  l2fc_str=str_c(x, 'l2fc', sep = '.')
+COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunction(function(comparison_name) {
+  p_str=str_c(comparison_name, 'padj', sep = '.')
+  l2fc_str=str_c(comparison_name, 'l2fc', sep = '.')
   
-  get("results",envir = .GlobalEnv) %>% 
-    filter(get(p_str) < P.ADJ.CUTOFF) %>%
-    perform_pathway_enrichment(expressed_genes, x, SPECIES)
+  lapplyFunction(str_c((comparison_name),c('','.up','.down'),sep = ''),function(cmp,...){
+    if(endsWith(cmp, '.up')){
+      get("results",envir = .GlobalEnv) %>%
+        filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) > 0) %>%
+        perform_pathway_enrichment(expressed_genes, str_c(comparison_name, 'up', sep = '.'), SPECIES)
+    }else if(endsWith(cmp, '.down')){
+      get("results",envir = .GlobalEnv) %>%
+        filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) < 0) %>%
+        perform_pathway_enrichment(expressed_genes, str_c(comparison_name, 'down', sep = '.'), SPECIES)
+      
+    }else{
+      get("results",envir = .GlobalEnv) %>% 
+        filter(get(p_str) < P.ADJ.CUTOFF) %>%
+        perform_pathway_enrichment(expressed_genes, comparison_name, SPECIES)
+    }
+  },mc.cores=3)
   
-  get("results",envir = .GlobalEnv) %>%
-    filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) > 0) %>%
-    perform_pathway_enrichment(expressed_genes, str_c(x, 'up', sep = '.'), SPECIES)
-  
-  get("results",envir = .GlobalEnv) %>%
-    filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) < 0) %>%
-    perform_pathway_enrichment(expressed_genes, str_c(x, 'down', sep = '.'), SPECIES)
+  'succcess'
 })
 
 ##### Gene set enrichment analysis
 
 gene_set_categories <- list("CURATED", "MOTIF", "GO")
 
-list_of_gene_sets <- gene_set_categories %>% 
-  map(function(category) get_gene_sets(SPECIES, category))
+list_of_gene_sets <- gene_set_categories %>% lapplyFunction(function(category) get_gene_sets(SPECIES, category))
 
 COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunction(function(comparison_name) {
   res <- str_c(comparison_name, 'res', sep = '_') %>% get(envir = .GlobalEnv)
@@ -281,7 +306,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunction(function(comparison_nam
   assign(str_c(comparison_name, 'camera_results', sep = '_'), 
          camera_results, envir = .GlobalEnv)
   
-  for (category in seq(1:length(gene_set_categories))) {
+  lapplyFunction(seq(1:length(gene_set_categories),function(category,...){
     de_res <- results %>% dplyr::select(
       gene, gene_name, entrez_id, 
       starts_with(str_c(comparison_name, ".")), 
@@ -290,7 +315,8 @@ COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunction(function(comparison_nam
       gene_set_categories[[category]], list_of_gene_sets[[category]], 
       comparison_name, SPECIES,
       de_res, camera_results[[category]])
-  }
+  },mc.cores=3)
+  'succcess'
 })
 
 # results %>% plot_gene_set(list_of_gene_sets[[3]], "GO_<go_term>", "condition.stat")

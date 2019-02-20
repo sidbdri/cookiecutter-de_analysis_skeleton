@@ -1211,14 +1211,20 @@ save_results_by_group <- function(results){
 }
 
 start_parallel <- function(cores=nrow(COMPARISON_TABLE)){
+  options("mc.cores"=cores)
   assign("parallel",TRUE,envir = .GlobalEnv)
-  options("mc.cores"=nrow(COMPARISON_TABLE))
   assign("lapplyFunction", mclapply,envir = .GlobalEnv)
 }
 stop_parallel <- function(){
+  options("mc.cores"=1L)
   assign("parallel",FALSE,envir = .GlobalEnv)
-  options("mc.cores"=2L)
   assign("lapplyFunction", lapply,envir = .GlobalEnv)
+}
+
+adjust_parallel_cores<-function(){
+  currect_cores<-getOption("mc.cores", nrow(COMPARISON_TABLE))
+  reduced_cores<-floor(currect_cores/3)
+  options("mc.cores"=reduced_cores)
 }
 
 ########

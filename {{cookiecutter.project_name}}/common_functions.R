@@ -685,7 +685,7 @@ write_camera_results <- function(
   camera_results %>%
     extract2("GeneSet") %>%
     walk(function(x) {
-      gene_set_results <- de_results %>% get_gene_set_results(gene_set_collection, x, str_c(comparison_name, ".pval"))
+      gene_set_results <- de_results %>% get_gene_set_results_matrix(gene_set_collection, x)
       # gene_set_results %>% write_csv(str_c(sub_dir, "/", x, ".csv"))
 
       if (barcodeplots) {
@@ -1208,6 +1208,17 @@ save_results_by_group <- function(results){
     SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
       write_csv(str_c(OUTPUT_DIR, "/",g,"_de_summary_", SPECIES, ".csv"))
   }
+}
+
+start_parallel <- function(cores=nrow(COMPARISON_TABLE)){
+  assign("parallel",TRUE,envir = .GlobalEnv)
+  options("mc.cores"=nrow(COMPARISON_TABLE))
+  assign("lapplyFunction", mclapply,envir = .GlobalEnv)
+}
+stop_parallel <- function(){
+  assign("parallel",FALSE,envir = .GlobalEnv)
+  options("mc.cores"=2L)
+  assign("lapplyFunction", lapply,envir = .GlobalEnv)
 }
 
 ########

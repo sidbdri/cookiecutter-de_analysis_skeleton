@@ -2,6 +2,9 @@ source("meta_data.R")
 
 SPECIES <- "{{cookiecutter.species}}"
 
+start_parallel(nrow(COMPARISON_TABLE))
+#stop_parallel()
+
 {% if cookiecutter.qSVA !="no" %}
 qSVA <- TRUE
 {% else %}
@@ -74,9 +77,10 @@ results %<>%
 # We want to generate plots of the fpkm of the marker genes in the samples
 check_cell_type(results, fpkm_check_cutoff=5, print_check_log=TRUE, print_fpkm_table=FALSE)
 
-# run all get_res() functions and add to main "results" object
-if(exists(x = 'all_comparison_pvalue_distribution')) rm(all_comparison_pvalue_distribution)
-COMPARISON_TABLE %>% pull(comparison) %>% walk (
+# run all get_res() functions in parallel
+# for debugging, it may be worth calling stop_parallel(), because the mclapply has problem printing out stdout in rstudio.
+# see http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#forking-with-mclapply
+comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunction (
   function(comparison_name) {
     res <- get_res(comparison_name, fpkms, SPECIES, qSVA=qSVA)
     
@@ -117,14 +121,46 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk (
     }    
 
     p_plot<-plot_pvalue_distribution(results, str_c(comparison_name,'.pval'))
-
+    
     add_to_patchwork(p_plot,plot_var_name='all_comparison_pvalue_distribution')
 
     assign("results", results,envir = .GlobalEnv)
     
     comparison_name %>% str_c('res', sep = '_') %>% assign(res, envir = .GlobalEnv)
+
+    ##we return the results and merge them later
+    list(comparison_name=comparison_name,
+         res=res,
+         results_tb=get("results", envir = .GlobalEnv),
+         summary_tb=get("SUMMARY_TB", envir = .GlobalEnv),
+         p_plot=p_plot)
+
   }
 )
+
+
+if(exists(x = 'all_comparison_pvalue_distribution')) rm(all_comparison_pvalue_distribution)
+lapply(comparisons_results,function(cmp){
+  ## merge the cmp result table into global results table
+  assign("results",
+         get("results", envir = .GlobalEnv) %>% left_join(cmp$results_tb %>% dplyr::select(gene,contains('.'))),
+         envir = .GlobalEnv)
+  
+  ## merge the cmp summary table into global SUMMARY_TABLE
+  assign("SUMMARY_TB",
+         get("SUMMARY_TB", envir = .GlobalEnv) %>% rbind(cmp$summary_tb),
+         envir = .GlobalEnv)
+  
+  ## merge the p value plots
+  add_to_patchwork(cmp$p_plot,plot_var_name='all_comparison_pvalue_distribution')
+  
+  ## export the res
+  cmp$comparison %>% str_c('res', sep = '_') %>% assign(cmp$res, envir = .GlobalEnv)
+
+  ##dummy return
+  1
+}) %>% invisible()  ##so lappy will not print out useless merging message
+
 
 start_plot("all_comparison_pvalue_distribution")
 all_comparison_pvalue_distribution
@@ -186,28 +222,31 @@ SUMMARY_TB %>%
 expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts=TRUE) %>% 
   get_count_data()
 
-COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
+##similar parallel trick as above
+##we do not need to merge anything in GO analysis bacause results are directly written to file
+COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunction(function(comparison_name) {
   p_str <- str_c(comparison_name, '.padj')
   l2fc_str <- str_c(comparison_name, '.l2fc')
   
   results <- get("results",envir = .GlobalEnv)
   
-  results %>% 
-    filter(get(p_str) < P.ADJ.CUTOFF) %>%
-    perform_go_analyses(expressed_genes, comparison_name, SPECIES)
-  
+  #@todo consider parallel this
   results %>%
-    filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0) %>%
+    filter(get(p_str) < 0.05) %>%
+    perform_go_analyses(expressed_genes, comparison_name, SPECIES)
+
+  results %>%
+    filter(get(p_str) < 0.05 & get(l2fc_str) > 0) %>%
     perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
   
   results %>%
-    filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) < 0) %>%
+    filter(get(p_str) < 0.05 & get(l2fc_str) < 0) %>% 
     perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
 })
 
 ##### Reactome pathway analysis
 
-COMPARISON_TABLE %>% pull(comparison) %>% walk(function(x) {
+COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunction(function(x) {
   p_str=str_c(x, 'padj', sep = '.')
   l2fc_str=str_c(x, 'l2fc', sep = '.')
   
@@ -231,7 +270,7 @@ gene_set_categories <- list("CURATED", "MOTIF", "GO")
 list_of_gene_sets <- gene_set_categories %>% 
   map(function(category) get_gene_sets(SPECIES, category))
 
-COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
+COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunction(function(comparison_name) {
   res <- str_c(comparison_name, 'res', sep = '_') %>% get(envir = .GlobalEnv)
   
   camera_results <- list_of_gene_sets %>% 

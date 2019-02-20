@@ -1183,7 +1183,7 @@ save_results_by_group <- function(results){
   # a csv file, prefix with the group name.
   for (g in COMPARISON_TABLE %>% pull(group) %>% unique() ){
     comparisons <- COMPARISON_TABLE %>% filter(group==g) %>% pull(comparison)
-    n_comparisons <- COMPARISON_TABLE %>% filter(group!=g) %>% pull(comparison) %>% str_c(collapse = '|')
+    n_comparisons <- COMPARISON_TABLE %>% filter(group!=g) %>% pull(comparison) %>% str_c("^", ., collapse = '|')
     # save results
     results %>%
       dplyr::select(

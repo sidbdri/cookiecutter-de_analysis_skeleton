@@ -677,11 +677,6 @@ write_camera_results <- function(
 
   camera_results %>% write_csv(str_c(top_dir, "/", gene_set_collection_name, "_enriched_sets.csv"))
 
-  sub_dir <- str_c(top_dir, "/", gene_set_collection_name)
-  if (!dir.exists(sub_dir)) {
-    dir.create(sub_dir,recursive=TRUE)
-  }
-
   camera_results %>%
     extract2("GeneSet") %>%
     walk(function(x) {
@@ -689,6 +684,10 @@ write_camera_results <- function(
       # gene_set_results %>% write_csv(str_c(sub_dir, "/", x, ".csv"))
 
       if (barcodeplots) {
+        sub_dir <- str_c(top_dir, "/", gene_set_collection_name)
+        if (!dir.exists(sub_dir))
+          dir.create(sub_dir,recursive=TRUE)
+
         start_plot(str_c(sub_dir, "/", x))
         plot_gene_set(de_results, gene_set_collection, x, comparison_name)
         end_plot()

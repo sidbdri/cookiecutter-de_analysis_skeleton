@@ -1212,16 +1212,22 @@ save_results_by_group <- function(results){
 
 start_parallel <- function(cores=nrow(COMPARISON_TABLE)){
   options("mc.cores"=cores)
-  assign("parallel",TRUE,envir = .GlobalEnv)
-  assign("lapplyFunction", mclapply,envir = .GlobalEnv)
+  assign("PARALLEL",TRUE,envir = .GlobalEnv)
+  assign("lapplyFunc", mclapply,envir = .GlobalEnv)
 }
 stop_parallel <- function(){
   options("mc.cores"=1L)
-  assign("parallel",FALSE,envir = .GlobalEnv)
-  assign("lapplyFunction", lapply,envir = .GlobalEnv)
+  assign("PARALLEL",FALSE,envir = .GlobalEnv)
+  assign("lapplyFunc", lapply,envir = .GlobalEnv)
 }
 
 adjust_parallel_cores<-function(){
+  #####
+  #' For each comparison,
+  #'   for the GO/reactome analysis, we are running all/up/down regulated genes,
+  ##   for the GSEA, we are running three categories ("CURATED", "MOTIF", "GO")
+  ## Thus we need to reduce the number of comparison we analysis in parallel to ensure we are not using more cores than specified.
+  ## The total number of cores used after the following line will be 3 * getOption("mc.cores")
   currect_cores<-getOption("mc.cores", nrow(COMPARISON_TABLE))
   reduced_cores<-floor(currect_cores/3)
   options("mc.cores"=reduced_cores)

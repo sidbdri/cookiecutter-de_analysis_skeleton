@@ -2,6 +2,11 @@ source("meta_data.R")
 
 SPECIES <- "{{cookiecutter.species}}"
 
+# Note that when comparisons are run in parallel in R studio, the output are slient and the Rsession is hang till all sub-proccess finishs or terminaled.
+# When running in command line, we will see the output but in a random order from each core. Thus, we might want to turn off parallel when debugging in Rstudio.
+start_parallel(nrow(COMPARISON_TABLE))
+#stop_parallel()
+
 {% if cookiecutter.qSVA !="no" %}
 qSVA <- TRUE
 {% else %}
@@ -30,7 +35,7 @@ num_features <- SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colname
 pdf_scale_factor <- 6
 start_plot("pca_features")
 if(exists(x = 'patchworkplot',where = .GlobalEnv)) rm(patchworkplot,envir=.GlobalEnv)
-#This is to plot individually every feature defined in the SAMPLE_DATA table
+# This is to plot individually every feature defined in the SAMPLE_DATA table
 SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>%
   walk(function(feature){
     total_vst %>% plot_pca(intgroup=c(feature),FALSE) %>%
@@ -74,9 +79,10 @@ results %<>%
 # We want to generate plots of the fpkm of the marker genes in the samples
 check_cell_type(results, fpkm_check_cutoff=5, print_check_log=TRUE, print_fpkm_table=FALSE)
 
-# run all get_res() functions and add to main "results" object
-if(exists(x = 'all_comparison_pvalue_distribution')) rm(all_comparison_pvalue_distribution)
-COMPARISON_TABLE %>% pull(comparison) %>% walk (
+# run all get_res() functions in parallel
+# for debugging, it may be worth calling stop_parallel(), because the mclapply has problem printing out stdout in rstudio.
+# see http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#forking-with-mclapply
+comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc (
   function(comparison_name) {
     res <- get_res(comparison_name, fpkms, SPECIES, qSVA=qSVA)
     
@@ -117,14 +123,45 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk (
     }    
 
     p_plot<-plot_pvalue_distribution(results, str_c(comparison_name,'.pval'))
-
+    
     add_to_patchwork(p_plot,plot_var_name='all_comparison_pvalue_distribution')
 
     assign("results", results,envir = .GlobalEnv)
     
     comparison_name %>% str_c('res', sep = '_') %>% assign(res, envir = .GlobalEnv)
+
+    ##we return the results and merge them later
+    list(comparison_name=comparison_name,
+         res=res,
+         results_tb=get("results", envir = .GlobalEnv),
+         summary_tb=get("SUMMARY_TB", envir = .GlobalEnv),
+         p_plot=p_plot)
+
   }
 )
+
+
+if(exists(x = 'all_comparison_pvalue_distribution')) rm(all_comparison_pvalue_distribution)
+lapply(comparisons_results,function(cmp){
+  # merge the cmp result table into global results table
+  assign("results",
+         get("results", envir = .GlobalEnv) %>% left_join(cmp$results_tb %>% dplyr::select(gene,contains('.'))),
+         envir = .GlobalEnv)
+  
+  # merge the cmp summary table into global SUMMARY_TABLE
+  assign("SUMMARY_TB",
+         get("SUMMARY_TB", envir = .GlobalEnv) %>% rbind(cmp$summary_tb),
+         envir = .GlobalEnv)
+  
+  # merge the p value plots
+  add_to_patchwork(cmp$p_plot,plot_var_name='all_comparison_pvalue_distribution')
+  
+  # export the res
+  cmp$comparison %>% str_c('res', sep = '_') %>% assign(cmp$res, envir = .GlobalEnv)
+
+  'success'
+}) %>% invisible()  ##so lappy will not print out useless merging message
+
 
 start_plot("all_comparison_pvalue_distribution")
 all_comparison_pvalue_distribution
@@ -181,57 +218,88 @@ results %>%
 SUMMARY_TB %>%
   write_csv(str_c(OUTPUT_DIR, "/de_summary_", SPECIES, ".csv"))
 
-##### GO analyses
 
+#####
+## For each comparison, 
+##   for the GO/reactome analysis, we are running all/up/down regulated genes,
+##   for the GSEA, we are running three categories ("CURATED", "MOTIF", "GO")
+## Thus we need to reduce the number of comparison we analysis in parallel to ensure we are not using more cores than specified.
+## The total number of cores used after the following line will be 3 * getOption("mc.cores")
+if(PARALLEL) adjust_parallel_cores()
+
+##### GO analyses
 expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts=TRUE) %>% 
   get_count_data()
 
-COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
+COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
+    
+  ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
+  ##We add a delay to start each core, 5 seconds apart.
+  if(PARALLEL)
+    Sys.sleep ( match(comparison_name,COMPARISON_TABLE %>% pull(comparison)) %% (COMPARISON_TABLE %>% pull(comparison) %>% length()) * 5 )
+
   p_str <- str_c(comparison_name, '.padj')
   l2fc_str <- str_c(comparison_name, '.l2fc')
   
   results <- get("results",envir = .GlobalEnv)
-  
-  results %>% 
-    filter(get(p_str) < P.ADJ.CUTOFF) %>%
-    perform_go_analyses(expressed_genes, comparison_name, SPECIES)
-  
-  results %>%
-    filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0) %>%
-    perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
-  
-  results %>%
-    filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) < 0) %>%
-    perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
+
+  lapplyFunc(str_c((comparison_name),c('','.up','.down'),sep = ''),function(cmp...){
+    if(endsWith(cmp, '.up')){
+      ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
+      if(PARALLEL) Sys.sleep(5)
+      results %>%
+        filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0) %>%
+        perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
+    }else if(endsWith(cmp, '.down')){
+      ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
+      if(PARALLEL) Sys.sleep(10)
+      results %>%
+        filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) < 0) %>%
+        perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
+    }else{
+      ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
+      if(PARALLEL) Sys.sleep(15)
+      results %>%
+        filter(get(p_str) < P.ADJ.CUTOFF) %>%
+        perform_go_analyses(expressed_genes, comparison_name, SPECIES)
+    }
+  },mc.cores=3)
+  'succcess'
 })
 
 ##### Reactome pathway analysis
 
-COMPARISON_TABLE %>% pull(comparison) %>% walk(function(x) {
-  p_str=str_c(x, 'padj', sep = '.')
-  l2fc_str=str_c(x, 'l2fc', sep = '.')
+COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
+  p_str=str_c(comparison_name, 'padj', sep = '.')
+  l2fc_str=str_c(comparison_name, 'l2fc', sep = '.')
   
-  get("results",envir = .GlobalEnv) %>% 
-    filter(get(p_str) < P.ADJ.CUTOFF) %>%
-    perform_pathway_enrichment(expressed_genes, x, SPECIES)
+  lapplyFunc(str_c((comparison_name),c('','.up','.down'),sep = ''),function(cmp,...){
+    if(endsWith(cmp, '.up')){
+      get("results",envir = .GlobalEnv) %>%
+        filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) > 0) %>%
+        perform_pathway_enrichment(expressed_genes, str_c(comparison_name, 'up', sep = '.'), SPECIES)
+    }else if(endsWith(cmp, '.down')){
+      get("results",envir = .GlobalEnv) %>%
+        filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) < 0) %>%
+        perform_pathway_enrichment(expressed_genes, str_c(comparison_name, 'down', sep = '.'), SPECIES)
+      
+    }else{
+      get("results",envir = .GlobalEnv) %>% 
+        filter(get(p_str) < P.ADJ.CUTOFF) %>%
+        perform_pathway_enrichment(expressed_genes, comparison_name, SPECIES)
+    }
+  },mc.cores=3)
   
-  get("results",envir = .GlobalEnv) %>%
-    filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) > 0) %>%
-    perform_pathway_enrichment(expressed_genes, str_c(x, 'up', sep = '.'), SPECIES)
-  
-  get("results",envir = .GlobalEnv) %>%
-    filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) < 0) %>%
-    perform_pathway_enrichment(expressed_genes, str_c(x, 'down', sep = '.'), SPECIES)
+  'succcess'
 })
 
 ##### Gene set enrichment analysis
 
 gene_set_categories <- list("CURATED", "MOTIF", "GO")
 
-list_of_gene_sets <- gene_set_categories %>% 
-  map(function(category) get_gene_sets(SPECIES, category))
+list_of_gene_sets <- gene_set_categories %>% lapplyFunc(function(category) get_gene_sets(SPECIES, category))
 
-COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
+COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
   res <- str_c(comparison_name, 'res', sep = '_') %>% get(envir = .GlobalEnv)
   
   camera_results <- list_of_gene_sets %>% 
@@ -242,7 +310,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
   assign(str_c(comparison_name, 'camera_results', sep = '_'), 
          camera_results, envir = .GlobalEnv)
   
-  for (category in seq(1:length(gene_set_categories))) {
+  lapplyFunc(seq(1:length(gene_set_categories)),function(category,...){
     de_res <- results %>% dplyr::select(
       gene, gene_name, entrez_id, 
       starts_with(str_c(comparison_name, ".")), 
@@ -251,7 +319,8 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
       gene_set_categories[[category]], list_of_gene_sets[[category]], 
       comparison_name, SPECIES,
       de_res, camera_results[[category]])
-  }
+  },mc.cores=3)
+  'succcess'
 })
 
 # results %>% plot_gene_set(list_of_gene_sets[[3]], "GO_<go_term>", "condition.stat")

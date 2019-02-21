@@ -2,6 +2,11 @@ source("meta_data.R")
 
 SPECIES <- "{{cookiecutter.species}}"
 
+#Note that when comparisons are run in parallel in R studio, the output are slient and the Rsession is hang till all sub-proccess finishs or terminaled.
+#When running in command line, we will see the output but in a random order from each core.
+start_parallel(nrow(COMPARISON_TABLE))
+#stop_parallel()
+
 TX_LEVEL <- FALSE
 QUANT_METHOD <- 'salmon'
 USE_TX <- TRUE
@@ -111,9 +116,11 @@ if (TX_LEVEL) {
 #                 mutate(avg_gene_tpm=sum/n) %>%
 #                 dplyr::select(gene,avg_gene_tpm) %>% right_join(results)
 
+
+
 # run all get_res() functions and add to main "results" object
 if(exists(x = 'all_comparison_pvalue_distribution')) rm(all_comparison_pvalue_distribution)
-COMPARISON_TABLE %>% pull(comparison) %>% walk (
+comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc (
   function(comparison_name) {
     res <- get_res(comparison_name, tpms, use_tx=USE_TX, 
                    quant_method=QUANT_METHOD, tx_level=TX_LEVEL)
@@ -147,8 +154,37 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk (
     assign("results", results, envir = .GlobalEnv)
 
     comparison_name %>% str_c('res', sep = '_') %>% assign(res, envir = .GlobalEnv)
+    
+    ##we return the results and merge them later
+    list(comparison_name=comparison_name,
+         res=res,
+         results_tb=get("results", envir = .GlobalEnv),
+         summary_tb=get("SUMMARY_TB", envir = .GlobalEnv),
+         p_plot=p_plot)
   }
 )
+
+if(exists(x = 'all_comparison_pvalue_distribution')) rm(all_comparison_pvalue_distribution)
+lapply(comparisons_results,function(cmp){
+  ## merge the cmp result table into global results table
+  assign("results",
+         get("results", envir = .GlobalEnv) %>% left_join(cmp$results_tb %>% dplyr::select(gene,contains('.'))),
+         envir = .GlobalEnv)
+  
+  ## merge the cmp summary table into global SUMMARY_TABLE
+  assign("SUMMARY_TB",
+         get("SUMMARY_TB", envir = .GlobalEnv) %>% rbind(cmp$summary_tb),
+         envir = .GlobalEnv)
+  
+  ## merge the p value plots
+  add_to_patchwork(cmp$p_plot,plot_var_name='all_comparison_pvalue_distribution')
+  
+  ## export the res
+  cmp$comparison %>% str_c('res', sep = '_') %>% assign(cmp$res, envir = .GlobalEnv)
+  
+  ##dummy return
+  1
+}) %>% invisible()  ##so lappy will not print out useless merging message
 
 start_plot("all_comparison_pvalue_distribution")
 all_comparison_pvalue_distribution
@@ -199,60 +235,82 @@ SUMMARY_TB %>%
 # kable(SUMMARY_TB, format = 'markdown')
 # sink()
 
+#####
+## For each comparison,
+##   for the GO/reactome analysis, we are running all/up/down regulated genes,
+##   for the GSEA, we are running three categories ("CURATED", "MOTIF", "GO")
+## Thus we need to reduce the number of comparison we analysis in parallel to ensure we are not using more cores than specified.
+## The total number of cores used after the following line will be 3 * getOption("mc.cores")
+if(PARALLEL) adjust_parallel_cores()
+
 ##### GO and GSA analyses
 
 if (!USE_TX | !TX_LEVEL) {
   expressed_genes <- total_dds_data %>% get_count_data()
 
-   COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
+   COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
+     ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
+    if(PARALLEL)
+        Sys.sleep ( match(comparison_name,COMPARISON_TABLE %>% pull(comparison)) %% (COMPARISON_TABLE %>% pull(comparison) %>% length()) * 5 )
+     
      p_str <- str_c(comparison_name, '.padj')
      l2fc_str <- str_c(comparison_name ,'.l2fc')
 
      results <- get("results", envir = .GlobalEnv)
 
-     results %>%
-       filter(get(p_str) < P.ADJ.CUTOFF) %>%
-       perform_go_analyses(expressed_genes, comparison_name, SPECIES)
-
-     results %>%
-      filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) > 0) %>%
-      perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
-
-    results %>%
-      filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) < 0) %>%
-      perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
-  })
+     lapplyFunc(str_c((comparison_name),c('','.up','.down'),sep = ''),function(cmp...){
+       if(endsWith(cmp, '.up')){
+         ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
+         if(PARALLEL) Sys.sleep(5)
+         results %>%
+           filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0) %>%
+           perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
+       }else if(endsWith(cmp, '.down')){
+         ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
+         if(PARALLEL) Sys.sleep(10)
+         results %>%
+           filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) < 0) %>%
+           perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
+       }else{
+         ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
+         if(PARALLEL) Sys.sleep(15)
+         results %>%
+           filter(get(p_str) < P.ADJ.CUTOFF) %>%
+           perform_go_analyses(expressed_genes, comparison_name, SPECIES)
+       }
+     },mc.cores=3)
+     'succcess'
+   })
 
   ##### Gene set enrichment analysis
 
-  gene_set_categories <- list("CURATED", "MOTIF", "GO")
-
-  list_of_gene_sets <- gene_set_categories %>%
-    map(function(category) get_gene_sets(SPECIES, category))
-
-  COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
-    res <- str_c(comparison_name, 'res', sep = '_') %>% get(envir = .GlobalEnv)
-
-    camera_results <- list_of_gene_sets %>%
-      map(function(category_gene_sets) {
-        get_camera_results(res[[2]], category_gene_sets, gene_info)
-      }
-    )
-
-    assign(str_c(comparison_name, 'camera_results', sep = '_'),
-           camera_results, envir = .GlobalEnv)
-
-    for (category in seq(1:length(gene_set_categories))) {
-      de_res <- results %>% dplyr::select(
-        gene, gene_name, entrez_id,
-        starts_with(str_c(comparison_name, ".")),
-        -starts_with(str_c(comparison_name, ".stat")))
-      write_camera_results(
-        gene_set_categories[[category]], list_of_gene_sets[[category]], 
-        comparison_name, SPECIES,
-        de_res, camera_results[[category]])
-    }
-  })
+   gene_set_categories <- list("CURATED", "MOTIF", "GO")
+   
+   list_of_gene_sets <- gene_set_categories %>% lapplyFunc(function(category) get_gene_sets(SPECIES, category))
+   
+   COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
+     res <- str_c(comparison_name, 'res', sep = '_') %>% get(envir = .GlobalEnv)
+     
+     camera_results <- list_of_gene_sets %>% 
+       map(function(category_gene_sets) {
+         get_camera_results(res[[2]], category_gene_sets, gene_info)
+       })
+     
+     assign(str_c(comparison_name, 'camera_results', sep = '_'), 
+            camera_results, envir = .GlobalEnv)
+     
+     lapplyFunc(seq(1:length(gene_set_categories)),function(category,...){
+       de_res <- results %>% dplyr::select(
+         gene, gene_name, entrez_id, 
+         starts_with(str_c(comparison_name, ".")), 
+         -starts_with(str_c(comparison_name, ".stat")))  
+       write_camera_results(
+         gene_set_categories[[category]], list_of_gene_sets[[category]], 
+         comparison_name, SPECIES,
+         de_res, camera_results[[category]])
+     },mc.cores=3)
+     'succcess'
+   })
 }
 
 # results %>% plot_gene_set(list_of_gene_sets[[3]], "GO_<go_term>", "condition.stat")

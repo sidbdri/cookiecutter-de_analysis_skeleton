@@ -248,7 +248,7 @@ if(PARALLEL) adjust_parallel_cores()
 if (!USE_TX | !TX_LEVEL) {
   expressed_genes <- total_dds_data %>% get_count_data()
 
-   COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
+   COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name,...) {
      p_str <- str_c(comparison_name, '.padj')
      l2fc_str <- str_c(comparison_name ,'.l2fc')
 
@@ -256,20 +256,14 @@ if (!USE_TX | !TX_LEVEL) {
 
      lapplyFunc(str_c((comparison_name),c('','.up','.down'),sep = ''),function(cmp...){
        if(endsWith(cmp, '.up')){
-         ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
-         if(PARALLEL) Sys.sleep(5)
          results %>%
            filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0) %>%
            perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
        }else if(endsWith(cmp, '.down')){
-         ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
-         if(PARALLEL) Sys.sleep(10)
          results %>%
            filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) < 0) %>%
            perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
        }else{
-         ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
-         if(PARALLEL) Sys.sleep(15)
          results %>%
            filter(get(p_str) < P.ADJ.CUTOFF) %>%
            perform_go_analyses(expressed_genes, comparison_name, SPECIES)
@@ -304,7 +298,7 @@ if (!USE_TX | !TX_LEVEL) {
          gene_set_categories[[category]], list_of_gene_sets[[category]], 
          comparison_name, SPECIES,
          de_res, camera_results[[category]])
-     },mc.cores=1)
+     },mc.cores=3)
      'succcess'
    })
 }

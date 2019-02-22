@@ -231,7 +231,7 @@ if(PARALLEL) adjust_parallel_cores()
 expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts=TRUE) %>% 
   get_count_data()
 
-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
+COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name,...) {
   p_str <- str_c(comparison_name, '.padj')
   l2fc_str <- str_c(comparison_name, '.l2fc')
   
@@ -257,7 +257,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
 
 ##### Reactome pathway analysis
 
-COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
+COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name,...) {
   p_str=str_c(comparison_name, 'padj', sep = '.')
   l2fc_str=str_c(comparison_name, 'l2fc', sep = '.')
   
@@ -287,7 +287,7 @@ gene_set_categories <- list("CURATED", "MOTIF", "GO")
 
 list_of_gene_sets <- gene_set_categories %>% lapplyFunc(function(category) get_gene_sets(SPECIES, category))
 
-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
+COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name,...) {
   res <- str_c(comparison_name, 'res', sep = '_') %>% get(envir = .GlobalEnv)
   
   camera_results <- list_of_gene_sets %>% 

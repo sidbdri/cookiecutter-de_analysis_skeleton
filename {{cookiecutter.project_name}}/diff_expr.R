@@ -160,7 +160,7 @@ lapply(comparisons_results,function(cmp){
   cmp$comparison %>% str_c('res', sep = '_') %>% assign(cmp$res, envir = .GlobalEnv)
 
   'success'
-}) %>% invisible()  ##so lappy will not print out useless merging message
+})
 
 
 start_plot("all_comparison_pvalue_distribution")
@@ -232,12 +232,6 @@ expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts=TRUE) %
   get_count_data()
 
 COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
-    
-  ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
-  ##We add a delay to start each core, 5 seconds apart.
-  if(PARALLEL)
-    Sys.sleep ( match(comparison_name,COMPARISON_TABLE %>% pull(comparison)) %% (COMPARISON_TABLE %>% pull(comparison) %>% length()) * 5 )
-
   p_str <- str_c(comparison_name, '.padj')
   l2fc_str <- str_c(comparison_name, '.l2fc')
   
@@ -245,31 +239,25 @@ COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
 
   lapplyFunc(str_c((comparison_name),c('','.up','.down'),sep = ''),function(cmp...){
     if(endsWith(cmp, '.up')){
-      ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
-      if(PARALLEL) Sys.sleep(5)
       results %>%
         filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0) %>%
         perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
     }else if(endsWith(cmp, '.down')){
-      ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
-      if(PARALLEL) Sys.sleep(10)
       results %>%
         filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) < 0) %>%
         perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
     }else{
-      ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
-      if(PARALLEL) Sys.sleep(15)
       results %>%
         filter(get(p_str) < P.ADJ.CUTOFF) %>%
         perform_go_analyses(expressed_genes, comparison_name, SPECIES)
     }
-  },mc.cores=3)
+  },mc.cores=1)
   'succcess'
-})
+},,mc.cores=1)
 
 ##### Reactome pathway analysis
 
-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
+COMPARISON_TABLE %>% pull(comparison) %>% walk(function(comparison_name) {
   p_str=str_c(comparison_name, 'padj', sep = '.')
   l2fc_str=str_c(comparison_name, 'l2fc', sep = '.')
   
@@ -288,10 +276,10 @@ COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
         filter(get(p_str) < P.ADJ.CUTOFF) %>%
         perform_pathway_enrichment(expressed_genes, comparison_name, SPECIES)
     }
-  },mc.cores=3)
+  },mc.cores=1)
   
   'succcess'
-})
+},mc.cores=1)
 
 ##### Gene set enrichment analysis
 

@@ -249,10 +249,6 @@ if (!USE_TX | !TX_LEVEL) {
   expressed_genes <- total_dds_data %>% get_count_data()
 
    COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
-     ##We need to hack this a bit RE https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/59
-    if(PARALLEL)
-        Sys.sleep ( match(comparison_name,COMPARISON_TABLE %>% pull(comparison)) %% (COMPARISON_TABLE %>% pull(comparison) %>% length()) * 5 )
-     
      p_str <- str_c(comparison_name, '.padj')
      l2fc_str <- str_c(comparison_name ,'.l2fc')
 
@@ -278,9 +274,9 @@ if (!USE_TX | !TX_LEVEL) {
            filter(get(p_str) < P.ADJ.CUTOFF) %>%
            perform_go_analyses(expressed_genes, comparison_name, SPECIES)
        }
-     },mc.cores=3)
+     },mc.cores=1)
      'succcess'
-   })
+   },mc.cores=1)
 
   ##### Gene set enrichment analysis
 
@@ -308,7 +304,7 @@ if (!USE_TX | !TX_LEVEL) {
          gene_set_categories[[category]], list_of_gene_sets[[category]], 
          comparison_name, SPECIES,
          de_res, camera_results[[category]])
-     },mc.cores=3)
+     },mc.cores=1)
      'succcess'
    })
 }

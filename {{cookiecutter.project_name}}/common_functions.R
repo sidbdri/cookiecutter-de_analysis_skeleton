@@ -660,27 +660,28 @@ get_gene_set_results_matrix <- function(results, gene_sets, gene_set_name) {
 
 write_camera_results <- function(
   gene_set_collection_name, gene_set_collection, comparison_name, species, de_results, camera_results,
-  barcodeplots=FALSE) {
+  barcodeplots=FALSE, fdr_cutoff=0.1) {
 
+  ## we alway create the result table, even when there is no gene set pass the fdr cut off
+  top_dir <- str_c("results/differential_expression/gsa/",species, "/", comparison_name)
+  if (!dir.exists(top_dir)) {
+    dir.create(top_dir,recursive=TRUE)
+  }
+  camera_results %>% tibble::rownames_to_column(var="GeneSet") %>% write_csv(str_c(top_dir, "/", gene_set_collection_name, "_sets.csv"))
+
+  ## now save only the enriched ones
   camera_results %<>%
   tibble::rownames_to_column(var="GeneSet") %>%
-  filter(FDR < 0.1)
+  filter(FDR < fdr_cutoff)
 
   if ((camera_results %>% nrow) == 0) {
     return()
   }
 
-  top_dir <- str_c("results/differential_expression/gsa/",species, "/", comparison_name)
-  if (!dir.exists(top_dir)) {
-    dir.create(top_dir,recursive=TRUE)
-  }
-
-  camera_results %>% write_csv(str_c(top_dir, "/", gene_set_collection_name, "_enriched_sets.csv"))
-
   camera_results %>%
     extract2("GeneSet") %>%
     walk(function(x) {
-      gene_set_results <- de_results %>% get_gene_set_results_matrix(gene_set_collection, x)
+      gene_set_results <- de_results %>% get_gene_set_results(gene_set_collection, x, str_c(comparison_name, ".pval"))
       # gene_set_results %>% write_csv(str_c(sub_dir, "/", x, ".csv"))
 
       if (barcodeplots) {
@@ -1230,6 +1231,63 @@ adjust_parallel_cores<-function(){
   currect_cores<-getOption("mc.cores", nrow(COMPARISON_TABLE))
   reduced_cores<-floor(currect_cores/3)
   options("mc.cores"=reduced_cores)
+}
+
+
+# function to read the gsa result csv file for a comparison
+.read_comparison_gsa_res <- function(comparison_name,category='GO',
+                                     species=SPECIES, error_on_not_found=TRUE){
+  supported_category=c('GO','CURATED','MOTIF')
+
+  if(!category %in% supported_category)
+  stop("Only support category: ", str_c(supported_category,collapse = ','))
+
+  res_file <- str_c("results/differential_expression/gsa/",species,"/",comparison_name,"/",category,"_sets.csv")
+
+  ret <- NULL
+
+  if(file.exists(res_file)){
+    ret <- read.csv(res_file) %>% dplyr::mutate(comparison=comparison_name)
+  }else{
+    if(error_on_not_found)
+    stop("gsa result not found for comparison: ", comparison_name, "(",res_file,")")
+    else
+    warning("gsa result not found for comparison: ", comparison_name, "(",res_file,").", " Ignored!")
+  }
+
+  ret
+}
+
+#' This function reads in all the gsa result files and tract give gene sets
+#' @example:
+#' track_gene_set(target_terms=c('GO_RIBOSOME','GO_PROTEASOME_COMPLEX','GO_TRANSLATIONAL_INITIATION'),COMPARISON_TABLE)
+track_gene_set <- function(target_terms=c('GO_RIBOSOME','GO_PROTEASOME_COMPLEX'),
+                           comparison_table=COMPARISON_TABLE,print_table=TRUE,
+                           left_out_comparison=c()){
+
+  ## so we only need to load the res once
+  if(!exists('all_gsa_res',envir = .GlobalEnv)){
+    all_gsa_res <- comparison_table %>% pull(comparison) %>% lapplyFunc(function(comparison_name,...) {
+      comparison_name %>% .read_comparison_gsa_res()
+    },mc.cores=50) %>% reduce(rbind)
+    assign('all_gsa_res',all_gsa_res,envir = .GlobalEnv)
+  }
+
+
+  ## we only keep gene sets of interests
+  gsa_res_tb <- all_gsa_res %>% filter(GeneSet %in% target_terms) %>%
+  # we exclude comparison if needed
+    filter(!comparison_name %in% left_out_comparison) %>%
+  # for plotting
+    mutate(log10fdr=log10(FDR))
+
+  if(print_table)
+  print(gsa_res_tb %>% arrange(GeneSet,FDR))
+
+  gsa_res_tb %>% ggplot(aes(GeneSet,comparison)) +
+    geom_tile(aes(fill = log10fdr), colour = "white") + scale_fill_gradient2(low = "red",high = "blue",mid = "white",midpoint = -2) +
+    theme(axis.text.x = element_text(angle = 0)) + geom_text(aes(label = ifelse(Direction=='Up',"^","")))
+
 }
 
 ########

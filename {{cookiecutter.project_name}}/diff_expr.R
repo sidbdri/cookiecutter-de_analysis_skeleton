@@ -285,7 +285,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name,..
 
 gene_set_categories <- list("CURATED", "MOTIF", "GO")
 
-list_of_gene_sets <- gene_set_categories %>% lapplyFunc(function(category) get_gene_sets(SPECIES, category))
+list_of_gene_sets <- gene_set_categories %>% lapplyFunc(function(category,...) get_gene_sets(SPECIES, category))
 
 COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name,...) {
   res <- str_c(comparison_name, 'res', sep = '_') %>% get(envir = .GlobalEnv)

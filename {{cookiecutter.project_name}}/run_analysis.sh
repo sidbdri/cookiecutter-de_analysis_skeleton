@@ -185,12 +185,12 @@ case $strandness_flag in
     *) echo "Unrecognized strandness. Please check the ${COUNTS_DIR}"; exit 1 ;;
 esac
 
-# run the test
+# run featureCount
 for species in ${!SPECIES[@]}; do
     for sample in ${SAMPLES}; do
         echo "count_reads_for_features ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} \
         ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${COUNTS_DIR}/${sample}.${SPECIES[$species]}.counts \
-        ${strandness_flag} >${LOG_DIR}/featureCount/test.${SPECIES[$species]}.log 2>&1"
+        ${strandness_flag} >${LOG_DIR}/featureCount/${sample}.${SPECIES[$species]}.log 2>&1"
     done
 done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 

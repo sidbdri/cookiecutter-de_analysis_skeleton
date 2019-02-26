@@ -1237,7 +1237,7 @@ adjust_parallel_cores<-function(){
 # function to read the gsa result csv file for a comparison
 .read_comparison_gsa_res <- function(comparison_name,category='GO',
                                      species=SPECIES, error_on_not_found=TRUE){
-  supported_category=c('GO','CURATED','MOTIF')
+                                     supported_category=c('GO','CURATED','MOTIF')
 
   if(!category %in% supported_category)
   stop("Only support category: ", str_c(supported_category,collapse = ','))
@@ -1262,8 +1262,8 @@ adjust_parallel_cores<-function(){
 #' @example:
 #' track_gene_set(target_terms=c('GO_RIBOSOME','GO_PROTEASOME_COMPLEX','GO_TRANSLATIONAL_INITIATION'),COMPARISON_TABLE)
 track_gene_set <- function(target_terms=c('GO_RIBOSOME','GO_PROTEASOME_COMPLEX'),
-                           comparison_table=COMPARISON_TABLE,print_table=TRUE,
-                           left_out_comparison=c()){
+                           comparison_table=COMPARISON_TABLE,print_table=TRUE, output_table_file=NA,
+                           left_out_comparison=c(),heat_map.fdr.midpoint=0.05){
 
   ## so we only need to load the res once
   if(!exists('all_gsa_res',envir = .GlobalEnv)){
@@ -1284,10 +1284,19 @@ track_gene_set <- function(target_terms=c('GO_RIBOSOME','GO_PROTEASOME_COMPLEX')
   if(print_table)
   print(gsa_res_tb %>% arrange(GeneSet,FDR))
 
-  gsa_res_tb %>% ggplot(aes(GeneSet,comparison)) +
-    geom_tile(aes(fill = log10fdr), colour = "white") + scale_fill_gradient2(low = "red",high = "blue",mid = "white",midpoint = -2) +
-    theme(axis.text.x = element_text(angle = 0)) + geom_text(aes(label = ifelse(Direction=='Up',"^","")))
+  # we output the FDR table to csv
+  if(!is.na(output_table_file))
+  gsa_res_tb %>% arrange(GeneSet,FDR) %>% dplyr::select(GeneSet,FDR,comparison) %>%
+    reshape(idvar = "comparison", timevar = "GeneSet", direction = "wide") %>%
+    write.csv(file = output_table_file )
 
+
+  gsa_res_tb %>% ggplot(aes(GeneSet,comparison)) +
+    geom_tile(aes(fill = log10fdr)) +
+    scale_fill_gradient2(low = "red",high = "blue",mid = "white",midpoint = log10(heat_map.fdr.midpoint)) +
+    theme(axis.text.x = element_text(angle = 0)) + geom_text(aes(label = ifelse(Direction=='Up',"^",""))) +
+    theme_bw() + theme(panel.border = element_blank(),panel.background = element_blank()) + labs(fill ="log10(FDR)") +
+    labs(title=str_c('FDR = ',heat_map.fdr.midpoint, '. ^ indicates up regulation.'))
 }
 
 ########

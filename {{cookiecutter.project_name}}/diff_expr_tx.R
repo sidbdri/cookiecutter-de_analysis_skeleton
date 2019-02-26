@@ -120,7 +120,7 @@ if (TX_LEVEL) {
 
 # run all get_res() functions and add to main "results" object
 if(exists(x = 'all_comparison_pvalue_distribution')) rm(all_comparison_pvalue_distribution)
-comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc (
+comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Fork (
   function(comparison_name) {
     res <- get_res(comparison_name, tpms, use_tx=USE_TX, 
                    quant_method=QUANT_METHOD, tx_level=TX_LEVEL)
@@ -248,59 +248,58 @@ if(PARALLEL) adjust_parallel_cores()
 if (!USE_TX | !TX_LEVEL) {
   expressed_genes <- total_dds_data %>% get_count_data()
 
-   COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name,...) {
-     p_str <- str_c(comparison_name, '.padj')
-     l2fc_str <- str_c(comparison_name ,'.l2fc')
-
-     results <- get("results", envir = .GlobalEnv)
-
-     lapplyFunc(str_c((comparison_name),c('','.up','.down'),sep = ''),function(cmp...){
-       if(endsWith(cmp, '.up')){
-         results %>%
-           filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0) %>%
-           perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
-       }else if(endsWith(cmp, '.down')){
-         results %>%
-           filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) < 0) %>%
-           perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
-       }else{
-         results %>%
-           filter(get(p_str) < P.ADJ.CUTOFF) %>%
-           perform_go_analyses(expressed_genes, comparison_name, SPECIES)
-       }
-     },mc.cores=1)
-     'succcess'
-   },mc.cores=1)
+  COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Socket(X=.,function(comparison_name) {
+    p_str <- str_c(comparison_name, '.padj')
+    l2fc_str <- str_c(comparison_name, '.l2fc')
+    
+    results <- get("results",envir = .GlobalEnv)
+    
+    lapplyFunc.Socket(cores=3,X=str_c((comparison_name),c('','.up','.down'),sep = ''),function(cmp){
+      if(endsWith(cmp, '.up')){
+        results %>%
+          filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0) %>%
+          perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
+      }else if(endsWith(cmp, '.down')){
+        results %>%
+          filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) < 0) %>%
+          perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
+      }else{
+        results %>%
+          filter(get(p_str) < P.ADJ.CUTOFF) %>%
+          perform_go_analyses(expressed_genes, comparison_name, SPECIES)
+      }
+    })
+  })
 
   ##### Gene set enrichment analysis
 
-   gene_set_categories <- list("CURATED", "MOTIF", "GO")
+  gene_set_categories <- list("CURATED", "MOTIF", "GO")
    
-   list_of_gene_sets <- gene_set_categories %>% lapplyFunc(function(category) get_gene_sets(SPECIES, category))
+  list_of_gene_sets <- gene_set_categories %>% lapplyFunc.Fork(cores=length(gene_set_categories), X=., function(category,...) get_gene_sets(SPECIES, category))
    
-   COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name) {
-     res <- str_c(comparison_name, 'res', sep = '_') %>% get(envir = .GlobalEnv)
-     
-     camera_results <- list_of_gene_sets %>% 
-       map(function(category_gene_sets) {
-         get_camera_results(res[[2]], category_gene_sets, gene_info)
-       })
-     
-     assign(str_c(comparison_name, 'camera_results', sep = '_'), 
-            camera_results, envir = .GlobalEnv)
-     
-     lapplyFunc(seq(1:length(gene_set_categories)),function(category,...){
-       de_res <- results %>% dplyr::select(
-         gene, gene_name, entrez_id, 
-         starts_with(str_c(comparison_name, ".")), 
-         -starts_with(str_c(comparison_name, ".stat")))  
-       write_camera_results(
-         gene_set_categories[[category]], list_of_gene_sets[[category]], 
-         comparison_name, SPECIES,
-         de_res, camera_results[[category]])
-     },mc.cores=3)
-     'succcess'
-   })
+  COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Fork(X=., function(comparison_name,...) {
+    res <- str_c(comparison_name, 'res', sep = '_') %>% get(envir = .GlobalEnv)
+    
+    camera_results <- list_of_gene_sets %>% 
+      map(function(category_gene_sets) {
+        get_camera_results(res[[2]], category_gene_sets, gene_info)
+      })
+    
+    assign(str_c(comparison_name, 'camera_results', sep = '_'), 
+           camera_results, envir = .GlobalEnv)
+    
+    lapplyFunc.Fork(cores=3,X=seq(1:length(gene_set_categories)),function(category,...){
+      de_res <- results %>% dplyr::select(
+        gene, gene_name, entrez_id, 
+        starts_with(str_c(comparison_name, ".")), 
+        -starts_with(str_c(comparison_name, ".stat")))  
+      write_camera_results(
+        gene_set_categories[[category]], list_of_gene_sets[[category]], 
+        comparison_name, SPECIES,
+        de_res, camera_results[[category]])
+    })
+    'success'
+  })
 }
 
 # results %>% plot_gene_set(list_of_gene_sets[[3]], "GO_<go_term>", "condition.stat")

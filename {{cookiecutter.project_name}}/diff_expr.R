@@ -82,7 +82,7 @@ check_cell_type(results, fpkm_check_cutoff=5, print_check_log=TRUE, print_fpkm_t
 # run all get_res() functions in parallel
 # for debugging, it may be worth calling stop_parallel(), because the mclapply has problem printing out stdout in rstudio.
 # see http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#forking-with-mclapply
-comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc (
+comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Fork (
   function(comparison_name) {
     res <- get_res(comparison_name, fpkms, SPECIES, qSVA=qSVA)
     
@@ -231,13 +231,13 @@ if(PARALLEL) adjust_parallel_cores()
 expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts=TRUE) %>% 
   get_count_data()
 
-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name,...) {
+COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Socket(X=.,function(comparison_name) {
   p_str <- str_c(comparison_name, '.padj')
   l2fc_str <- str_c(comparison_name, '.l2fc')
   
   results <- get("results",envir = .GlobalEnv)
-
-  lapplyFunc(str_c((comparison_name),c('','.up','.down'),sep = ''),function(cmp...){
+  
+  lapplyFunc.Socket(cores=3,X=str_c((comparison_name),c('','.up','.down'),sep = ''),function(cmp){
     if(endsWith(cmp, '.up')){
       results %>%
         filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0) %>%
@@ -251,17 +251,16 @@ COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name,..
         filter(get(p_str) < P.ADJ.CUTOFF) %>%
         perform_go_analyses(expressed_genes, comparison_name, SPECIES)
     }
-  },mc.cores=1)
-  'succcess'
-},,mc.cores=1)
+  })
+})
 
 ##### Reactome pathway analysis
 
-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name,...) {
+COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Socket(X=.,function(comparison_name) {
   p_str=str_c(comparison_name, 'padj', sep = '.')
   l2fc_str=str_c(comparison_name, 'l2fc', sep = '.')
   
-  lapplyFunc(str_c((comparison_name),c('','.up','.down'),sep = ''),function(cmp,...){
+  lapplyFunc.Socket(cores=3, X=str_c((comparison_name),c('','.up','.down'),sep = ''), function(cmp){
     if(endsWith(cmp, '.up')){
       get("results",envir = .GlobalEnv) %>%
         filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) > 0) %>%
@@ -270,24 +269,21 @@ COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name,..
       get("results",envir = .GlobalEnv) %>%
         filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) < 0) %>%
         perform_pathway_enrichment(expressed_genes, str_c(comparison_name, 'down', sep = '.'), SPECIES)
-      
     }else{
-      get("results",envir = .GlobalEnv) %>% 
+      get("results",envir = .GlobalEnv) %>%
         filter(get(p_str) < P.ADJ.CUTOFF) %>%
         perform_pathway_enrichment(expressed_genes, comparison_name, SPECIES)
     }
-  },mc.cores=1)
-  
-  'succcess'
-},mc.cores=1)
+  })
+})
 
 ##### Gene set enrichment analysis
 
 gene_set_categories <- list("CURATED", "MOTIF", "GO")
 
-list_of_gene_sets <- gene_set_categories %>% lapplyFunc(function(category,...) get_gene_sets(SPECIES, category))
+list_of_gene_sets <- gene_set_categories %>% lapplyFunc.Fork(cores=length(gene_set_categories), X=., function(category,...) get_gene_sets(SPECIES, category))
 
-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name,...) {
+COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Fork(X=., function(comparison_name,...) {
   res <- str_c(comparison_name, 'res', sep = '_') %>% get(envir = .GlobalEnv)
   
   camera_results <- list_of_gene_sets %>% 
@@ -298,7 +294,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name,..
   assign(str_c(comparison_name, 'camera_results', sep = '_'), 
          camera_results, envir = .GlobalEnv)
   
-  lapplyFunc(seq(1:length(gene_set_categories)),function(category,...){
+  lapplyFunc.Fork(cores=3,X=seq(1:length(gene_set_categories)),function(category,...){
     de_res <- results %>% dplyr::select(
       gene, gene_name, entrez_id, 
       starts_with(str_c(comparison_name, ".")), 
@@ -307,8 +303,8 @@ COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc(function(comparison_name,..
       gene_set_categories[[category]], list_of_gene_sets[[category]], 
       comparison_name, SPECIES,
       de_res, camera_results[[category]])
-  },mc.cores=3)
-  'succcess'
+  })
+  'success'
 })
 
 # results %>% plot_gene_set(list_of_gene_sets[[3]], "GO_<go_term>", "condition.stat")

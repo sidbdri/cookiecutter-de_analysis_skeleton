@@ -681,7 +681,8 @@ write_camera_results <- function(
   camera_results %>%
     extract2("GeneSet") %>%
     walk(function(x) {
-      gene_set_results <- de_results %>% get_gene_set_results(gene_set_collection, x, str_c(comparison_name, ".pval"))
+      # we do not need to save file for each gene set now
+      # gene_set_results <- de_results %>% get_gene_set_results(gene_set_collection, x, str_c(comparison_name, ".pval"))
       # gene_set_results %>% write_csv(str_c(sub_dir, "/", x, ".csv"))
 
       if (barcodeplots) {
@@ -1210,15 +1211,15 @@ save_results_by_group <- function(results){
   }
 }
 
-start_parallel <- function(cores=nrow(COMPARISON_TABLE)){
+start_parallel <- function(cores=NA){
+  if(is.na(cores))
+    cores <- nrow(COMPARISON_TABLE)
   options("mc.cores"=cores)
   assign("PARALLEL",TRUE,envir = .GlobalEnv)
-  assign("lapplyFunc", mclapply,envir = .GlobalEnv)
 }
 stop_parallel <- function(){
   options("mc.cores"=1L)
   assign("PARALLEL",FALSE,envir = .GlobalEnv)
-  assign("lapplyFunc", lapply,envir = .GlobalEnv)
 }
 
 adjust_parallel_cores<-function(){
@@ -1231,6 +1232,49 @@ adjust_parallel_cores<-function(){
   currect_cores<-getOption("mc.cores", nrow(COMPARISON_TABLE))
   reduced_cores<-floor(currect_cores/3)
   options("mc.cores"=reduced_cores)
+}
+
+lapplyFunc.Fork <- function(X,FUN,cores=NA){
+  # This is the fork approach of parallel lapply
+  # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#starting-a-cluster
+  if(get('PARALLEL',envir = .GlobalEnv)){
+    if(is.na(cores))
+    cores=getOption("mc.cores", cores)
+    mclapply(mc.cores=cores, X=X, FUN=FUN)
+  }else{
+    #run the nomal lapply in single core
+    lapply(X=X,FUN=FUN)
+  }
+}
+
+
+lapplyFunc.Socket <- function(X,FUN,cores=NA){
+  # This is the Socket approach of parallel lapply
+  # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#starting-a-cluster
+  if(get('PARALLEL',envir = .GlobalEnv)){
+    # create cluster
+    if(is.na(cores))
+    cores=getOption("mc.cores", cores)
+    cl <- makeCluster(cores)
+
+    # export variable
+    # we need this variable for the GO/Reactome analysis
+    clusterExport(cl, "expressed_genes")
+    clusterExport(cl, "results")
+    clusterExport(cl, "PARALLEL")
+    clusterEvalQ(cl, {
+      source("meta_data.R")
+    })
+
+    # run the parallel code
+    parLapply(cl=cl,X=X,fun=FUN)
+
+    # stop cluster
+    stopCluster(cl)
+  }else{
+    #run the nomal lapply in single core
+    lapply(X=X,FUN=FUN)
+  }
 }
 
 

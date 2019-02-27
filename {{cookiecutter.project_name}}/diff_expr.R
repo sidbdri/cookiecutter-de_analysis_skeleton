@@ -301,3 +301,6 @@ COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Fork(X=., function(comparis
 
 # results %>% plot_gene_set(list_of_gene_sets[[3]], "GO_<go_term>", "condition.stat")
 # results %>% get_gene_set_results(list_of_gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head
+
+
+save.image(file="diff_expr.RData")

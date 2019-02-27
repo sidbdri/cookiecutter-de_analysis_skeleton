@@ -466,6 +466,30 @@ get_significant_genes <- function(term, GOdata, gene_info) {
     paste(collapse=", ")
 }
 
+perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP", species) {
+  gene_list <- (gene_universe$gene %in% significant_genes$gene) %>% as.integer %>% factor
+  names(gene_list) <- gene_universe$gene
+
+  mapping <- switch(species,
+  mouse = "org.Mm.eg.db",
+  rat = "org.Rn.eg.db",
+  human = "org.Hs.eg.db")
+
+  go_data <- new("topGOdata", ontology=ontology, allGenes=gene_list,
+  annot=annFUN.org, mapping=mapping, ID="Ensembl")
+
+  result_fisher <- go_data %>% runTest(algorithm="weight01", statistic="fisher")
+  result_fisher %>% print
+
+  go_results <- go_data %>% GenTable(weight_fisher=result_fisher, orderBy="weight_fisher", topNodes=150)
+
+  gene_info <- get_gene_info(species)
+  go_results$Genes <- sapply(go_results[,c('GO.ID')],
+  function(x) get_significant_genes(x, go_data, gene_info))
+
+  go_results
+}
+
 perform_go_analyses <- function(significant_genes, expressed_genes, comparison_name, file_prefix, species) {
     if (significant_genes %>% nrow == 0) {
         message("No significant genes supplied.")

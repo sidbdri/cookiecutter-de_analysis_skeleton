@@ -98,13 +98,13 @@ comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Fork (
       P <- get_misassignment_percentages(comparison_name, gene_lengths)
     
       if (!is.na(P$condition_reference_samples)) {
-        results_sargasso %<>% left_join(
+        results %<>% left_join(
           P$P_condition %>% 
             dplyr::select(gene, !!str_c(comparison_name, '.perc.',COMPARISON_TABLE %>% filter(comparison==comparison_name) %>% pull(condition)) := p))
       }   
     
       if (!is.na(P$condition_base_reference_samples)) {
-        results_sargasso %<>% left_join(
+        results %<>% left_join(
           P$P_condition_base %>% 
             dplyr::select(gene,!!str_c(comparison_name, '.perc.',COMPARISON_TABLE %>% filter(comparison==comparison_name) %>% pull(condition_base)) := p))
       }   

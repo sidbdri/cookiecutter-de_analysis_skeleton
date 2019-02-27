@@ -466,53 +466,30 @@ get_significant_genes <- function(term, GOdata, gene_info) {
     paste(collapse=", ")
 }
 
-perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP", species) {
-  gene_list <- (gene_universe$gene %in% significant_genes$gene) %>% as.integer %>% factor
-  names(gene_list) <- gene_universe$gene
-  
-  mapping <- switch(species,
-                    mouse = "org.Mm.eg.db",
-                    rat = "org.Rn.eg.db",
-                    human = "org.Hs.eg.db")
-  
-  go_data <- new("topGOdata", ontology=ontology, allGenes=gene_list,
-                 annot=annFUN.org, mapping=mapping, ID="Ensembl")
-  
-  result_fisher <- go_data %>% runTest(algorithm="weight01", statistic="fisher")
-  result_fisher %>% print
-  
-  go_results <- go_data %>% GenTable(weight_fisher=result_fisher, orderBy="weight_fisher", topNodes=150)
-  
-  gene_info <- get_gene_info(species)
-  go_results$Genes <- sapply(go_results[,c('GO.ID')], 
-                             function(x) get_significant_genes(x, go_data, gene_info))
-  
-  go_results
-}
-
-perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix, species) {
-  if (significant_genes %>% nrow == 0) {
-    message("No significant genes supplied.")
-    return()
-  }
-  
-  top_dir<-str_c("results/differential_expression/go/",species,sep = '')
-  if (!dir.exists(top_dir)) {
-    dir.create(top_dir,recursive=TRUE)
-  }
-
-  c("BP", "MF", "CC") %>% walk(
-    function(x) {
-    perform_go_analysis(expressed_genes, significant_genes, x, species) %>%
-    write_csv(str_c("results/differential_expression/go/",species,"/" ,file_prefix, "_go_", x %>% tolower, ".csv"))
+perform_go_analyses <- function(significant_genes, expressed_genes, comparison_name, file_prefix, species) {
+    if (significant_genes %>% nrow == 0) {
+        message("No significant genes supplied.")
+        return()
     }
-  )
+
+    top_dir<-str_c("results/differential_expression/go/",species, '/', comparison_name, sep = '')
+    if (!dir.exists(top_dir)) {
+        dir.create(top_dir,recursive=TRUE)
+    }
+
+    c("BP", "MF", "CC") %>% walk(
+    function(x) {
+        perform_go_analysis(expressed_genes, significant_genes, x, species) %>%
+        write_csv(str_c(top_dir, '/', comparison_name, file_prefix, "_go_", x %>% tolower, ".csv"))
+    }
+    )
 }
+
 
 ##### Reactome pathway analysis
 
 perform_pathway_enrichment <- 
-  function(significant_genes, expressed_genes, file_prefix, species) {
+  function(significant_genes, expressed_genes, comparison_name, file_prefix, species) {
     
   gene_info <- get_gene_info(species)
   
@@ -529,11 +506,16 @@ perform_pathway_enrichment <-
     gene=gene_list, organism=species, universe=as.character(universe), 
     pvalueCutoff=0.1, readable=T) %>%
     as.data.frame()
+
+    top_dir<-str_c("results/differential_expression/reactome/",species, '/', comparison_name, sep = '')
+    if (!dir.exists(top_dir)) {
+      dir.create(top_dir,recursive=TRUE)
+    }
   
   if (pathways %>% nrow() > 0) {
     pathways %>% 
       dplyr::select(ID, Description, GeneRatio, BgRatio, pvalue, p.adjust, geneID) %>% 
-      write_csv(str_c("results/differential_expression/reactome/", file_prefix,"_reactome.csv"))
+      write_csv(str_c(top_dir, '/', comparison_name, file_prefix, "_reactome.csv"))
   }
 }
 

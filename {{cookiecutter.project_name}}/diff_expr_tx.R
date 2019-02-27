@@ -246,7 +246,8 @@ if(PARALLEL) adjust_parallel_cores()
 ##### GO and GSA analyses
 
 if (!USE_TX | !TX_LEVEL) {
-  expressed_genes <- total_dds_data %>% get_count_data()
+  expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts=TRUE) %>% 
+    get_count_data()
 
   COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Socket(X=.,function(comparison_name) {
     p_str <- str_c(comparison_name, '.padj')
@@ -254,29 +255,24 @@ if (!USE_TX | !TX_LEVEL) {
     
     results <- get("results",envir = .GlobalEnv)
     
-    lapplyFunc.Socket(cores=3,X=str_c((comparison_name),c('','.up','.down'),sep = ''),function(cmp){
-      if(endsWith(cmp, '.up')){
-        results %>%
-          filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0) %>%
-          perform_go_analyses(expressed_genes, str_c(comparison_name, '.up'), SPECIES)
-      }else if(endsWith(cmp, '.down')){
-        results %>%
-          filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) < 0) %>%
-          perform_go_analyses(expressed_genes, str_c(comparison_name, '.down'), SPECIES)
+    lapplyFunc.Socket(cores=3,X=c('','.up','.down'),function(cmp){
+      if(cmp=='.up'){
+        r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0)
+      }else if((cmp=='.down')){
+        r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) < 0)
       }else{
-        results %>%
-          filter(get(p_str) < P.ADJ.CUTOFF) %>%
-          perform_go_analyses(expressed_genes, comparison_name, SPECIES)
+        r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF)
       }
+      perform_go_analyses(r, expressed_genes, comparison_name, cmp, SPECIES)
     })
   })
 
   ##### Gene set enrichment analysis
 
   gene_set_categories <- list("CURATED", "MOTIF", "GO")
-   
+
   list_of_gene_sets <- gene_set_categories %>% lapplyFunc.Fork(cores=length(gene_set_categories), X=., function(category,...) get_gene_sets(SPECIES, category))
-   
+
   COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Fork(X=., function(comparison_name,...) {
     res <- str_c(comparison_name, 'res', sep = '_') %>% get(envir = .GlobalEnv)
     

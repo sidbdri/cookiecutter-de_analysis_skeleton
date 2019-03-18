@@ -214,7 +214,7 @@ add_to_patchwork<-function(plot2add,plot_var_name='pathworkplot'){
 
 
 plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE){
-  pca_data <- vst %>% plotPCA(intgroup=intgroup, returnData=TRUE)
+  pca_data <- vst %>% plotPCA(intgroup=intgroup, returnData=TRUE, label_name='name')
 
   percent_var <- round(100 * attr(pca_data, "percentVar"))
 
@@ -232,7 +232,7 @@ plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE){
     theme(legend.position="right")
 
   if(plot_label)
-  p <- p + geom_text(aes(label = name), colour="darkgrey", position=position_nudge(y = 1), size=3)
+    p <- p + geom_text(aes(label = !!parse_expr(label_name)), colour="darkgrey", position=position_nudge(y = 1), size=3)
 
   if(length(intgroup) == 1){
     p <- p + guides(color=guide_legend(title=intgroup))
@@ -241,8 +241,8 @@ plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE){
   p
 }
 
-plot_pca_with_labels <- function(vst, intgroup=c("condition")) {
-  plot_pca(vst, intgroup,plot_label=TRUE)
+plot_pca_with_labels <- function(vst, intgroup=c("condition"),label_name='name') {
+  plot_pca(vst, intgroup,plot_label=TRUE,label_name=label_name)
 }
 
 

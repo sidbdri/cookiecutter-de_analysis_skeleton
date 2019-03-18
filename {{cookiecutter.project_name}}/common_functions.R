@@ -213,8 +213,14 @@ add_to_patchwork<-function(plot2add,plot_var_name='pathworkplot'){
 }
 
 
-plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE){
-  pca_data <- vst %>% plotPCA(intgroup=intgroup, returnData=TRUE, label_name='name')
+plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE, label_name='name', include_gene=c()){
+
+    if(length(include_gene) > 0){
+        ## This is to use only a subset of genes for pca plot
+        pca_data <- vst %>% plotPCA2(intgroup=intgroup, returnData=TRUE, include_gene=include_gene)
+    }else{
+        pca_data <- vst %>% plotPCA(intgroup=intgroup, returnData=TRUE )
+    }
 
   percent_var <- round(100 * attr(pca_data, "percentVar"))
 
@@ -241,8 +247,45 @@ plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE){
   p
 }
 
-plot_pca_with_labels <- function(vst, intgroup=c("condition"),label_name='name') {
-  plot_pca(vst, intgroup,plot_label=TRUE,label_name=label_name)
+plot_pca_with_labels <- function(vst, intgroup=c("condition"),label_name='name',include_gene=c()) {
+  plot_pca(vst, intgroup, plot_label=TRUE, label_name=label_name, include_gene=include_gene)
+}
+
+plotPCA2<-function(object, ...){
+
+    .local <- function (object, intgroup = "condition", ntop = 500,
+    returnData = FALSE, include_gene=c()) {
+        count_data <- assay(object)
+
+        if(length(include_gene)>0)
+        count_data<-count_data[include_gene,]
+
+        rv <- rowVars(count_data)
+        select <- order(rv, decreasing = TRUE)[seq_len(min(ntop,
+        length(rv)))]
+        pca <- prcomp(t(count_data[select, ]))
+        percentVar <- pca$sdev^2/sum(pca$sdev^2)
+        if (!all(intgroup %in% names(colData(object)))) {
+            stop("the argument 'intgroup' should specify columns of colData(dds)")
+        }
+        intgroup.df <- as.data.frame(colData(object)[, intgroup,
+        drop = FALSE])
+        group <- if (length(intgroup) > 1) {
+            factor(apply(intgroup.df, 1, paste, collapse = ":"))
+        }else {
+            colData(object)[[intgroup]]
+        }
+        d <- data.frame(PC1 = pca$x[, 1], PC2 = pca$x[, 2], group = group,
+        intgroup.df, name = colnames(object))
+        if (returnData) {
+            attr(d, "percentVar") <- percentVar[1:2]
+            return(d)
+        }
+        ggplot(data = d, aes_string(x = "PC1", y = "PC2", color = "group")) +
+            geom_point(size = 3) + xlab(paste0("PC1: ", round(percentVar[1] * 100), "% variance")) +
+            ylab(paste0("PC2: ", round(percentVar[2] *  100), "% variance")) + coord_fixed()
+    }
+    .local(object,  ...)
 }
 
 

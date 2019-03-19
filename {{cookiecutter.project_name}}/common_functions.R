@@ -213,7 +213,14 @@ add_to_patchwork<-function(plot2add,plot_var_name='pathworkplot'){
 }
 
 
-plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE, label_name='name', include_gene=c()){
+plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE, label_name='name', include_gene=c(),
+                        removeBatchEffect=FALSE, batch=NULL){
+
+    if(removeBatchEffect){
+        if(is.null(batch)) stop('batch cannot be NULL.')
+        assay(vst) <- limma::removeBatchEffect( assay(vst), vst %>% extract2(batch) )
+    }
+
 
     if(length(include_gene) > 0){
         ## This is to use only a subset of genes for pca plot
@@ -247,12 +254,15 @@ plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE, label_name='n
   p
 }
 
-plot_pca_with_labels <- function(vst, intgroup=c("condition"),label_name='name',include_gene=c()) {
-  plot_pca(vst, intgroup, plot_label=TRUE, label_name=label_name, include_gene=include_gene)
+plot_pca_with_labels <- function(vst, intgroup=c("condition"),label_name='name',include_gene=c(),removeBatchEffect=FALSE, batch=NULL) {
+  plot_pca(vst, intgroup, plot_label=TRUE, label_name=label_name, include_gene=include_gene,removeBatchEffect=FALSE, batch=NULL)
 }
 
 plotPCA2<-function(object, ...){
-
+    # This function is a hack of the plotPCA function from DESeq2 package.
+    # Instead of using all the genes for PCA plot, this function accept a
+    # parameter include_gene=c() which filters the gene in the vst.
+    # This can be use to plot only a subset of gene of interests.
     .local <- function (object, intgroup = "condition", ntop = 500,
     returnData = FALSE, include_gene=c()) {
         count_data <- assay(object)

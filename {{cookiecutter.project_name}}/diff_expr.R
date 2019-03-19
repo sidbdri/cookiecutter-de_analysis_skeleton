@@ -24,8 +24,8 @@ if (!dir.exists(GRAPHS_DIR)) dir.create(GRAPHS_DIR, recursive=TRUE)
 
 #####
 
-total_dds_data <- get_total_dds(SAMPLE_DATA, SPECIES, qSVA=qSVA)
-total_vst <- total_dds_data %>% varianceStabilizingTransformation
+total_dds_data <- get_total_dds(SAMPLE_DATA, SPECIES, qSVA=qSVA, design_formula=~1)
+total_vst <- total_dds_data %>% varianceStabilizingTransformation(blind=TRUE)
 
 start_plot("pca_all")
 total_vst %>% plot_pca_with_labels(intgroup=PCA_FEATURE) %>% print()

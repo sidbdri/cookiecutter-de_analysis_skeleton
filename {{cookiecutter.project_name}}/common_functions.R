@@ -37,7 +37,7 @@ remove_gene_column <- function(count_data) {
   count_data %>% dplyr::select(-gene)
 }
 
-get_total_dds <- function(sample_data, species, filter_low_counts=FALSE, qSVA=FALSE) {
+get_total_dds <- function(sample_data, species, filter_low_counts=FALSE, qSVA=FALSE, design_formula=~1) {
   # Collate count data
   total_count_data <- sample_data %>%
     row.names() %>%

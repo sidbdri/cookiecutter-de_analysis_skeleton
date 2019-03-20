@@ -267,8 +267,10 @@ plotPCA2<-function(object, ...){
     returnData = FALSE, include_gene=c()) {
         count_data <- assay(object)
 
-        if(length(include_gene)>0)
-        count_data<-count_data[include_gene,]
+        if(length(include_gene)>0){
+            include_gene<-include_gene[which(include_gene %in% (count_data %>% rownames()))]
+            count_data<-count_data[include_gene,]
+        }
 
         rv <- rowVars(count_data)
         select <- order(rv, decreasing = TRUE)[seq_len(min(ntop,

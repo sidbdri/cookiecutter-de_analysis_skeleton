@@ -767,7 +767,7 @@ write_camera_results <- function(
     })
 
   # we merge all gsea results into one file
-  gene_set_names <- camera_results %>% extract2("GeneSet") %>% sort
+  gene_set_names <- camera_results %>% extract2("GeneSet") %>% sort(method="radix")
   gene_set_results <- gene_set_names %>%
     map_dfc(function(x) {
       de_results %>% get_gene_set_results_matrix(gene_set_collection, x)

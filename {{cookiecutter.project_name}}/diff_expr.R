@@ -2,8 +2,10 @@ source("meta_data.R")
 
 SPECIES <- "{{cookiecutter.species}}"
 
-# Note that when comparisons are run in parallel in R studio, the output are slient and the Rsession is hang till all sub-proccess finishs or terminaled.
-# When running in command line, we will see the output but in a random order from each core. Thus, we might want to turn off parallel when debugging in Rstudio.
+# Note that when comparisons are run in parallel in RStudio, the output is silent and the R session 
+# will be hung until all sub-processes finish or are terminated. When running on the command line, 
+# we will see the output but in a random order from each core. Thus, we might want to turn off 
+# parallel when debugging in RStudio.
 start_parallel(NUM_CORES)
 #stop_parallel()
 
@@ -76,12 +78,13 @@ results %<>%
   left_join(gene_info) %>%
   left_join(gene_lengths)
 
-# We want to generate plots of the fpkm of the marker genes in the samples
+# Generate plots of the FPKMs of marker genes in the samples
 check_cell_type(results, fpkm_check_cutoff=5, print_check_log=TRUE, print_fpkm_table=FALSE)
 
-# run all get_res() functions in parallel
-# for debugging, it may be worth calling stop_parallel(), because the mclapply has problem printing out stdout in rstudio.
-# see http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#forking-with-mclapply
+# Run all get_res() functions in parallel.
+# For debugging, it may be worth calling stop_parallel(), because the mclapply has a problem printing 
+# out stdout in rstudio; see:
+# http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#forking-with-mclapply
 comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Fork (
   function(comparison_name) {
     res <- get_res(comparison_name, fpkms, SPECIES, qSVA=qSVA)
@@ -162,10 +165,11 @@ start_plot("all_comparison_pvalue_distribution")
 all_comparison_pvalue_distribution
 end_plot()
 
-###########
-## workout sargasso error ratio
-## Calculate proportion of reads incorrectly assigned to other species in pure
-## samples for each 1-to-1 orthologous gene
+#####
+#
+## Work out the Sargasso error ratio: calculate the proportion of reads incorrectly assigned to 
+## other species in pure samples for each 1-to-1 orthologous gene.
+#
 # RAT_ONLY_SAMPLES <- c('a1','a2','a3')
 # rat_only_mouse_counts <- RAT_ONLY_SAMPLES %>% 
 #   get_single_species_only_counts("mouse") %>% 
@@ -185,7 +189,7 @@ end_plot()
 #
 ### easier do the join when writing result to csv
 # results %<>% left_join(rat_only_mapping_info, by=c("gene" = "rat_gene"))
-###########
+#####
 
 if(COMPARISON_TABLE %>% pull(group) %>% unique()%>% length() > 1) save_results_by_group(results)
 
@@ -218,16 +222,17 @@ if (!dir.exists(rws)) {
   dir.create(rws,recursive=TRUE)
 }
 
-
 #####
-## For each comparison, 
-##   for the GO/reactome analysis, we are running all/up/down regulated genes,
-##   for the GSEA, we are running three categories ("CURATED", "MOTIF", "GO")
-## Thus we need to reduce the number of comparison we analysis in parallel to ensure we are not using more cores than specified.
-## The total number of cores used after the following line will be 3 * getOption("mc.cores")
+
+# For each comparison: 
+#   - for the GO/Reactome analyses, we are using all/up/down regulated genes,
+#   - for GSA, we are using three gene set categories: "CURATED", "MOTIF" and "GO"
+# Thus we need to reduce the number of comparisons we run in parallel to ensure we are not using more cores
+# than specified. The total number of cores used after the following line will be 3 * getOption("mc.cores")
 if(PARALLEL) adjust_parallel_cores()
 
-##### GO analyses
+##### GO analysis
+
 expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts=TRUE) %>% 
   get_count_data()
 
@@ -249,7 +254,6 @@ GO_results<-COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>% lapplyFun
   }) %>% set_names(str_c(comparison_name,c('.all','.up','.down')))
 })
 
-
 ##### Reactome pathway analysis
 
 Reactome_results<- COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>% lapplyFunc.Socket(X=.,function(comparison_name) {
@@ -269,7 +273,6 @@ Reactome_results<- COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>% la
     perform_pathway_enrichment(r, expressed_genes, comparison_name, cmp, SPECIES)
   }) %>% set_names(str_c(comparison_name,c('.all','.up','.down')))
 })
-
 
 ##### Gene set enrichment analysis
 
@@ -299,14 +302,18 @@ GS_results<-COMPARISON_TABLE %>% pull(comparison) %>% set_names(.)  %>% lapplyFu
   camera_results
 })
 
-# we save the objects in workspace for furture analysis
+# results %>% plot_gene_set(list_of_gene_sets[[3]], "GO_<go_term>", "condition.stat")
+# results %>% get_gene_set_results(list_of_gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head
+
+##### Saving and loading the workspace
+
+# Save the objects in the workspace for future analysis
+
 rws<-"results/Rworkspace/"
 if (!dir.exists(rws)) dir.create(rws,recursive=TRUE)
   save(list=ls() %>% grep(x = ., pattern='comparisons_results',value = T,invert = T),file=str_c(rws,"diff_expr.RData"))
-
-# results %>% plot_gene_set(list_of_gene_sets[[3]], "GO_<go_term>", "condition.stat")
-# results %>% get_gene_set_results(list_of_gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head
   
-# we load the save workspace to get all objects back for analysis
+# Load the save workspace to get all objects back for analysis
+
 # load_rs_data()
 

@@ -2,8 +2,10 @@ source("meta_data.R")
 
 SPECIES <- "{{cookiecutter.species}}"
 
-#Note that when comparisons are run in parallel in R studio, the output are slient and the Rsession is hang till all sub-proccess finishs or terminaled.
-#When running in command line, we will see the output but in a random order from each core.
+# Note that when comparisons are run in parallel in RStudio, the output is silent and the R session 
+# will be hung until all sub-processes finish or are terminated. When running on the command line, 
+# we will see the output but in a random order from each core. Thus, we might want to turn off 
+# parallel when debugging in RStudio.
 start_parallel(nrow(COMPARISON_TABLE))
 #stop_parallel()
 
@@ -236,11 +238,12 @@ SUMMARY_TB %>%
 # sink()
 
 #####
-## For each comparison,
-##   for the GO/reactome analysis, we are running all/up/down regulated genes,
-##   for the GSEA, we are running three categories ("CURATED", "MOTIF", "GO")
-## Thus we need to reduce the number of comparison we analysis in parallel to ensure we are not using more cores than specified.
-## The total number of cores used after the following line will be 3 * getOption("mc.cores")
+
+# For each comparison: 
+#   - for the GO/Reactome analyses, we are using all/up/down regulated genes,
+#   - for GSA, we are using three gene set categories: "CURATED", "MOTIF" and "GO"
+# Thus we need to reduce the number of comparisons we run in parallel to ensure we are not using more cores
+# than specified. The total number of cores used after the following line will be 3 * getOption("mc.cores")
 if(PARALLEL) adjust_parallel_cores()
 
 ##### GO and GSA analyses
@@ -267,7 +270,7 @@ if (!USE_TX | !TX_LEVEL) {
     })
   })
 
-  ##### Gene set enrichment analysis
+##### Gene set enrichment analysis
 
   gene_set_categories <- list("CURATED", "MOTIF", "GO")
 

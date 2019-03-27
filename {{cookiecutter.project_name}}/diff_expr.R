@@ -85,7 +85,7 @@ check_cell_type(results, fpkm_check_cutoff=5, print_check_log=TRUE, print_fpkm_t
 # For debugging, it may be worth calling stop_parallel(), because the mclapply has a problem printing 
 # out stdout in rstudio; see:
 # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#forking-with-mclapply
-comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Fork (
+comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapply_fork (
   function(comparison_name) {
     res <- get_res(comparison_name, fpkms, SPECIES, qSVA=qSVA)
     
@@ -236,13 +236,13 @@ if(PARALLEL) adjust_parallel_cores()
 expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts=TRUE) %>% 
   get_count_data()
 
-GO_results<-COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>% lapplyFunc.Socket(X=.,function(comparison_name) {
+GO_results<-COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>% lapply_socket(X=.,function(comparison_name) {
   p_str <- str_c(comparison_name, '.padj')
   l2fc_str <- str_c(comparison_name, '.l2fc')
   
   results <- get("results",envir = .GlobalEnv)
   
-  lapplyFunc.Socket(cores=3,X=c('','.up','.down'),function(cmp){
+  lapply_socket(cores=3,X=c('','.up','.down'),function(cmp){
     if(cmp=='.up'){
       r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0)
     }else if((cmp=='.down')){
@@ -256,13 +256,13 @@ GO_results<-COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>% lapplyFun
 
 ##### Reactome pathway analysis
 
-Reactome_results<- COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>% lapplyFunc.Socket(X=.,function(comparison_name) {
+Reactome_results<- COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>% lapply_socket(X=.,function(comparison_name) {
   p_str=str_c(comparison_name, 'padj', sep = '.')
   l2fc_str=str_c(comparison_name, 'l2fc', sep = '.')
   
   results <- get("results",envir = .GlobalEnv)
   
-  lapplyFunc.Socket(cores=3,X=c('','.up','.down'),function(cmp){
+  lapply_socket(cores=3,X=c('','.up','.down'),function(cmp){
     if(cmp=='.up'){
       r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) > 0)
     }else if((cmp=='.down')){
@@ -278,9 +278,9 @@ Reactome_results<- COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>% la
 
 gene_set_categories <- list("CURATED", "MOTIF", "GO")
 
-list_of_gene_sets <- gene_set_categories %>% set_names(.) %>% lapplyFunc.Fork(cores=length(gene_set_categories), X=., function(category,...) get_gene_sets(SPECIES, category))
+list_of_gene_sets <- gene_set_categories %>% set_names(.) %>% lapply_fork(cores=length(gene_set_categories), X=., function(category,...) get_gene_sets(SPECIES, category))
 
-GS_results<-COMPARISON_TABLE %>% pull(comparison) %>% set_names(.)  %>% lapplyFunc.Fork(X=., function(comparison_name,...) {
+GS_results<-COMPARISON_TABLE %>% pull(comparison) %>% set_names(.)  %>% lapply_fork(X=., function(comparison_name,...) {
   dds <- str_c(comparison_name, 'dds', sep = '_') %>% get(envir = .GlobalEnv)
   
   camera_results <- list_of_gene_sets %>% 
@@ -288,7 +288,7 @@ GS_results<-COMPARISON_TABLE %>% pull(comparison) %>% set_names(.)  %>% lapplyFu
       get_camera_results(dds, category_gene_sets, gene_info)
     })
 
-  lapplyFunc.Fork(cores=3,X=seq(1:length(gene_set_categories)),function(category,...){
+  lapply_fork(cores=3,X=seq(1:length(gene_set_categories)),function(category,...){
     de_res <- results %>% dplyr::select(
       gene, gene_name, entrez_id, 
       starts_with(str_c(comparison_name, ".")), 
@@ -316,4 +316,3 @@ if (!dir.exists(rws)) dir.create(rws,recursive=TRUE)
 # Load the save workspace to get all objects back for analysis
 
 # load_rs_data()
-

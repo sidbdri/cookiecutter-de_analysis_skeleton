@@ -3,6 +3,10 @@ source("common_functions.R")
 
 SPECIES="{{cookiecutter.species}}"
 
+P.ADJ.CUTOFF=0.05
+
+NUM_CORES=30
+
 SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
   outer(c(rep1, rep2, etc), str_c, sep="todo") %>%
   t %>%
@@ -38,9 +42,10 @@ AVG_FPKM_GROUP = list(c(),c())
 
 # An example can be found here:
 # https://github.com/sidbdri/cookiecutter-sargasso-de_analysis_skeleton
+# if the group column contains more than one group, the result will be save into different CSVs by group.
 COMPARISON_TABLE<-tribble(
-~comparison, ~formula, ~condition_name, ~condition, ~condition_base, ~filter,
-#"P10_Ctx_KO_vs_WT", "~genotype", "genotype", "KO", "WT", "age=='P10' & region=='Ctx'",
+~comparison, ~formula, ~condition_name, ~condition, ~condition_base, ~filter, ~group,
+#"P10_Ctx_KO_vs_WT", "~genotype", "genotype", "KO", "WT", "age=='P10' & region=='Ctx'",group_1
 )
 
 # This is to make sure the DESeq2 formulas are ordered so that the 'deciding' 
@@ -103,13 +108,18 @@ if (MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% nrow() > 0) {
 # we will be able to use, for example, biomaRt to query orthology
 # https://support.bioconductor.org/p/46475/
 GENE_MARKERS=tribble(
-  ~human, ~mouse, ~rat, ~gene_name,~cell_type,
-  "ENSG00000066336","ENSMUSG00000002111","ENSRNOG00000012172","Sfpi1", "microglia",
-  "ENSG00000204472","ENSMUSG00000024397","ENSRNOG00000000853","Aif1", "microglia",
-  "ENSG00000100146","ENSMUSG00000033006","ENSRNOG00000011305","Sox10", "oligodendrocyte",
-  "ENSG00000197971","ENSMUSG00000041607","ENSRNOG00000016516","Mbp", "oligodendrocyte",
-  "ENSG00000102003","ENSMUSG00000031144","ENSRNOG00000059720","Syp", "neuron",
-  "ENSG00000167281","ENSMUSG00000025576","ENSRNOG00000003386","Rbfox3", "neuron",
-  "ENSG00000171885","ENSMUSG00000024411","ENSRNOG00000016043","Aqp4", "astrocyte",
-  "ENSG00000131095","ENSMUSG00000020932","ENSRNOG00000002919","Gfap", "astrocyte"
+~human, ~mouse, ~rat, ~gene_name,~cell_type,
+"ENSG00000066336","ENSMUSG00000002111","ENSRNOG00000012172","Sfpi1", "microglia",
+"ENSG00000204472","ENSMUSG00000024397","ENSRNOG00000000853","Aif1", "microglia",
+"ENSG00000100146","ENSMUSG00000033006","ENSRNOG00000011305","Sox10", "oligodendrocyte",
+"ENSG00000197971","ENSMUSG00000041607","ENSRNOG00000016516","Mbp", "oligodendrocyte",
+"ENSG00000102003","ENSMUSG00000031144","ENSRNOG00000059720","Syp", "neuron",
+"ENSG00000167281","ENSMUSG00000025576","ENSRNOG00000003386","Rbfox3", "neuron",
+"ENSG00000171885","ENSMUSG00000024411","ENSRNOG00000016043","Aqp4", "astrocyte",
+"ENSG00000131095","ENSMUSG00000020932","ENSRNOG00000002919","Gfap", "astrocyte",
+"ENSG00000133636","ENSMUSG00000019890","ENSRNOG00000004179","Nts","Dorsal",
+"ENSG00000003137","ENSMUSG00000063415","ENSRNOG00000015076","Cyp26b1","Dorsal",
+"ENSG00000185551","ENSMUSG00000030551","ENSRNOG00000010308","Nr2f2","ventral_hippocampus",
+"ENSG00000140848","ENSMUSG00000034361","ENSRNOG00000043286","Cpne2","ventral_hippocampus",
+
 )

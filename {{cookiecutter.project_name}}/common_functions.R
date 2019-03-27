@@ -8,12 +8,8 @@ check_formulas <- function(){
     row <- COMPARISON_TABLE[r,]
     f <- row$formula %>% as.formula() %>% terms()
     condition <- row$condition_name
-    
-    if (labels(f) %>% length() > 1) {
-      deciding_condition <- labels(f)[-1]
-    } else {
-      deciding_condition <- labels(f)[1]
-    }
+
+    deciding_condition <- labels(f) %>% tail(1)
     
     if (condition != deciding_condition) {
       print(row)
@@ -36,11 +32,12 @@ read_counts <- function(sample, species) {
 }
 
 remove_gene_column <- function(count_data) {
+  #Setting row names on a tibble is deprecated.
   row.names(count_data) <- count_data$gene
   count_data %>% dplyr::select(-gene)
 }
 
-get_total_dds <- function(sample_data, species, filter_low_counts=FALSE, qSVA=FALSE) {
+get_total_dds <- function(sample_data, species, filter_low_counts=FALSE, qSVA=FALSE, design_formula=~1) {
   # Collate count data
   total_count_data <- sample_data %>%
     row.names() %>%
@@ -107,7 +104,7 @@ get_deseq2_results_name <- function(dds, name, alpha=0.05) {
 
 # get differential expression results for a given comparison name
 get_res <- function(comparison_name, tpms, species, qSVA=FALSE, 
-                    use_tx=FALSE, quant_method='salmon', tx_level=FALSE) {
+                    use_tx=FALSE, quant_method='salmon', tx_level=FALSE,alpha=0.05) {
   
   comparison_table <- COMPARISON_TABLE
   x=comparison_table %>% filter(comparison == comparison_name)
@@ -139,12 +136,12 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
   # res contains transcripts, rather than genes
   if(use_tx & tx_level){
     res <- dds %>%
-      get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
+      get_deseq2_results(x$condition_name, x$condition, x$condition_base,alpha=alpha) %>%
       left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition)))) %>%
       dplyr::rename(transcript=gene)
   }else{
     res <- dds %>%
-      get_deseq2_results(x$condition_name, x$condition, x$condition_base) %>%
+      get_deseq2_results(x$condition_name, x$condition, x$condition_base,alpha=alpha) %>%
       left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
   }
   
@@ -167,9 +164,7 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
     end_plot()
   }
   
-  #fill summary table
-  SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>% 
-    add_row(Comparison = x$comparison, DESeq_model_formula = design(dds) %>% format(),
+  summary_tb_row <- list(Comparison = x$comparison, DESeq_model_formula = design(dds) %>% format(),
             Condition_tested = x$condition_name,
             Total_number_of_samples_data=sample_data %>% nrow(),
             Base_level_condition=x$condition_base,
@@ -178,14 +173,12 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
             Comparison_level_condition=x$condition,
             Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
             Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name_tmp) %>% str_c(collapse = ','),
-            p.adj.cutoff=0.05,
-            Up_regulated=res %>% filter( padj < 0.05 & log2FoldChange > 0 ) %>% nrow(),
-            Down_regulated=res %>% filter( padj < 0.05 & log2FoldChange < 0 ) %>% nrow(),
-            D.E.total=res %>% filter( padj < 0.05) %>% nrow())
+            p.adj.cutoff=P.ADJ.CUTOFF,
+            Up_regulated=res %>% filter( padj < P.ADJ.CUTOFF & log2FoldChange > 0 ) %>% nrow(),
+            Down_regulated=res %>% filter( padj < P.ADJ.CUTOFF & log2FoldChange < 0 ) %>% nrow(),
+            D.E.total=res %>% filter( padj < P.ADJ.CUTOFF) %>% nrow())
   
-  assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
-  
-  list(res, dds)
+  list(res=res, dds=dds, summary_tb_row=summary_tb_row)
 }
 
 get_count_data <- function(dds, norm=T) {
@@ -195,11 +188,11 @@ get_count_data <- function(dds, norm=T) {
     tibble::rownames_to_column(var="gene")
 }
 
-start_plot <- function(prefix) {
+start_plot <- function(prefix,width=12, height=12) {
   if (PLOT_TO_FILE) {
     prefix %>% 
       str_c(GRAPHS_DIR, ., "_", SPECIES, ".pdf") %>% 
-      pdf(width=6, height=6)
+      pdf(width=width, height=height)
   }
 }
 
@@ -220,8 +213,21 @@ add_to_patchwork<-function(plot2add,plot_var_name='pathworkplot'){
 }
 
 
-plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE){
-  pca_data <- vst %>% plotPCA(intgroup=intgroup, returnData=TRUE)
+plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE, label_name='name', include_gene=c(),
+                        removeBatchEffect=FALSE, batch=NULL){
+
+    if(removeBatchEffect){
+        if(is.null(batch)) stop('batch cannot be NULL.')
+        assay(vst) <- limma::removeBatchEffect( assay(vst), vst %>% extract2(batch) )
+    }
+
+
+    if(length(include_gene) > 0){
+        ## This is to use only a subset of genes for pca plot
+        pca_data <- vst %>% plotPCA2(intgroup=intgroup, returnData=TRUE, include_gene=include_gene)
+    }else{
+        pca_data <- vst %>% plotPCA(intgroup=intgroup, returnData=TRUE )
+    }
 
   percent_var <- round(100 * attr(pca_data, "percentVar"))
 
@@ -239,7 +245,7 @@ plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE){
     theme(legend.position="right")
 
   if(plot_label)
-  p <- p + geom_text(aes(label = name), colour="darkgrey", position=position_nudge(y = 1), size=3)
+    p <- p + geom_text(aes(label = !!parse_expr(label_name)), colour="darkgrey", position=position_nudge(y = 1), size=3)
 
   if(length(intgroup) == 1){
     p <- p + guides(color=guide_legend(title=intgroup))
@@ -248,8 +254,50 @@ plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE){
   p
 }
 
-plot_pca_with_labels <- function(vst, intgroup=c("condition")) {
-  plot_pca(vst, intgroup,plot_label=TRUE)
+plot_pca_with_labels <- function(vst, intgroup=c("condition"),label_name='name',include_gene=c(),removeBatchEffect=FALSE, batch=NULL) {
+  plot_pca(vst, intgroup, plot_label=TRUE, label_name=label_name, include_gene=include_gene,removeBatchEffect=FALSE, batch=NULL)
+}
+
+plotPCA2<-function(object, ...){
+    # This function is a hack of the plotPCA function from DESeq2 package.
+    # Instead of using all the genes for PCA plot, this function accept a
+    # parameter include_gene=c() which filters the gene in the vst.
+    # This can be use to plot only a subset of gene of interests.
+    .local <- function (object, intgroup = "condition", ntop = 500,
+    returnData = FALSE, include_gene=c()) {
+        count_data <- assay(object)
+
+        if(length(include_gene)>0){
+            include_gene<-include_gene[which(include_gene %in% (count_data %>% rownames()))]
+            count_data<-count_data[include_gene,]
+        }
+
+        rv <- rowVars(count_data)
+        select <- order(rv, decreasing = TRUE)[seq_len(min(ntop,
+        length(rv)))]
+        pca <- prcomp(t(count_data[select, ]))
+        percentVar <- pca$sdev^2/sum(pca$sdev^2)
+        if (!all(intgroup %in% names(colData(object)))) {
+            stop("the argument 'intgroup' should specify columns of colData(dds)")
+        }
+        intgroup.df <- as.data.frame(colData(object)[, intgroup,
+        drop = FALSE])
+        group <- if (length(intgroup) > 1) {
+            factor(apply(intgroup.df, 1, paste, collapse = ":"))
+        }else {
+            colData(object)[[intgroup]]
+        }
+        d <- data.frame(PC1 = pca$x[, 1], PC2 = pca$x[, 2], group = group,
+        intgroup.df, name = colnames(object))
+        if (returnData) {
+            attr(d, "percentVar") <- percentVar[1:2]
+            return(d)
+        }
+        ggplot(data = d, aes_string(x = "PC1", y = "PC2", color = "group")) +
+            geom_point(size = 3) + xlab(paste0("PC1: ", round(percentVar[1] * 100), "% variance")) +
+            ylab(paste0("PC2: ", round(percentVar[2] *  100), "% variance")) + coord_fixed()
+    }
+    .local(object,  ...)
 }
 
 
@@ -469,53 +517,59 @@ get_significant_genes <- function(term, GOdata, gene_info) {
     paste(collapse=", ")
 }
 
-perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP", species) {
+perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP", species, top_dir, comparison_name) {
   gene_list <- (gene_universe$gene %in% significant_genes$gene) %>% as.integer %>% factor
   names(gene_list) <- gene_universe$gene
-  
+
   mapping <- switch(species,
-                    mouse = "org.Mm.eg.db",
-                    rat = "org.Rn.eg.db",
-                    human = "org.Hs.eg.db")
-  
+  mouse = "org.Mm.eg.db",
+  rat = "org.Rn.eg.db",
+  human = "org.Hs.eg.db")
+
   go_data <- new("topGOdata", ontology=ontology, allGenes=gene_list,
-                 annot=annFUN.org, mapping=mapping, ID="Ensembl")
-  
-  result_fisher <- go_data %>% runTest(algorithm="weight01", statistic="fisher")
-  result_fisher %>% print
-  
-  go_results <- go_data %>% GenTable(weight_fisher=result_fisher, orderBy="weight_fisher", topNodes=150)
-  
+  annot=annFUN.org, mapping=mapping, ID="Ensembl")
+
+  result_weight <- go_data %>% runTest('weight01', 'fisher')
+  # result_classic <- go_data %>% runTest('classic', 'fisher')
+  # result_elim <- go_data %>% runTest('elim', 'fisher')
+  result_weight %>% print()
+
+  go_results <- go_data %>% GenTable(weight_fisher=result_weight, orderBy="weight_fisher", topNodes=150)
+
   gene_info <- get_gene_info(species)
-  go_results$Genes <- sapply(go_results[,c('GO.ID')], 
-                             function(x) get_significant_genes(x, go_data, gene_info))
-  
-  go_results
+  go_results$Genes <- sapply(go_results[,c('GO.ID')], function(x) get_significant_genes(x, go_data, gene_info))
+
+  list(go_results=go_results,
+       # go_data=go_data,
+       # result_classic=result_classic,
+       # result_elim=result_elim,
+       result_weight=result_weight
+  )
+
 }
 
-perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix, species) {
+perform_go_analyses <- function(significant_genes, expressed_genes, comparison_name, file_prefix, species) {
   if (significant_genes %>% nrow == 0) {
     message("No significant genes supplied.")
     return()
   }
-  
-  top_dir<-str_c("results/differential_expression/go/",species,sep = '')
+
+  top_dir<-str_c("results/differential_expression/go/",species, '/', comparison_name, sep = '')
   if (!dir.exists(top_dir)) {
     dir.create(top_dir,recursive=TRUE)
   }
 
-  c("BP", "MF", "CC") %>% walk(
-    function(x) {
-    perform_go_analysis(expressed_genes, significant_genes, x, species) %>%
-    write_csv(str_c("results/differential_expression/go/",species,"/" ,file_prefix, "_go_", x %>% tolower, ".csv"))
-    }
-  )
+  sapply( c("BP", "MF", "CC"), simplify = FALSE,USE.NAMES = TRUE, function(x) {
+    ret <- perform_go_analysis(expressed_genes, significant_genes, x, species, top_dir ,comparison_name)
+    ret %>% extract2('go_results') %>% write_csv(str_c(top_dir, '/', comparison_name, file_prefix, "_go_", x %>% tolower, ".csv"))
+    ret
+  })
 }
 
 ##### Reactome pathway analysis
 
 perform_pathway_enrichment <- 
-  function(significant_genes, expressed_genes, file_prefix, species) {
+  function(significant_genes, expressed_genes, comparison_name, file_prefix, species) {
     
   gene_info <- get_gene_info(species)
   
@@ -532,12 +586,22 @@ perform_pathway_enrichment <-
     gene=gene_list, organism=species, universe=as.character(universe), 
     pvalueCutoff=0.1, readable=T) %>%
     as.data.frame()
-  
-  if (pathways %>% nrow() > 0) {
-    pathways %>% 
-      dplyr::select(ID, Description, GeneRatio, BgRatio, pvalue, p.adjust, geneID) %>% 
-      write_csv(str_c("results/differential_expression/reactome/", file_prefix,"_reactome.csv"))
-  }
+
+    top_dir<-str_c("results/differential_expression/reactome/",species, '/', comparison_name, sep = '')
+    if (!dir.exists(top_dir)) {
+      dir.create(top_dir,recursive=TRUE)
+    }
+
+    ret<-data.frame()
+
+    if (pathways %>% nrow() > 0) {
+      pathways %>%
+        dplyr::select(ID, Description, GeneRatio, BgRatio, pvalue, p.adjust, geneID) %>%
+        write_csv(str_c(top_dir, '/', comparison_name, file_prefix, "_reactome.csv"))
+
+      ret <- pathways %>% dplyr::select(ID, Description, GeneRatio, BgRatio, pvalue, p.adjust, geneID)
+    }
+    ret
 }
 
 ##### Camera gene set enrichment analysis
@@ -580,7 +644,7 @@ get_human_vs_species_ortholog_info <- function(species) {
 }
 
 get_gene_sets <- function(species, gene_set_name) {
-  msigdb_data <- str_c("data/msigdb/v5.2/", gene_set_name, ".all.v5.2.entrez.gmt.txt") %>% 
+  msigdb_data <- str_c("data/msigdb/v6.2/", gene_set_name, ".all.v6.2.entrez.gmt") %>%
     read_lines()
   
   gene_set_names <- map_chr(msigdb_data, function(x) {str_split(x, "\t")[[1]][1]})
@@ -639,51 +703,84 @@ plot_gene_set <- function(results, gene_sets, gene_set_name, prefix) {
     barcodeplot(index=idx, quantiles = c(-1,1)*(-log10(0.05)))
 }
 
-get_gene_set_results <- function(results, gene_sets, gene_set_name, pvalue) {
-  idx <- gene_sets %>% 
-    extract2(gene_set_name) %>% 
-    match(results$entrez_id) %>% 
+get_gene_set_results_matrix <- function(results, gene_sets, gene_set_name) {
+  idx <- gene_sets %>%
+    extract2(gene_set_name) %>%
+    match(results$entrez_id) %>%
     na.omit
-  
-    results %>% magrittr::extract(idx, ) %>% arrange_(pvalue)
+
+  genes_in_set <- results %>%
+    extract(idx, ) %>%
+    dplyr::select(gene) %>%
+    group_by(gene) %>%
+    filter(row_number()==1) %>%
+    ungroup
+
+  genes_in_set[gene_set_name] = "T"
+
+  results %>%
+    dplyr::select(gene) %>%
+    left_join(genes_in_set) %>%
+    dplyr::select(-gene)
 }
+
 
 write_camera_results <- function(
   gene_set_collection_name, gene_set_collection, comparison_name, species, de_results, camera_results,
-  barcodeplots=FALSE) {
-  
-  camera_results %<>% 
-    tibble::rownames_to_column(var="GeneSet") %>% 
-    filter(FDR < 0.1)
-  
-  if ((camera_results %>% nrow) == 0) {
-    return()
-  }
-  
+  barcodeplots=FALSE, fdr_cutoff=0.1) {
+
   top_dir <- str_c("results/differential_expression/gsa/",species, "/", comparison_name)
   if (!dir.exists(top_dir)) {
     dir.create(top_dir,recursive=TRUE)
   }
-  
-  camera_results %>% write_csv(str_c(top_dir, "/", gene_set_collection_name, "_enriched_sets.csv"))
-  
-  sub_dir <- str_c(top_dir, "/", gene_set_collection_name)
-  if (!dir.exists(sub_dir)) {
-    dir.create(sub_dir,recursive=TRUE)
+
+  camera_results %>% tibble::rownames_to_column(var="GeneSet") %>% filter(FDR < fdr_cutoff) %>%
+    write_csv(str_c(top_dir, "/", gene_set_collection_name, "_enriched_sets.csv"))
+
+  ret <- list(enriched_sets=camera_results %>% tibble::rownames_to_column(var="GeneSet") %>% filter(FDR < fdr_cutoff))
+
+  ## now save only the enriched ones
+  camera_results %<>%
+  tibble::rownames_to_column(var="GeneSet") %>%
+  filter(FDR < fdr_cutoff)
+
+  if ((camera_results %>% nrow) == 0) {
+    return()
   }
-  
-  camera_results %>% 
-    extract2("GeneSet") %>% 
+
+  camera_results %>%
+    extract2("GeneSet") %>%
     walk(function(x) {
-      gene_set_results <- de_results %>% get_gene_set_results(gene_set_collection, x, str_c(comparison_name, ".pval"))
-      gene_set_results %>% write_csv(str_c(sub_dir, "/", x, ".csv"))
-      
+      # we do not need to save file for each gene set now
+      # gene_set_results <- de_results %>% get_gene_set_results(gene_set_collection, x, str_c(comparison_name, ".pval"))
+      # gene_set_results %>% write_csv(str_c(sub_dir, "/", x, ".csv"))
+
       if (barcodeplots) {
+        sub_dir <- str_c(top_dir, "/", gene_set_collection_name)
+        if (!dir.exists(sub_dir))
+        dir.create(sub_dir,recursive=TRUE)
+
         start_plot(str_c(sub_dir, "/", x))
         plot_gene_set(de_results, gene_set_collection, x, comparison_name)
         end_plot()
       }
     })
+
+  # we merge all gsea results into one file
+  gene_set_names <- camera_results %>% extract2("GeneSet") %>% sort(method="radix")
+  gene_set_results <- gene_set_names %>%
+    map_dfc(function(x) {
+      de_results %>% get_gene_set_results_matrix(gene_set_collection, x)
+    }) %>%
+    setNames(gene_set_names)
+
+  de_results %>%
+    cbind(gene_set_results) %>%
+    write_csv(str_c(top_dir, "/", gene_set_collection_name, "_genes_in_sets.csv"))
+
+  ret[['genes_in_sets']]<- de_results %>% cbind(gene_set_results)
+
+  ret
 }
 
 ##### Quality surrogate variable analysis
@@ -971,7 +1068,7 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
 #'                for exmaple: 101_WT_Hip_Ctrl_fpkm. This will be split into columns listed in feature_group,
 #'                which in this case can be c('sample_id','condition','region','treatment'),
 #' @param filter_string A string. This will be applied when selecting the samples from the result table.
-#'                Example: filter="condition=='5xFAD'". If left NULL, all samples will be used.
+#'                Example: filter="condition=='5xFAD'" or filter="str_detect(sample_meta, 'SC[0-9]')". If left NULL, all samples will be used.
 #' @param plot_feature A string vector, indicating the usage of aes on the features in feature_group.
 #'                The length of the vector should be the same as the feature_group.
 #' @param plot_label A string from feature_group. Which feature to be use as label of the points in the plot.
@@ -1002,154 +1099,333 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
 #'   }
 #'   p=''
 #' }
-plotGeneCount <- function(gene_identifier,result_table=NULL,debug=FALSE,print_graph=FALSE,
-                          feature_group=c(), filter_string='', plot_feature=c(),plot_label="",plot_x=""){
-# devtools::install_github("thomasp85/patchwork",force = TRUE)
-# devtools::install_github("slowkow/ggrepel")
-  require(patchwork)
-  require(ggrepel)
-  require(knitr)
+  plotGeneCount <- function(gene_identifier,result_table=NULL,debug=FALSE,print_graph=FALSE,
+                            feature_group=c(), filter_string='', plot_feature=c( ),plot_label="",plot_x=""){
+  # devtools::install_github("thomasp85/patchwork",force = TRUE)
+  # devtools::install_github("slowkow/ggrepel")
+    require(patchwork)
+    require(ggrepel)
+    require(knitr)
 
-  if(is.null(result_table)) result_table<-str_c('./results/differential_expression/de_gene/deseq2_results_fpkm_',SPECIES,'.csv')
-  if(is_string(result_table)){
-    if(!file.exists(result_table)) stop(str_c("result_table [",result_table,"] does not exist."))
-    result_table<-read.csv(result_table)
-  }
-
-  fpkm_debug <- result_table %>% dplyr::select(gene, gene_name, chromosome, entrez_id, gene_type,
-  dplyr::ends_with("_fpkm"),-dplyr::ends_with("avg_fpkm"),
-  -dplyr::ends_with(".stat")) %>%
-    dplyr::filter(gene_name==gene_identifier | gene==gene_identifier | entrez_id==gene_identifier )
-
-  gene_name=fpkm_debug$gene_name %>% as.vector()
-
-  fpkm_debug_long <- fpkm_debug  %>% as_tibble() %>%
-    melt(id.var=c("gene","gene_name","chromosome","entrez_id","gene_type"),
-    variable.name='sample_meta',value.name='fpkm')
-
-  if(feature_group %>% length() == 0){
-    ## No feature group provided, we are going to plot the fpkm using the sample name and color.
-    plot_x='sample_meta'
-    plot_label='sample_meta'
-    p <- fpkm_debug_long %>% ggplot( mapping=aes_string(y="fpkm",x=plot_x)) + aes_string(color=plot_x)+ geom_point(size=3) +
-      geom_text_repel(aes(label=!!parse_expr(plot_label)),nudge_x=-0.35,direction="y",hjust= 0.5,segment.size= 0.1,size=3) +
-      ggtitle(gene_identifier %>% str_c(gene_name,sep=':')) + theme(legend.position='none') +
-      theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank())
-  }else{
-    ## We are using sample info for plotting
-    fpkm_debug_long %<>%
-    tidyr::separate(meta,sep='_',into=c(feature_group,"tmp"),remove=TRUE) %>%
-      tidyr::unite(col="sample_meta",feature_group,remove = FALSE) %>%
-      dplyr::select(-tmp)
-
-    ## We want to plot only these samples
-    if(filter_string!='') fpkm_debug_long %>% filter(!!parse_expr(filter))
-
-    p <- fpkm_debug_long %>% ggplot( mapping=aes_string(y="fpkm",x=plot_x))
-
-    ## add features
-    for(i in which(plot_feature!='')){
-      switch(plot_feature[i],
-      'color' = p <- p + aes_string(color=feature_group[i]),
-      'shape' = p <- p + aes_string(shape=feature_group[i]),
-      'size' = p <- p + aes_string(size=feature_group[i])
-      )
+    if(is.null(result_table)) result_table<-str_c('./results/differential_expression/de_gene/deseq2_results_fpkm_',SPECIES,'.csv')
+    if(is_string(result_table)){
+      if(!file.exists(result_table)) stop(str_c("result_table [",result_table,"] does not exist."))
+      result_table<-read.csv(result_table)
     }
 
-    p <- p +  geom_point(size=3) +
-      geom_text_repel(aes(label=!!parse_expr(plot_label)),nudge_x=-0.35,direction="y",hjust= 0.5,segment.size= 0.1,size=3) +
-      ggtitle(gene_identifier %>% str_c(gene_name,sep=':')) + theme(legend.position="top")
+    fpkm_debug <- result_table %>% dplyr::select(gene, gene_name, chromosome, entrez_id,
+    dplyr::ends_with("_fpkm"),-dplyr::ends_with("avg_fpkm"),
+    -dplyr::ends_with(".stat")) %>%
+      dplyr::filter(gene_name==gene_identifier | gene==gene_identifier | entrez_id==gene_identifier )
+
+    gene_name=fpkm_debug$gene_name %>% as.vector()
+
+    fpkm_debug_long <- fpkm_debug  %>% as_tibble() %>%
+      melt(id.var=c("gene","gene_name","chromosome","entrez_id"),
+      variable.name='sample_meta',value.name='fpkm')
+
+    if(feature_group %>% length() == 0){
+      ## No feature group provided, we are going to plot the fpkm using the sample name and color.
+      plot_x='sample_meta'
+      plot_label='sample_meta'
+      if(filter_string!='') fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
+      p <- fpkm_debug_long %>% ggplot( mapping=aes_string(y="fpkm",x=plot_x)) + aes_string(color=plot_x)+ geom_point(size=3) +
+        geom_text_repel(aes(label=!!parse_expr(plot_label)),nudge_x=-0.35,direction="y",hjust= 0.5,segment.size= 0.1,size=3) +
+        ggtitle(gene_identifier %>% str_c(gene_name,sep=':')) + theme(legend.position='none') +
+        theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank())
+    }else{
+      ## We are using sample info for plotting
+      fpkm_debug_long %<>%
+      tidyr::separate(meta,sep='_',into=c(feature_group,"tmp"),remove=TRUE) %>%
+        tidyr::unite(col="sample_meta",feature_group,remove = FALSE) %>%
+        dplyr::select(-tmp)
+
+      ## We want to plot only these samples
+      if(filter_string!='') fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
+
+      p <- fpkm_debug_long %>% ggplot( mapping=aes_string(y="fpkm",x=plot_x))
+
+      ## add features
+      for(i in which(plot_feature!='')){
+        switch(plot_feature[i],
+        'color' = p <- p + aes_string(color=feature_group[i]),
+        'shape' = p <- p + aes_string(shape=feature_group[i]),
+        'size' = p <- p + aes_string(size=feature_group[i])
+        )
+      }
+
+      p <- p +  geom_point(size=3) +
+        geom_text_repel(aes(label=!!parse_expr(plot_label)),nudge_x=-0.35,direction="y",hjust= 0.5,segment.size= 0.1,size=3) +
+        ggtitle(gene_identifier %>% str_c(gene_name,sep=':')) + theme(legend.position="top")
+    }
+
+    if(print_graph) p %>% print()
+    if(debug) fpkm_debug %>% kable( format = 'markdown', digits=99) %>% print()
+
+    list("info"=fpkm_debug,'graph'=p)
   }
 
-  if(print_graph) p %>% print()
-  if(debug) fpkm_debug %>% kable( format = 'markdown', digits=99) %>% print()
+  ## This function calls the plotCounts function and plot the fpkm for the genes defined in the MARKER_GENES table.
+  #' @param result_table Pass directly to the plotGeneCount function,  which can either be:
+  #'                     A string of the path to the deseq2_results_fpkm.csv, which contains the gene fpkm info,
+  #'                     or a result table object generated by diff_expr.R script.
+  #'                     If left empty, will by default read ./results/differential_expression/de_gene/deseq2_results_fpkm_{SPECIES}.csv
+  check_cell_type <- function(result_table, fpkm_check_cutoff=5,
+                              print_check_log=TRUE, print_fpkm_table=FALSE){
+    gene_markers<-GENE_MARKERS %>% pull(SPECIES) %>% split(f = GENE_MARKERS$cell_type)
+    fpkm_info<-data.frame()
+    p=''
+    message("Cell type check results are saved in [", GRAPHS_DIR,"]")
+    # for(g in split(genes_markers, ceiling(seq_along(genes)/4)) ){
+    for(cell_type in gene_markers %>% names()  ){
+      genes<-gene_markers %>% extract2(cell_type)
 
-  list("info"=fpkm_debug,'graph'=p)
+      for( i in genes ){
+        plot_name<-str_c(cell_type,'_',i)
+        l<-plotGeneCount(i, result_table=result_table, debug=FALSE, print=FALSE)
+        l$graph <- l$graph + geom_hline(yintercept=fpkm_check_cutoff, linetype="dashed", color = "black")
+        assign(plot_name,l$graph)
+        fpkm_info <- l$info %>% mutate(gene_marker_cell_tpye=cell_type) %>%
+          rbind(fpkm_info)
+        ifelse(nchar(p)==0,
+        p<-plot_name,
+        p<-str_c(p,plot_name,sep = '+')
+        )
+      }
+
+      start_plot(str_c("cell_type_check_",cell_type))
+      if(length(genes)<2){
+        p %>% parse_expr() %>% eval() %>% print()
+      }else{
+        str_c(p," plot_layout(ncol = 2)",sep = '+') %>% parse_expr() %>% eval() %>% print()
+      }
+      end_plot()
+      p=''
+    }
+
+    ## check fpkms
+    if(print_check_log){
+      # gene_marker_cell_tpye       sample         fpkm    is
+      # 1        oligodendrocyte  IN_AS1_fpkm 2.361160e+00 FALSE
+      # 2        oligodendrocyte  IN_AS1_fpkm 5.220813e-03 FALSE
+      # 3                 neuron  IN_AS1_fpkm 1.467844e-02 FALSE
+      # 4                 neuron  IN_AS1_fpkm 1.203420e+00 FALSE
+      # 5              microglia  IN_AS1_fpkm 0.000000e+00 FALSE
+      # 6              microglia  IN_AS1_fpkm 1.071327e-02 FALSE
+      # 7              astrocyte  IN_AS1_fpkm 2.133310e+03  TRUE
+      # 8              astrocyte  IN_AS1_fpkm 1.320389e+02  TRUE
+      # 9        oligodendrocyte  IN_AS2_fpkm 1.769229e+00 FALSE
+      check_result<-fpkm_info %>% dplyr::select(contains('fpkm'),gene_marker_cell_tpye) %>%
+        reshape2::melt(id.vars=c('gene_marker_cell_tpye'),variable.name='sample',value.name='fpkm') %>%
+        mutate(is=fpkm>fpkm_check_cutoff)
+
+      # sample       is
+      # <fct>        <chr>
+      #   1 IN_AS1_fpkm  astrocyte
+      # 2 IN_AS2_fpkm  astrocyte
+      # 3 IN_AS3_fpkm  astrocyte
+      # 4 IN_AG31_fpkm astrocyte
+      # 5 IN_AG32_fpkm astrocyte
+      # 6 IN_AG33_fpkm astrocyte
+      # 7 IN_AE61_fpkm astrocyte
+      # 8 IN_AE62_fpkm astrocyte
+      # 9 IN_AE63_fpkm astrocyte
+      ## For each sample, amount all the cell tpyes, which cell type has the most gene markers passed the cutoff?
+      check_result %<>% group_by(sample,gene_marker_cell_tpye) %>%
+        summarise(like=sum(is)/n()) %>%
+        # summarise(is=gene_marker_cell_tpye[which(like == max(like) )] %>% paste(collapse = ' / '))
+        summarise(is=gene_marker_cell_tpye[which(like >=0.5  )] %>% paste(collapse = ' / '))
+
+
+      cat("Cell type check result:\n")
+      for (i in check_result %>% pull(sample) %>% levels()){
+        str_c(i %>% strsplit('_fpkm') %>% extract2(1),
+        ' looks like **',
+        check_result %>% filter(sample==i) %>% pull(is) %>% toupper(),
+        "**\n") %>% cat()
+
+      }
+    }
+
+    if(print_fpkm_table){
+      fpkm_info %>% print()
+    }
+  }
+
+
+  save_results_by_group <- function(results){
+    # This function will, for each group defined in the COMPARISON_TABLE,  save the comparisons into
+    # a csv file, prefix with the group name.
+    for (g in COMPARISON_TABLE %>% pull(group) %>% unique() ){
+      comparisons <- COMPARISON_TABLE %>% filter(group==g) %>% pull(comparison)
+      n_comparisons <- COMPARISON_TABLE %>% filter(group!=g) %>% pull(comparison) %>% str_c("^", ., collapse = '|')
+      # save results
+      results %>%
+        dplyr::select(
+        gene, gene_name, chromosome, description, entrez_id, gene_type,
+        gene_length, max_transcript_length,
+        everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat"), -matches(n_comparisons) ) %>%
+        write_csv(str_c(OUTPUT_DIR, "/",g,"_deseq2_results_count_", SPECIES, ".csv"))
+
+      results %>%
+        dplyr::select(
+        gene, gene_name, chromosome, description, entrez_id, gene_type,
+        gene_length, max_transcript_length,
+        dplyr::contains("_fpkm"),
+        COMPARISON_TABLE %>%
+          pull(comparison) %>%
+          sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>% unlist() %>%
+          as.vector() %>%
+          unique(),
+        -dplyr::ends_with(".stat"), -matches(n_comparisons)) %>%
+        write_csv(str_c(OUTPUT_DIR, "/",g,"_deseq2_results_fpkm_", SPECIES, ".csv"))
+
+      SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
+        write_csv(str_c(OUTPUT_DIR, "/",g,"_de_summary_", SPECIES, ".csv"))
+    }
+  }
+
+start_parallel <- function(cores=NA){
+  if(is.na(cores))
+    cores <- get('NUM_CORES',envir = .GlobalEnv)
+  options("mc.cores"=cores)
+  assign("PARALLEL",TRUE,envir = .GlobalEnv)
+}
+stop_parallel <- function(){
+  options("mc.cores"=1L)
+  assign("PARALLEL",FALSE,envir = .GlobalEnv)
 }
 
-## This function calls the plotCounts function and plot the fpkm for the genes defined in the MARKER_GENES table.
-#' @param result_table Pass directly to the plotGeneCount function,  which can either be:
-#'                     A string of the path to the deseq2_results_fpkm.csv, which contains the gene fpkm info,
-#'                     or a result table object generated by diff_expr.R script.
-#'                     If left empty, will by default read ./results/differential_expression/de_gene/deseq2_results_fpkm_{SPECIES}.csv
-check_cell_type <- function(result_table, fpkm_check_cutoff=5,
-                            print_check_log=TRUE, print_fpkm_table=FALSE){
-  gene_markers<-GENE_MARKERS %>% pull(SPECIES) %>% split(f = GENE_MARKERS$cell_type)
-  fpkm_info<-data.frame()
-  p=''
-  message("Cell type check results are saved in [", GRAPHS_DIR,"]")
-  # for(g in split(genes_markers, ceiling(seq_along(genes)/4)) ){
-  for(cell_type in gene_markers %>% names()  ){
-    genes<-gene_markers %>% extract2(cell_type)
+adjust_parallel_cores<-function(){
+  #####
+  #' For each comparison,
+  #'   for the GO/reactome analysis, we are running all/up/down regulated genes,
+  ##   for the GSEA, we are running three categories ("CURATED", "MOTIF", "GO")
+  ## Thus we need to reduce the number of comparison we analysis in parallel to ensure we are not using more cores than specified.
+  ## The total number of cores used after the following line will be 3 * getOption("mc.cores")
+  currect_cores<-getOption("mc.cores", get('NUM_CORES',envir = .GlobalEnv))
+  reduced_cores<-floor(currect_cores/3)
+  if(reduced_cores>10)
+  reduced_cores=10
+  options("mc.cores"=reduced_cores)
+}
 
-    for( i in genes ){
-      plot_name<-str_c(cell_type,'_',i)
-      l<-plotGeneCount(i, result_table=result_table, debug=FALSE, print=FALSE)
-      assign(plot_name,l$graph)
-      fpkm_info <- l$info %>% mutate(gene_marker_cell_tpye=cell_type) %>%
-        rbind(fpkm_info)
-      ifelse(nchar(p)==0,
-      p<-plot_name,
-      p<-str_c(p,plot_name,sep = '+')
-      )
-    }
-
-    start_plot(str_c("cell_type_check_",cell_type))
-    if(length(genes)<2){
-      p %>% parse_expr() %>% eval() %>% print()
-    }else{
-      str_c(p," plot_layout(ncol = 2)",sep = '+') %>% parse_expr() %>% eval() %>% print()
-    }
-    end_plot()
-    p=''
+lapplyFunc.Fork <- function(X,FUN,cores=NA){
+  # This is the fork approach of parallel lapply
+  # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#starting-a-cluster
+  if(get('PARALLEL',envir = .GlobalEnv)){
+    if(is.na(cores))
+      cores=getOption("mc.cores", get('NUM_CORES',envir = .GlobalEnv))
+    mclapply(mc.cores=cores, X=X, FUN=FUN)
+  }else{
+    #run the nomal lapply in single core
+    lapply(X=X,FUN=FUN)
   }
-
-  ## check fpkms
-  if(print_check_log){
-    # gene_marker_cell_tpye       sample         fpkm    is
-    # 1        oligodendrocyte  IN_AS1_fpkm 2.361160e+00 FALSE
-    # 2        oligodendrocyte  IN_AS1_fpkm 5.220813e-03 FALSE
-    # 3                 neuron  IN_AS1_fpkm 1.467844e-02 FALSE
-    # 4                 neuron  IN_AS1_fpkm 1.203420e+00 FALSE
-    # 5              microglia  IN_AS1_fpkm 0.000000e+00 FALSE
-    # 6              microglia  IN_AS1_fpkm 1.071327e-02 FALSE
-    # 7              astrocyte  IN_AS1_fpkm 2.133310e+03  TRUE
-    # 8              astrocyte  IN_AS1_fpkm 1.320389e+02  TRUE
-    # 9        oligodendrocyte  IN_AS2_fpkm 1.769229e+00 FALSE
-    check_result<-fpkm_info %>% dplyr::select(contains('fpkm'),gene_marker_cell_tpye) %>%
-      reshape2::melt(id.vars=c('gene_marker_cell_tpye'),variable.name='sample',value.name='fpkm') %>%
-      mutate(is=fpkm>fpkm_check_cutoff)
-
-    # sample       is
-    # <fct>        <chr>
-    #   1 IN_AS1_fpkm  astrocyte
-    # 2 IN_AS2_fpkm  astrocyte
-    # 3 IN_AS3_fpkm  astrocyte
-    # 4 IN_AG31_fpkm astrocyte
-    # 5 IN_AG32_fpkm astrocyte
-    # 6 IN_AG33_fpkm astrocyte
-    # 7 IN_AE61_fpkm astrocyte
-    # 8 IN_AE62_fpkm astrocyte
-    # 9 IN_AE63_fpkm astrocyte
-    ## For each sample, amount all the cell tpyes, which cell type has the most gene markers passed the cutoff?
-    check_result %<>% group_by(sample,gene_marker_cell_tpye) %>%
-      summarise(like=sum(is)-n()) %>%
-      summarise(is=gene_marker_cell_tpye[which.max(like)])
+}
 
 
-    cat("Cell type check result:\n")
-    for (i in check_result %>% pull(sample) %>% levels()){
-      str_c(i %>% strsplit('_fpkm') %>% extract2(1),
-      ' looks like **',
-      check_result %>% filter(sample==i) %>% pull(is) %>% toupper(),
-      "**\n") %>% cat()
+lapplyFunc.Socket <- function(X,FUN,cores=NA,export_objects=c("expressed_genes","results","PARALLEL")){
+  # This is the Socket approach of parallel lapply
+  # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#starting-a-cluster
+  
+  if(get('PARALLEL',envir = .GlobalEnv)){
+    # create cluster
+    if(is.na(cores))
+      cores=getOption("mc.cores",get('NUM_CORES',envir = .GlobalEnv))
+    cl <- makeCluster(cores)
 
+
+    clusterEvalQ(cl, {
+      source("meta_data.R")
+    })
+    
+    # export variable
+    # we need this variable for the GO/Reactome analysis
+    if(length(export_objects) > 0){
+      clusterExport(cl, varlist=export_objects)
+      clusterExport(cl, varlist=c('export_objects'), envir=environment())
     }
+    
+    # run the parallel code
+    ret <- parSapply(cl=cl,X=X,simplify = FALSE,USE.NAMES = TRUE,FUN=FUN)
+    
+    # stop cluster
+    stopCluster(cl)
+    
+    ret
+  }else{
+    #run the nomal lapply in single core
+    sapply(X=X,simplify = FALSE,USE.NAMES = TRUE,FUN=FUN)
   }
+}
 
-  if(print_fpkm_table){
-    fpkm_info %>% print()
-  }
+# function to read the gsa result csv file for a comparison
+# .read_comparison_gsa_res <- function(comparison_name,category='GO',
+#                                      species=SPECIES, error_on_not_found=TRUE){
+#                                      supported_category=c('GO','CURATED','MOTIF')
+#
+#   if(!category %in% supported_category)
+#   stop("Only support category: ", str_c(supported_category,collapse = ','))
+#
+#   res_file <- str_c("results/differential_expression/gsa/",species,"/",comparison_name,"/",category,"_sets.csv")
+#
+#   ret <- NULL
+#
+#   if(file.exists(res_file)){
+#     ret <- read.csv(res_file) %>% dplyr::mutate(comparison=comparison_name)
+#   }else{
+#     if(error_on_not_found)
+#     stop("gsa result not found for comparison: ", comparison_name, "(",res_file,")")
+#     else
+#     warning("gsa result not found for comparison: ", comparison_name, "(",res_file,").", " Ignored!")
+#   }
+#
+#   ret
+# }
+
+#' This function reads in all the gsa result files and tract give gene sets
+#' @example:
+#' track_gene_set(target_terms=c('GO_RIBOSOME','GO_PROTEASOME_COMPLEX','GO_TRANSLATIONAL_INITIATION'), category='GO',comparison_table=COMPARISON_TABLE)
+track_gene_set <- function(target_terms=c('GO_RIBOSOME','GO_PROTEASOME_COMPLEX','GO_TRANSLATIONAL_INITIATION'), category='GO',
+                            gs_results=get('GS_results', envir = .GlobalEnv),
+                            comparison_table=COMPARISON_TABLE,print_table=TRUE, output_table_file=NA,
+                            left_out_comparison=c(),heat_map.fdr.midpoint=0.05){
+
+  ## create a master table for all comparison and the gene sets results
+  gsa_res_tb <- COMPARISON_TABLE %>% pull(comparison) %>% extract(which(!. %in% left_out_comparison)) %>% set_names(.) %>%
+    sapply(simplify = FALSE,USE.NAMES = TRUE,function(x){
+      gs_results %>% extract2(x) %>% extract2(category) %>%
+        tibble::rownames_to_column('GeneSet') %>%  dplyr::mutate(comparison=x)
+    }) %>% reduce(rbind)
+
+  ## we only keep gene sets of interests
+  gsa_res_tb <- gsa_res_tb %>% filter(GeneSet %in% target_terms) %>%
+  # for plotting
+    mutate(log10fdr=log10(FDR))
+
+  if(print_table)
+  print(gsa_res_tb %>% arrange(GeneSet,FDR))
+
+  # we output the FDR table to csv
+  if(!is.na(output_table_file))
+  gsa_res_tb %>% arrange(GeneSet,FDR) %>% dplyr::select(GeneSet,FDR,comparison) %>%
+    reshape(idvar = "comparison", timevar = "GeneSet", direction = "wide") %>%
+    write.csv(file = output_table_file )
+
+
+  gsa_res_tb %>% ggplot(aes(GeneSet,comparison)) +
+    geom_tile(aes(fill = log10fdr)) +
+    scale_fill_gradient2(low = "red",high = "blue",mid = "white",midpoint = log10(heat_map.fdr.midpoint)) +
+    theme(axis.text.x = element_text(angle = 0)) + geom_text(aes(label = ifelse(Direction=='Up',"^",""))) +
+    theme_bw() + theme(panel.border = element_blank(),panel.background = element_blank()) + labs(fill ="log10(FDR)") +
+    labs(title=str_c('FDR = ',heat_map.fdr.midpoint, '. ^ indicates up regulation.'))
+}
+
+
+load_rs_data<-function(file='results/Rworkspace/diff_expr.RData'){
+  if(!file.exists(file))
+  stop(file,' does not exist!')
+  load(file,envir = .GlobalEnv)
 }
 
 ########

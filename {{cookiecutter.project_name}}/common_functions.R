@@ -37,8 +37,8 @@ get_gene_lengths <- function(species) {
     read_csv
 }
 
-check_formulas <- function(){
-  for (r in COMPARISON_TABLE%>%rownames()) {
+check_formulas <- function() {
+  for (r in COMPARISON_TABLE %>% rownames()) {
     row <- COMPARISON_TABLE[r,]
     f <- row$formula %>% as.formula() %>% terms()
     condition <- row$condition_name
@@ -50,10 +50,10 @@ check_formulas <- function(){
       stop("The formula ends with a label which is different to the one specified in the condition_name column.
            This will cause the GSA algorithm to pick up the wrong condition.")
     }
-    }
+  }
 }
 
-start_plot <- function(prefix,width=12, height=12) {
+start_plot <- function(prefix, width=12, height=12) {
   if (PLOT_TO_FILE) {
     prefix %>% 
       str_c(GRAPHS_DIR, ., "_", SPECIES, ".pdf") %>% 
@@ -67,88 +67,98 @@ end_plot <- function() {
   }
 }
 
-add_to_patchwork<-function(plot2add,plot_var_name='pathworkplot'){
-  if(exists(plot_var_name,where = .GlobalEnv)){
-    p<-get(plot_var_name,.GlobalEnv)
-    p<-p + plot2add
-  }else{
-    p<-plot2add
+add_to_patchwork <- function(plot2add, plot_var_name='pathworkplot') {
+  if (exists(plot_var_name, where = .GlobalEnv)) {
+    p <- get(plot_var_name, .GlobalEnv)
+    p <- p + plot2add
+  } else {
+    p <- plot2add
   }
-  assign(plot_var_name,p,.GlobalEnv)
+  assign(plot_var_name, p, .GlobalEnv)
 }
 
-start_parallel <- function(cores=NA){
-  if(is.na(cores))
+start_parallel <- function(cores=NA) {
+  if (is.na(cores)) {
     cores <- get('NUM_CORES',envir = .GlobalEnv)
-  options("mc.cores"=cores)
-  assign("PARALLEL",TRUE,envir = .GlobalEnv)
+  }
+  
+  options("mc.cores" = cores)
+  assign("PARALLEL", TRUE, envir = .GlobalEnv)
 }
 
-stop_parallel <- function(){
-  options("mc.cores"=1L)
-  assign("PARALLEL",FALSE,envir = .GlobalEnv)
+stop_parallel <- function() {
+  options("mc.cores" = 1L)
+  assign("PARALLEL", FALSE, envir = .GlobalEnv)
 }
 
-adjust_parallel_cores<-function(){
-  currect_cores<-getOption("mc.cores", get('NUM_CORES',envir = .GlobalEnv))
-  reduced_cores<-floor(currect_cores/3)
-  if(reduced_cores>10)
-    reduced_cores=10
+adjust_parallel_cores <- function() {
+  currect_cores <- getOption("mc.cores", get('NUM_CORES', envir = .GlobalEnv))
+  reduced_cores <- floor(currect_cores/3)
+  
+  if (reduced_cores > 10) {
+    reduced_cores = 10
+  }
+  
   options("mc.cores"=reduced_cores)
 }
 
-lapply_fork <- function(X,FUN,cores=NA){
+lapply_fork <- function(X, FUN, cores = NA) {
   # This is the fork approach of parallel lapply:
   # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#starting-a-cluster
   
-  if(get('PARALLEL',envir = .GlobalEnv)){
-    if(is.na(cores))
-      cores=getOption("mc.cores", get('NUM_CORES',envir = .GlobalEnv))
-    mclapply(mc.cores=cores, X=X, FUN=FUN)
-  }else{
-    #run the nomal lapply in single core
-    lapply(X=X,FUN=FUN)
+  if (get('PARALLEL', envir = .GlobalEnv)) {
+    if (is.na(cores)) {
+      cores <- getOption("mc.cores", get('NUM_CORES', envir = .GlobalEnv))
+    }
+    
+    mclapply(mc.cores = cores, X = X, FUN = FUN)
+  } else {
+    #run the normal lapply in single core
+    lapply(X = X, FUN = FUN)
   }
 }
 
-lapply_socket <- function(X,FUN,cores=NA,export_objects=c("expressed_genes","results","PARALLEL")){
+lapply_socket <- function(X, FUN, cores = NA, export_objects=c("expressed_genes", "results", "PARALLEL")) {
   # This is the socket approach of parallel lapply:
   # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#starting-a-cluster
   
-  if(get('PARALLEL',envir = .GlobalEnv)){
+  if (get('PARALLEL', envir = .GlobalEnv)) {
     # create cluster
-    if(is.na(cores))
-      cores=getOption("mc.cores",get('NUM_CORES',envir = .GlobalEnv))
-    cl <- makeCluster(cores)
+    if (is.na(cores)) {
+      cores <- getOption("mc.cores", get('NUM_CORES', envir = .GlobalEnv))
+    }
     
+    cl <- makeCluster(cores)
     
     clusterEvalQ(cl, {
       source("meta_data.R")
     })
     
     # export variables
-    if(length(export_objects) > 0){
-      clusterExport(cl, varlist=export_objects)
-      clusterExport(cl, varlist=c('export_objects'), envir=environment())
+    if (length(export_objects) > 0) {
+      clusterExport(cl, varlist = export_objects)
+      clusterExport(cl, varlist = c('export_objects'), envir = environment())
     }
     
     # run the parallel code
-    ret <- parSapply(cl=cl,X=X,simplify = FALSE,USE.NAMES = TRUE,FUN=FUN)
+    ret <- parSapply(cl = cl, X = X, simplify = FALSE, USE.NAMES = TRUE, FUN=FUN)
     
     # stop cluster
     stopCluster(cl)
     
     ret
-  }else{
+  } else {
     # run the normal lapply in single core
-    sapply(X=X,simplify = FALSE,USE.NAMES = TRUE,FUN=FUN)
+    sapply(X = X, simplify = FALSE, USE.NAMES = TRUE, FUN=FUN)
   }
 }
 
-load_rs_data<-function(file='results/Rworkspace/diff_expr.RData'){
-  if(!file.exists(file))
+load_rs_data <- function(file = 'results/Rworkspace/diff_expr.RData') {
+  if (!file.exists(file)) {
     stop(file,' does not exist!')
-  load(file,envir = .GlobalEnv)
+  }
+  
+  load(file, envir = .GlobalEnv)
 }
 
 ##### Gene-level D. E. analyses

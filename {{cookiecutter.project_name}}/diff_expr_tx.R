@@ -127,7 +127,7 @@ comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Fork (
     res <- get_res(comparison_name, tpms, use_tx=USE_TX, 
                    quant_method=QUANT_METHOD, tx_level=TX_LEVEL)
 
-    results <- get("results", envir = .GlobalEnv) %>%
+    results <- get_global("results") %>%
       left_join(res[[1]]) %>%
       dplyr::rename(!!str_c(comparison_name, '.l2fc') := log2FoldChange,
                     !!str_c(comparison_name, '.raw_l2fc') := raw_l2fc,
@@ -142,48 +142,47 @@ comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Fork (
         results_sargasso %<>% left_join(P$P_condition %>% dplyr::select(gene,!!str_c(comparison_name, '.perc.',COMPARISON_TABLE %>% filter(comparison==comparison_name) %>% pull(condition)) := p))
         results_sargasso %<>% left_join(P$P_condition_base %>% dplyr::select(gene,!!str_c(comparison_name, '.perc.',COMPARISON_TABLE %>% filter(comparison==comparison_name) %>% pull(condition_base)) := p))
 
-        SUMMARY_TB <- get("SUMMARY_TB", envir = .GlobalEnv) %>%
-            mutate(Misassignment_samples_in_comparison_level_condition = ifelse(Comparison == comparison_name,P$condition_reference_samples %>% str_c(collapse = ','),Misassignment_samples_in_comparison_level_condition)) %>%
-            mutate(Misassignment_samples_in_base_level_condition = ifelse(Comparison == comparison_name,P$condition_base_reference_samples %>% str_c(collapse = ','),Misassignment_samples_in_base_level_condition))
-
-        assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
+        SUMMARY_TB <- get_global("SUMMARY_TB") %>%
+          mutate(Misassignment_samples_in_comparison_level_condition = ifelse(Comparison == comparison_name,P$condition_reference_samples %>% str_c(collapse = ','),Misassignment_samples_in_comparison_level_condition)) %>%
+          mutate(Misassignment_samples_in_base_level_condition = ifelse(Comparison == comparison_name,P$condition_base_reference_samples %>% str_c(collapse = ','),Misassignment_samples_in_base_level_condition)) %>% 
+          set_global("SUMMARY_TB")
     }
 
     p_plot<-plot_pvalue_distribution(results, str_c(comparison_name,'.pval'))
 
     add_to_patchwork(p_plot,plot_var_name='all_comparison_pvalue_distribution')
 
-    assign("results", results, envir = .GlobalEnv)
+    results %>% set_global("results")
 
-    comparison_name %>% str_c('res', sep = '_') %>% assign(res, envir = .GlobalEnv)
-    
+    res %>% set_global(comparison_name %>% str_c('res', sep = '_'))
+
     ##we return the results and merge them later
-    list(comparison_name=comparison_name,
-         res=res,
-         results_tb=get("results", envir = .GlobalEnv),
-         summary_tb=get("SUMMARY_TB", envir = .GlobalEnv),
-         p_plot=p_plot)
+    list(comparison_name = comparison_name,
+         res = res,
+         results_tb = get_global("results"),
+         summary_tb = get_global("SUMMARY_TB"),
+         p_plot = p_plot)
   }
 )
 
 if(exists(x = 'all_comparison_pvalue_distribution')) rm(all_comparison_pvalue_distribution)
 lapply(comparisons_results,function(cmp){
   ## merge the cmp result table into global results table
-  assign("results",
-         get("results", envir = .GlobalEnv) %>% left_join(cmp$results_tb %>% dplyr::select(gene,contains('.'))),
-         envir = .GlobalEnv)
+  get_global("results") %>%
+    left_join(cmp$results_tb %>% dplyr::select(gene,contains('.'))) %>% 
+    set_global("results")
   
   ## merge the cmp summary table into global SUMMARY_TABLE
-  assign("SUMMARY_TB",
-         get("SUMMARY_TB", envir = .GlobalEnv) %>% rbind(cmp$summary_tb),
-         envir = .GlobalEnv)
-  
+  get_global("SUMMARY_TB") %>% 
+    rbind(cmp$summary_tb) %>% 
+    set_global("SUMMARY_TB")
+    
   ## merge the p value plots
   add_to_patchwork(cmp$p_plot,plot_var_name='all_comparison_pvalue_distribution')
   
   ## export the res
-  cmp$comparison %>% str_c('res', sep = '_') %>% assign(cmp$res, envir = .GlobalEnv)
-  
+  cmp$res %>% set_global(cmp$comparison %>% str_c('res', sep = '_'))
+
   ##dummy return
   1
 }) %>% invisible()  ##so lappy will not print out useless merging message
@@ -256,7 +255,7 @@ if (!USE_TX | !TX_LEVEL) {
     p_str <- str_c(comparison_name, '.padj')
     l2fc_str <- str_c(comparison_name, '.l2fc')
     
-    results <- get("results",envir = .GlobalEnv)
+    results <- get_global("results")
     
     lapplyFunc.Socket(cores=3,X=c('','.up','.down'),function(cmp){
       if(cmp=='.up'){
@@ -277,16 +276,15 @@ if (!USE_TX | !TX_LEVEL) {
   list_of_gene_sets <- gene_set_categories %>% lapplyFunc.Fork(cores=length(gene_set_categories), X=., function(category,...) get_gene_sets(SPECIES, category))
 
   COMPARISON_TABLE %>% pull(comparison) %>% lapplyFunc.Fork(X=., function(comparison_name,...) {
-    res <- str_c(comparison_name, 'res', sep = '_') %>% get(envir = .GlobalEnv)
+    res <- str_c(comparison_name, 'res', sep = '_') %>% get_global()
     
     camera_results <- list_of_gene_sets %>% 
       map(function(category_gene_sets) {
         get_camera_results(res[[2]], category_gene_sets, gene_info)
       })
     
-    assign(str_c(comparison_name, 'camera_results', sep = '_'), 
-           camera_results, envir = .GlobalEnv)
-    
+    camera_results %>% set_global(str_c(comparison_name, 'camera_results', sep = '_'))
+
     lapplyFunc.Fork(cores=3,X=seq(1:length(gene_set_categories)),function(category,...){
       de_res <- results %>% dplyr::select(
         gene, gene_name, entrez_id, 

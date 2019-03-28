@@ -3,6 +3,22 @@ SALMON <- "salmon"
 
 ##### Utility functions
 
+set_global <- function(value, variable) {
+  assign(variable, envir=.GlobalEnv, value)
+}
+
+get_global <- function(variable) {
+  get(variable, envir = .GlobalEnv)  
+}
+
+global_exists <- function(variable) {
+  exists(variable, where = .GlobalEnv)
+}
+
+rm_global <- function(variable) {
+  rm(variable, envir = .GlobalEnv)
+}
+
 filter_with_rownames <- function(.data, ...) {
   .data %>%
     tibble::rownames_to_column(var = "tmp_row_names") %>%
@@ -68,47 +84,48 @@ end_plot <- function() {
 }
 
 add_to_patchwork <- function(plot2add, plot_var_name='pathworkplot') {
-  if (exists(plot_var_name, where = .GlobalEnv)) {
-    p <- get(plot_var_name, .GlobalEnv)
+  if (global_exists(plot_var_name)) {
+    p <- get_global(plot_var_name)
     p <- p + plot2add
   } else {
     p <- plot2add
   }
-  assign(plot_var_name, p, .GlobalEnv)
+  
+  p %>% set_global(plot_var_name)
 }
 
 start_parallel <- function(cores=NA) {
   if (is.na(cores)) {
-    cores <- get('NUM_CORES',envir = .GlobalEnv)
+    cores <- get_global('NUM_CORES')
   }
   
   options("mc.cores" = cores)
-  assign("PARALLEL", TRUE, envir = .GlobalEnv)
+  set_global(TRUE, "PARALLEL")
 }
 
 stop_parallel <- function() {
   options("mc.cores" = 1L)
-  assign("PARALLEL", FALSE, envir = .GlobalEnv)
+  set_global(FALSE, "PARALLEL")
 }
 
 adjust_parallel_cores <- function() {
-  currect_cores <- getOption("mc.cores", get('NUM_CORES', envir = .GlobalEnv))
+  currect_cores <- getOption("mc.cores", get_global('NUM_CORES'))
   reduced_cores <- floor(currect_cores/3)
   
   if (reduced_cores > 10) {
     reduced_cores = 10
   }
   
-  options("mc.cores"=reduced_cores)
+  options("mc.cores" = reduced_cores)
 }
 
 lapply_fork <- function(X, FUN, cores = NA) {
   # This is the fork approach of parallel lapply:
   # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#starting-a-cluster
   
-  if (get('PARALLEL', envir = .GlobalEnv)) {
+  if (get_global('PARALLEL')) {
     if (is.na(cores)) {
-      cores <- getOption("mc.cores", get('NUM_CORES', envir = .GlobalEnv))
+      cores <- getOption("mc.cores", get_global('NUM_CORES'))
     }
     
     mclapply(mc.cores = cores, X = X, FUN = FUN)
@@ -122,10 +139,10 @@ lapply_socket <- function(X, FUN, cores = NA, export_objects=c("expressed_genes"
   # This is the socket approach of parallel lapply:
   # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#starting-a-cluster
   
-  if (get('PARALLEL', envir = .GlobalEnv)) {
+  if (get_global('PARALLEL')) {
     # create cluster
     if (is.na(cores)) {
-      cores <- getOption("mc.cores", get('NUM_CORES', envir = .GlobalEnv))
+      cores <- getOption("mc.cores", get_global('NUM_CORES'))
     }
     
     cl <- makeCluster(cores)
@@ -1173,7 +1190,7 @@ write_camera_results <- function(
 #' track_gene_sets(target_terms=c('GO_RIBOSOME','GO_PROTEASOME_COMPLEX','GO_TRANSLATIONAL_INITIATION'), category='GO',comparison_table=COMPARISON_TABLE)
 track_gene_sets <- function(target_terms = c('GO_RIBOSOME', 'GO_PROTEASOME_COMPLEX', 'GO_TRANSLATIONAL_INITIATION'), 
                             category = 'GO',
-                            gs_results = get('GS_results', envir = .GlobalEnv),
+                            gs_results = get_global('GS_results'),
                             comparison_table = COMPARISON_TABLE,
                             print_table = TRUE, 
                             output_table_file = NA,
@@ -1449,7 +1466,7 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
       reference_species, gene_lengths, debug_output = FALSE)
   } else {
     reference_samples <- NA
-    P_condition <- get("results_sargasso", envir = .GlobalEnv) %>%
+    P_condition <- get_global("results_sargasso") %>%
       mutate(p = 0) %>%
       dplyr::select(gene, p)
   }
@@ -1489,7 +1506,7 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
       reference_species, gene_lengths, debug_output = FALSE)
   } else {
     reference_samples <- NA
-    P_condition_base <- get("results_sargasso", envir = .GlobalEnv) %>%
+    P_condition_base <- get_global("results_sargasso") %>%
       mutate(p = 0) %>%
       dplyr::select(gene, p)
   }

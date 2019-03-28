@@ -38,8 +38,8 @@ pdf_scale_factor <- 6
 
 start_plot("pca_features")
 
-if (exists(x = 'patchworkplot', where = .GlobalEnv)) {
-  rm(patchworkplot, envir = .GlobalEnv)
+if (global_exists('patchworkplot')) {
+  rm_global(patchworkplot)
 }
 
 # This is to plot individually every feature defined in the SAMPLE_DATA table
@@ -96,7 +96,7 @@ comparisons_results <- COMPARISON_TABLE %>% pull(comparison) %>% lapply_fork(
   function(comparison_name) {
     res <- get_res(comparison_name, fpkms, SPECIES, qSVA = qSVA)
     
-    results_tb <- get("results", envir = .GlobalEnv) %>% 
+    results_tb <- get_global("results") %>% 
       left_join(res[[1]], by = "gene") %>%
       dplyr::rename(!!str_c(comparison_name, '.l2fc') := log2FoldChange,
                     !!str_c(comparison_name, '.raw_l2fc') := raw_l2fc,
@@ -153,23 +153,22 @@ if (exists(x = 'all_comparison_pvalue_distribution')) {
 
 lapply(comparisons_results, function(cmp) {
   # merge the cmp result table into global results table
-  assign("results", envir = .GlobalEnv,
-         get("results", envir = .GlobalEnv) %>% 
-           left_join(cmp$results_tb %>% dplyr::select(gene,contains('.'))))
-  
+  get_global("results") %>% 
+    left_join(cmp$results_tb %>% dplyr::select(gene,contains('.'))) %>% 
+    set_global("results")
+
   # merge the cmp summary table into global SUMMARY_TABLE
-  assign("SUMMARY_TB", envir = .GlobalEnv,
-         get("SUMMARY_TB", envir = .GlobalEnv) %>% rbind(cmp$summary_tb))
-  
+  get_global("SUMMARY_TB") %>% 
+    rbind(cmp$summary_tb) %>% 
+    set_global("results")
+
   # merge the p value plots
   add_to_patchwork(cmp$p_plot, plot_var_name = 'all_comparison_pvalue_distribution')
   
-  # export the res
-  cmp$comparison %>% str_c('res', sep = '_') %>% assign(cmp$res, envir = .GlobalEnv)
+  # export the res and dds
+  cmp$res %>% set_global(cmp$comparison %>% str_c('res', sep = '_'))
+  cmp$dds %>% set_global(cmp$comparison %>% str_c('dds', sep = '_'))
 
-  # export the dds
-  cmp$comparison %>% str_c('dds', sep = '_') %>% assign(cmp$dds, envir = .GlobalEnv)
-  
   'success'
 }) 
 
@@ -261,8 +260,8 @@ GO_results <- COMPARISON_TABLE %>%
     p_str <- str_c(comparison_name, '.padj')
     l2fc_str <- str_c(comparison_name, '.l2fc')
     
-    results <- get("results", envir = .GlobalEnv)
-    
+    results <- get_global("results")
+
     lapply_socket(cores = 3, X = c('', '.up', '.down'), function(cmp) {
         if (cmp == '.up') {
           r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0)
@@ -284,11 +283,11 @@ Reactome_results<- COMPARISON_TABLE %>%
   pull(comparison) %>% 
   set_names(.) %>% 
   lapply_socket(X = ., function(comparison_name) {
-    p_str=str_c(comparison_name, 'padj', sep = '.')
-    l2fc_str=str_c(comparison_name, 'l2fc', sep = '.')
+    p_str <- str_c(comparison_name, 'padj', sep = '.')
+    l2fc_str <- str_c(comparison_name, 'l2fc', sep = '.')
     
-    results <- get("results",envir = .GlobalEnv)
-    
+    results <- get_global("results")
+
     lapply_socket(cores = 3, X = c('', '.up', '.down'), function(cmp) {
         if (cmp=='.up') {
           r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) > 0)
@@ -316,7 +315,7 @@ GS_results <- COMPARISON_TABLE %>%
   pull(comparison) %>% 
   set_names(.) %>% 
   lapply_fork(X=., function(comparison_name, ...) {
-    dds <- str_c(comparison_name, 'dds', sep = '_') %>% get(envir = .GlobalEnv)
+    dds <- str_c(comparison_name, 'dds', sep = '_') %>% get_global()
     
     camera_results <- list_of_gene_sets %>% 
       map(function(category_gene_sets) {

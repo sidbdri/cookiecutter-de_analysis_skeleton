@@ -791,9 +791,9 @@ check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
 
 ##### Transcript-level D. E. analyses
 
-get_transcripts_to_genes <- function(species='human') {
+get_transcripts_to_genes <- function(species = 'human') {
   str_c("data/", species , "_ensembl_{{cookiecutter.ensembl_version}}/tx2gene.tsv") %>%
-    read_delim(delim = " ", col_names=c("transcript", "gene"))
+    read_delim(delim = " ", col_names = c("transcript", "gene"))
 }
 
 get_transcript_quant_file <- function(quant_method) {
@@ -818,7 +818,7 @@ get_kallisto_tpms <- function(sample) {
     read_tsv %>% 
     dplyr::select(target_id, tpm)
   
-  transcript_tpms %<>% inner_join(get_transcripts_to_genes(SPECIES), by=c("target_id"="transcript"))
+  transcript_tpms %<>% inner_join(get_transcripts_to_genes(SPECIES), by = c("target_id"="transcript"))
   
   transcript_tpms %>% 
     group_by(gene) %>% 
@@ -826,26 +826,27 @@ get_kallisto_tpms <- function(sample) {
     rename_(.dots = setNames(names(.), c("gene", str_c(sample, "_tpm"))))
 }
 
-get_tximport <- function(sample_data, quant_method='salmon', tx_level=TRUE) {
+get_tximport <- function(sample_data, quant_method='salmon', tx_level = TRUE) {
   quant_file <- get_transcript_quant_file(quant_method)
   quant_dirs <- sample_data %>%
-    tibble::rownames_to_column(var="tmp") %>%
+    tibble::rownames_to_column(var = "tmp") %>%
     pull("tmp")
   
   quant_files <- str_c("results/",quant_method,"_quant/", SPECIES, "/",  quant_dirs, "/", quant_file)
   names(quant_files) <- quant_dirs
   
-  txi <- tximport(quant_files, type=quant_method, txOut = tx_level, tx2gene=get_transcripts_to_genes(SPECIES), dropInfReps = TRUE)
+  txi <- tximport(quant_files, type=quant_method, txOut = tx_level, 
+                  tx2gene=get_transcripts_to_genes(SPECIES), dropInfReps = TRUE)
 
     txi$Length <- read.csv(quant_files[1],sep = '\t',stringsAsFactors = FALSE) %>%
-    dplyr::select(id=1,length=2) %>%
+    dplyr::select(id = 1, length = 2) %>%
     tibble::remove_rownames() %>%
-    tibble::column_to_rownames(var='id')
+    tibble::column_to_rownames(var = 'id')
   
   txi
 }
 
-get_total_dds_tximport <- function(sample_data, quant_method='salmon', tx_level=TRUE) {
+get_total_dds_tximport <- function(sample_data, quant_method = 'salmon', tx_level = TRUE) {
   txi <- get_tximport(sample_data, quant_method, tx_level)
   
   total_dds <- DESeqDataSetFromTximport(txi, sample_data, ~1)
@@ -855,11 +856,11 @@ get_total_dds_tximport <- function(sample_data, quant_method='salmon', tx_level=
 }
 
 get_avg_tpm <- function(tpms, tx_level) {
-  sample_data = SAMPLE_DATA
+  sample_data <- SAMPLE_DATA
   sample_data %<>% tibble::rownames_to_column(var = "tmp_row_names") %>% 
-    group_by(.dots=AVG_FPKM_GROUP) %>%
-    summarise(samples=str_c(tmp_row_names, '_tpm', sep = '', collapse = ',')) %>%
-    tidyr::unite('avg_name', AVG_FPKM_GROUP, sep='_')
+    group_by(.dots = AVG_FPKM_GROUP) %>%
+    summarise(samples = str_c(tmp_row_names, '_tpm', sep = '', collapse = ',')) %>%
+    tidyr::unite('avg_name', AVG_FPKM_GROUP, sep = '_')
   
   for (avg in sample_data %>% pull(avg_name)) {
     samples <- sample_data %>%
@@ -869,7 +870,7 @@ get_avg_tpm <- function(tpms, tx_level) {
       unlist()
     
     avg_tpm <- tpms %>% dplyr::select(one_of(samples)) %>%
-      mutate(avg_tpm=rowMeans(.)) %>%
+      mutate(avg_tpm = rowMeans(.)) %>%
       dplyr::pull(avg_tpm)
     
     tpms %<>% mutate(!!str_c(avg, '_avg_tpm', sep='') := avg_tpm)

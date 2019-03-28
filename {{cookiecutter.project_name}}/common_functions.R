@@ -163,7 +163,7 @@ load_rs_data <- function(file = 'results/Rworkspace/diff_expr.RData') {
 
 ##### Gene-level D. E. analyses
 
-get_total_dds <- function(sample_data, species, filter_low_counts=FALSE, qSVA=FALSE, design_formula=~1) {
+get_total_dds <- function(sample_data, species, filter_low_counts = FALSE, qSVA = FALSE, design_formula = ~1) {
   # Collate count data
   total_count_data <- sample_data %>%
     row.names() %>%
@@ -173,11 +173,11 @@ get_total_dds <- function(sample_data, species, filter_low_counts=FALSE, qSVA=FA
   
   get_deseq2_dataset(
     total_count_data, sample_data,
-    filter_low_counts=filter_low_counts, design_formula=~1, qSVA=qSVA)
+    filter_low_counts = filter_low_counts, design_formula = ~1, qSVA = qSVA)
 }
 
-get_deseq2_dataset <- function(count_data, sample_data, filter_low_counts=TRUE, 
-                               design_formula=~condition,qSVA=FALSE) {
+get_deseq2_dataset <- function(count_data, sample_data, filter_low_counts = TRUE, 
+                               design_formula = ~condition, qSVA = FALSE) {
   
   dds <- DESeqDataSetFromMatrix(countData=count_data, colData=sample_data, design=design_formula)
   
@@ -189,20 +189,20 @@ get_deseq2_dataset <- function(count_data, sample_data, filter_low_counts=TRUE,
     dds %<>% get_qsva_dds()
   }
   
-  dds %>% DESeq(betaPrior=TRUE)
+  dds %>% DESeq(betaPrior = TRUE)
 }
 
-get_deseq2_results <- function(dds, comparison, condition, condition_base, alpha=0.05) {
+get_deseq2_results <- function(dds, comparison, condition, condition_base, alpha = 0.05) {
   res <- dds %>% results(c(comparison, condition, condition_base), alpha=alpha)
   res %>% summary %>% print
   
   res %>% as.data.frame() %>%
-    tibble::rownames_to_column(var="gene") %>%
+    tibble::rownames_to_column(var = "gene") %>%
     dplyr::select(-baseMean, -lfcSE)
 }
 
 get_raw_l2fc <- function(dds, sample_data, comparison_samples_filter) {
-  sample_data %<>% tibble::rownames_to_column(var="tmp_sample_name")
+  sample_data %<>% tibble::rownames_to_column(var = "tmp_sample_name")
   
   all_samples <- sample_data %>% extract2("tmp_sample_name") %>% as.vector
 
@@ -213,24 +213,24 @@ get_raw_l2fc <- function(dds, sample_data, comparison_samples_filter) {
   
   dds %>% 
     get_count_data %>% 
-    mutate(comparison_mean=rowMeans(.[comparison_samples]),
-           base_mean=rowMeans(.[base_samples]),
-           raw_l2fc=log2(comparison_mean / base_mean)) %>%
+    mutate(comparison_mean = rowMeans(.[comparison_samples]),
+           base_mean = rowMeans(.[base_samples]),
+           raw_l2fc = log2(comparison_mean / base_mean)) %>%
     dplyr::select(gene, raw_l2fc)
 }
 
-get_deseq2_results_name <- function(dds, name, alpha=0.05) {
-  res <- dds %>% results(name=name, alpha=alpha)
+get_deseq2_results_name <- function(dds, name, alpha = 0.05) {
+  res <- dds %>% results(name = name, alpha = alpha)
   res %>% summary %>% print
   
   res %>% as.data.frame() %>%
-    tibble::rownames_to_column(var="gene") %>%
+    tibble::rownames_to_column(var = "gene") %>%
     dplyr::select(-baseMean, -lfcSE, -stat)
 }
 
 # Get differential expression results for a given comparison name
 get_res <- function(comparison_name, tpms, species, qSVA=FALSE, 
-                    use_tx=FALSE, quant_method='salmon', tx_level=FALSE,alpha=0.05) {
+                    use_tx=FALSE, quant_method='salmon', tx_level=FALSE, alpha=0.05) {
   
   comparison_table <- COMPARISON_TABLE
   x=comparison_table %>% filter(comparison == comparison_name)
@@ -238,45 +238,46 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
     tibble::rownames_to_column(var = "tmp_row_names") %>%
     mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
     filter(!!parse_expr(x$filter)) %>%
-    mutate(sample_name_tmp=tmp_row_names) %>%
+    mutate(sample_name_tmp = tmp_row_names) %>%
     tibble::column_to_rownames(var = "tmp_row_names")
   
   # Ensure that conditions to be used in GSA comparisons are factors with the correct base level set.
   sample_data[,x$condition_name] %<>% relevel(x$condition_base)
   
-  if(use_tx){
-    txi<-get_tximport(sample_data,quant_method,tx_level)
+  if (use_tx) {
+    txi <- get_tximport(sample_data, quant_method, tx_level)
     dds <- DESeqDataSetFromTximport(txi, sample_data, x$formula %>% as.formula())
     dds <- dds[rowSums(counts(dds)) > 1, ]
     dds <- DESeq(dds, betaPrior = TRUE)
   }else{
     dds <- sample_data %>%
       row.names() %>%
-      map(read_counts,species) %>%
+      map(read_counts, species) %>%
       purrr::reduce(inner_join) %>%
       remove_gene_column() %>%
-      get_deseq2_dataset(sample_data, design_formula = x$formula %>% as.formula(),qSVA=qSVA)
+      get_deseq2_dataset(sample_data, design_formula = x$formula %>% as.formula(), qSVA=qSVA)
   }
   
-  if(use_tx & tx_level){
+  if (use_tx & tx_level) {
     # res contains transcripts, rather than genes
     res <- dds %>%
-      get_deseq2_results(x$condition_name, x$condition, x$condition_base,alpha=alpha) %>%
+      get_deseq2_results(x$condition_name, x$condition, x$condition_base, alpha=alpha) %>%
       left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition)))) %>%
-      dplyr::rename(transcript=gene)
-  }else{
+      dplyr::rename(transcript = gene)
+  } else {
     res <- dds %>%
-      get_deseq2_results(x$condition_name, x$condition, x$condition_base,alpha=alpha) %>%
+      get_deseq2_results(x$condition_name, x$condition, x$condition_base, alpha = alpha) %>%
       left_join(dds %>% get_raw_l2fc(sample_data, expr(!!sym(x$condition_name) == !!(x$condition))))
   }
   
   # Create a PCA plot and heatmap for this comparison
-  if(!use_tx){
+  if (!use_tx) {
     vst <- dds %>% varianceStabilizingTransformation
-    vst %>% plot_pca_with_labels(intgroup=c(x$condition_name)) %>% print
+    vst %>% plot_pca_with_labels(intgroup = c(x$condition_name)) %>% print
     vst %>% plot_heat_map(sample_data %>%
-                            mutate(sample_info=str_c(!!parse_expr(x$condition_name), sample_name_tmp, sep=":")) %>%
-                            extract2("sample_info"))
+                          mutate(sample_info = str_c(!!parse_expr(x$condition_name), 
+                                                     sample_name_tmp, sep = ":")) %>%
+                          extract2("sample_info"))
     
     start_plot(str_c("pca_", x$comparison))
     vst %>% plot_pca_with_labels(intgroup=x$condition_name) %>% print()
@@ -284,33 +285,53 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
 
     start_plot(str_c("heatmap_", x$comparison))
     vst %>% plot_heat_map(sample_data %>%
-                            tidyr::unite(col='sample_info',c(sample_name_tmp,x$condition_name) , sep = ":", remove = FALSE) %>%
+                            tidyr::unite(col = 'sample_info',c(sample_name_tmp,x$condition_name), 
+                                         sep = ":", remove = FALSE) %>%
                             extract2("sample_info"))
     end_plot()
   }
   
-  summary_tb_row <- list(Comparison = x$comparison, DESeq_model_formula = design(dds) %>% format(),
-            Condition_tested = x$condition_name,
-            Total_number_of_samples_data=sample_data %>% nrow(),
-            Base_level_condition=x$condition_base,
-            Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
-            Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name_tmp) %>% str_c(collapse = ','),
-            Comparison_level_condition=x$condition,
-            Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
-            Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name_tmp) %>% str_c(collapse = ','),
-            p.adj.cutoff=P.ADJ.CUTOFF,
-            Up_regulated=res %>% filter( padj < P.ADJ.CUTOFF & log2FoldChange > 0 ) %>% nrow(),
-            Down_regulated=res %>% filter( padj < P.ADJ.CUTOFF & log2FoldChange < 0 ) %>% nrow(),
-            D.E.total=res %>% filter( padj < P.ADJ.CUTOFF) %>% nrow())
+  summary_tb_row <- list(
+    Comparison = x$comparison, 
+    DESeq_model_formula = design(dds) %>% format(),
+    Condition_tested = x$condition_name,
+    Total_number_of_samples_data = sample_data %>% nrow(),
+    Base_level_condition = x$condition_base,
+    Number_of_samples_in_base_level_condition = sample_data %>% 
+      filter(!!parse_expr(x$condition_name) == x$condition_base) %>% 
+      nrow(),
+    Sample_names_in_base_level_condition = sample_data %>% 
+      filter(!!parse_expr(x$condition_name) == x$condition_base) %>% 
+      pull(sample_name_tmp) %>% 
+      str_c(collapse = ','),
+    Comparison_level_condition = x$condition,
+    Number_of_samples_in_comparison_level_condition = sample_data %>% 
+      filter(!!parse_expr(x$condition_name) == x$condition) %>% 
+      nrow(),
+    Sample_names_in_comparison_level_condition = sample_data %>% 
+      filter(!!parse_expr(x$condition_name) == x$condition) %>% 
+      pull(sample_name_tmp) %>% 
+      str_c(collapse = ','),
+    p.adj.cutoff = P.ADJ.CUTOFF,
+    Up_regulated = res %>% 
+      filter(padj < P.ADJ.CUTOFF & log2FoldChange > 0) %>% 
+      nrow(),
+    Down_regulated = res %>% 
+      filter(padj < P.ADJ.CUTOFF & log2FoldChange < 0) %>% 
+      nrow(),
+    D.E.total = res %>% 
+      filter(padj < P.ADJ.CUTOFF) %>% 
+      nrow()
+  )
   
   list(res=res, dds=dds, summary_tb_row=summary_tb_row)
 }
 
-get_count_data <- function(dds, norm=T) {
+get_count_data <- function(dds, norm = T) {
   dds %>%
-    counts(normalized=norm) %>%
+    counts(normalized = norm) %>%
     as.data.frame() %>%
-    tibble::rownames_to_column(var="gene")
+    tibble::rownames_to_column(var = "gene")
 }
 
 get_fpkms <- function(all_counts, gene_lengths, samples, col_suffix) {
@@ -325,7 +346,7 @@ get_fpkms <- function(all_counts, gene_lengths, samples, col_suffix) {
                function(x, y) x / y / mmr * 1000)
   }
   
-  fpkms<-all_counts %>% dplyr::select(gene, dplyr::contains(col_suffix))
+  fpkms <- all_counts %>% dplyr::select(gene, dplyr::contains(col_suffix))
   
   # work out average fpkm
   fpkms %>% left_join(get_avg_fpkm(fpkms))
@@ -337,7 +358,7 @@ get_avg_fpkm <- function(fpkms) {
     sample_data %<>% tibble::rownames_to_column(var = "tmp_row_names") %>% 
       group_by(.dots=g) %>%
       summarise(samples=str_c(tmp_row_names, '_fpkm', sep = '', collapse = ',')) %>%
-      tidyr::unite('avg_name', g, sep='_')
+      tidyr::unite('avg_name', g, sep = '_')
     
     for (avg in sample_data %>% pull(avg_name)) {
       samples <- sample_data %>%
@@ -347,29 +368,37 @@ get_avg_fpkm <- function(fpkms) {
         unlist()
       
       avg_fpkm <- fpkms %>% dplyr::select(one_of(samples)) %>%
-        mutate(avg_fpkm=rowMeans(.)) %>%
+        mutate(avg_fpkm = rowMeans(.)) %>%
         dplyr::pull(avg_fpkm)
       
-      fpkms %<>% mutate(!!str_c(avg,'_avg_fpkm',sep='') := avg_fpkm)
+      fpkms %<>% mutate(!!str_c(avg, '_avg_fpkm', sep = '') := avg_fpkm)
     }
   }
   
   fpkms %>% dplyr::select(gene, contains('avg'))
 }
 
-save_results_by_group <- function(results){
+save_results_by_group <- function(results) {
   # This function will, for each group defined in the COMPARISON_TABLE, save the comparisons into
   # a CSV file, prefixed with the group name.
-  for (g in COMPARISON_TABLE %>% pull(group) %>% unique() ){
-    comparisons <- COMPARISON_TABLE %>% filter(group==g) %>% pull(comparison)
-    n_comparisons <- COMPARISON_TABLE %>% filter(group!=g) %>% pull(comparison) %>% str_c("^", ., collapse = '|')
+  for (g in COMPARISON_TABLE %>% pull(group) %>% unique()) {
+    
+    comparisons <- COMPARISON_TABLE %>% 
+      filter(group == g) %>% 
+      pull(comparison)
+    
+    n_comparisons <- COMPARISON_TABLE %>% 
+      filter(group != g) %>% 
+      pull(comparison) %>% 
+      str_c("^", ., collapse = '|')
+    
     # save results
     results %>%
       dplyr::select(
         gene, gene_name, chromosome, description, entrez_id, gene_type,
         gene_length, max_transcript_length,
-        everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat"), -matches(n_comparisons) ) %>%
-      write_csv(str_c(OUTPUT_DIR, "/",g,"_deseq2_results_count_", SPECIES, ".csv"))
+        everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat"), -matches(n_comparisons)) %>%
+      write_csv(str_c(OUTPUT_DIR, "/", g, "_deseq2_results_count_", SPECIES, ".csv"))
     
     results %>%
       dplyr::select(
@@ -378,25 +407,26 @@ save_results_by_group <- function(results){
         dplyr::contains("_fpkm"),
         COMPARISON_TABLE %>%
           pull(comparison) %>%
-          sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>% unlist() %>%
+          sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>% 
+          unlist() %>%
           as.vector() %>%
           unique(),
         -dplyr::ends_with(".stat"), -matches(n_comparisons)) %>%
-      write_csv(str_c(OUTPUT_DIR, "/",g,"_deseq2_results_fpkm_", SPECIES, ".csv"))
+      write_csv(str_c(OUTPUT_DIR, "/", g ,"_deseq2_results_fpkm_", SPECIES, ".csv"))
     
     SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
-      write_csv(str_c(OUTPUT_DIR, "/",g,"_de_summary_", SPECIES, ".csv"))
+      write_csv(str_c(OUTPUT_DIR, "/", g ,"_de_summary_", SPECIES, ".csv"))
   }
 }
 
-read_de_results <- function(filename, num_samples, num_conditions, num_comparisons, extra_columns="") {
+read_de_results <- function(filename, num_samples, num_conditions, num_comparisons, extra_columns = "") {
   col_types_string <- str_c(
     "ccccii",
     strrep("d", num_samples + num_conditions + num_comparisons * 4),
     extra_columns)
   print(nchar(col_types_string))
   
-  read_csv(filename, col_types=col_types_string)
+  read_csv(filename, col_types = col_types_string)
 }
 
 ##### Quality control checks and plots

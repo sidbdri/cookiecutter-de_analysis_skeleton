@@ -1236,12 +1236,12 @@ get_quality_surrogate_variables <- function(dds) {
   quality_surrogate_variables <- sample_names %>%
     str_c("results/read_counts/", ., ".", SPECIES, ".dm.tsv") %>%
     read.degradation.matrix(
-      sampleNames=sample_names,
-      totalMapped=dds %>% counts %>% colSums,
-      readLength=75,
-      type="region_matrix_single",
-      BPPARAM=SerialParam()) %>%
-    qsva(mod=design_formula %>% model.matrix(sample_data))
+      sampleNames = sample_names,
+      totalMapped = dds %>% counts %>% colSums,
+      readLength = 75,
+      type = "region_matrix_single",
+      BPPARAM = SerialParam()) %>%
+    qsva(mod = design_formula %>% model.matrix(sample_data))
 
   quality_surrogate_variables %>% print
 
@@ -1254,13 +1254,14 @@ get_qsva_dds <- function(dds) {
   quality_surrogate_variables <- get_quality_surrogate_variables(dds)
 
   if (is.vector(quality_surrogate_variables)) {
-   quality_surrogate_variables %<>% data.frame(qSVA=.)
+    quality_surrogate_variables %<>% data.frame(qSVA = .)
   }
 
   colData(dds) %<>% cbind(quality_surrogate_variables)
 
   design(dds) <- design_formula %>%
-    terms() %>% attr("term.labels") %>%
+    terms() %>% 
+    attr("term.labels") %>%
     c(quality_surrogate_variables %>% colnames, .) %>% 
     reformulate
   

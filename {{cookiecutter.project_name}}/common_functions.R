@@ -1214,8 +1214,10 @@ track_gene_sets <- function(target_terms = c('GO_RIBOSOME', 'GO_PROTEASOME_COMPL
   ## we only keep gene sets of interests
   gsa_res_tb <- gsa_res_tb %>% 
     filter(GeneSet %in% target_terms) %>%
-    # for plotting
-    mutate(log10fdr=log10(FDR))
+    mutate(log10fdr=log10(FDR)) # for plotting
+  
+  gsa_res_tb$comparison %<>% factor(levels = COMPARISON_TABLE %>% pull(comparison) %>% rev)
+  gsa_res_tb$GeneSet %<>% factor(levels = target_terms)
   
   if (print_table) {
     print(gsa_res_tb %>% arrange(GeneSet, FDR))
@@ -1230,17 +1232,20 @@ track_gene_sets <- function(target_terms = c('GO_RIBOSOME', 'GO_PROTEASOME_COMPL
     write.csv(file = output_table_file)
   }
   
-  gsa_res_tb %>% ggplot(aes(GeneSet, comparison)) +
-    geom_tile(aes(fill = log10fdr)) +
-    scale_fill_gradient2(low = "red", high = "blue", mid = "white", 
+  gsa_res_tb %>% 
+    ggplot(aes(GeneSet, comparison)) +
+    geom_tile(aes(fill = log10fdr)) + 
+    scale_fill_gradient2(low = "red", high = "white", mid = "white",
                          midpoint = log10(heat_map.fdr.midpoint)) +
-    theme(axis.text.x = element_text(angle = 0)) + 
-    geom_text(aes(label = ifelse(Direction == 'Up', "^", ""))) +
-    theme_bw() + 
-    theme(panel.border = element_blank(),
-          panel.background = element_blank()) + 
-    labs(fill = "log10(FDR)") +
-    labs(title = str_c('FDR = ', heat_map.fdr.midpoint, '. ^ indicates up regulation.'))
+    geom_text(aes(label = if_else(FDR < heat_map.fdr.midpoint, 
+                                  ifelse(Direction=='Up', "UP", "DOWN"),
+                                  "")), alpha = 0.75, size=3) +
+    labs(fill ="log10(FDR)") +
+    labs(title=str_c('FDR cutoff = ',heat_map.fdr.midpoint),
+         xlab="Gene Set", ylab="Comparison") + 
+    theme_minimal() + 
+    theme(axis.text.x = element_text(angle = -90, size=7), 
+          panel.border = element_blank(),panel.background = element_blank())
 }
 
 ##### Quality surrogate variable analysis

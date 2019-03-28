@@ -895,35 +895,36 @@ get_significant_genes <- function(term, GOdata, gene_info) {
     paste(collapse=", ")
 }
 
-perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP", species, top_dir, comparison_name) {
+perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP", 
+                                species, top_dir, comparison_name) {
+  
   gene_list <- (gene_universe$gene %in% significant_genes$gene) %>% as.integer %>% factor
   names(gene_list) <- gene_universe$gene
 
   mapping <- switch(species,
-  mouse = "org.Mm.eg.db",
-  rat = "org.Rn.eg.db",
-  human = "org.Hs.eg.db")
+                    mouse = "org.Mm.eg.db",
+                    rat = "org.Rn.eg.db",
+                    human = "org.Hs.eg.db")
 
-  go_data <- new("topGOdata", ontology=ontology, allGenes=gene_list,
-  annot=annFUN.org, mapping=mapping, ID="Ensembl")
+  go_data <- new("topGOdata", ontology = ontology, allGenes = gene_list,
+                 annot = annFUN.org, mapping = mapping, ID = "Ensembl")
 
   result_weight <- go_data %>% runTest('weight01', 'fisher')
   # result_classic <- go_data %>% runTest('classic', 'fisher')
   # result_elim <- go_data %>% runTest('elim', 'fisher')
   result_weight %>% print()
 
-  go_results <- go_data %>% GenTable(weight_fisher=result_weight, orderBy="weight_fisher", topNodes=150)
+  go_results <- go_data %>% GenTable(weight_fisher = result_weight, orderBy = "weight_fisher", topNodes = 150)
 
   gene_info <- get_gene_info(species)
   go_results$Genes <- sapply(go_results[,c('GO.ID')], function(x) get_significant_genes(x, go_data, gene_info))
 
-  list(go_results=go_results,
-       # go_data=go_data,
-       # result_classic=result_classic,
-       # result_elim=result_elim,
-       result_weight=result_weight
+  list(go_results = go_results,
+       # go_data = go_data,
+       # result_classic = result_classic,
+       # result_elim = result_elim,
+       result_weight = result_weight
   )
-
 }
 
 perform_go_analyses <- function(significant_genes, expressed_genes, comparison_name, file_prefix, species) {
@@ -932,22 +933,26 @@ perform_go_analyses <- function(significant_genes, expressed_genes, comparison_n
     return()
   }
 
-  top_dir<-str_c("results/differential_expression/go/",species, '/', comparison_name, sep = '')
+  top_dir < -str_c("results/differential_expression/go/", species, '/', comparison_name, sep = '')
   if (!dir.exists(top_dir)) {
-    dir.create(top_dir,recursive=TRUE)
+    dir.create(top_dir, recursive = TRUE)
   }
 
-  sapply( c("BP", "MF", "CC"), simplify = FALSE,USE.NAMES = TRUE, function(x) {
+  sapply(c("BP", "MF", "CC"), simplify = FALSE, USE.NAMES = TRUE, function(x) {
     ret <- perform_go_analysis(expressed_genes, significant_genes, x, species, top_dir ,comparison_name)
-    ret %>% extract2('go_results') %>% write_csv(str_c(top_dir, '/', comparison_name, file_prefix, "_go_", x %>% tolower, ".csv"))
+    
+    ret %>% 
+      extract2('go_results') %>% 
+      write_csv(str_c(top_dir, '/', comparison_name, file_prefix, "_go_", x %>% tolower, ".csv"))
+    
     ret
   })
 }
 
 ##### Reactome pathway analysis
 
-perform_pathway_enrichment <- 
-  function(significant_genes, expressed_genes, comparison_name, file_prefix, species) {
+perform_pathway_enrichment <- function(significant_genes, expressed_genes, 
+                                       comparison_name, file_prefix, species) {
     
   gene_info <- get_gene_info(species)
   
@@ -961,16 +966,16 @@ perform_pathway_enrichment <-
     pull("entrez_id")
   
   pathways <- enrichPathway(
-    gene=gene_list, organism=species, universe=as.character(universe), 
-    pvalueCutoff=0.1, readable=T) %>%
+    gene = gene_list, organism = species, universe = as.character(universe), 
+    pvalueCutoff = 0.1, readable = T) %>%
     as.data.frame()
 
-    top_dir<-str_c("results/differential_expression/reactome/",species, '/', comparison_name, sep = '')
+    top_dir <- str_c("results/differential_expression/reactome/",species, '/', comparison_name, sep = '')
     if (!dir.exists(top_dir)) {
-      dir.create(top_dir,recursive=TRUE)
+      dir.create(top_dir, recursive = TRUE)
     }
 
-    ret<-data.frame()
+    ret <- data.frame()
 
     if (pathways %>% nrow() > 0) {
       pathways %>%
@@ -979,6 +984,7 @@ perform_pathway_enrichment <-
 
       ret <- pathways %>% dplyr::select(ID, Description, GeneRatio, BgRatio, pvalue, p.adjust, geneID)
     }
+    
     ret
 }
 
@@ -987,7 +993,7 @@ perform_pathway_enrichment <-
 get_human_vs_species_ortholog_info <- function(species) {
   orthologs <- species %>% 
     str_c("data/", ., "_ensembl_{{cookiecutter.ensembl_version}}/human_orthologs.tsv") %>% 
-    read_tsv(col_names=c("species_gene", "human_gene", "type"))
+    read_tsv(col_names = c("species_gene", "human_gene", "type"))
   
   species_genes <- get_gene_info(species)
   human_genes <- get_gene_info("human")
@@ -995,24 +1001,24 @@ get_human_vs_species_ortholog_info <- function(species) {
   orthologs_entrez <- orthologs %>% 
     left_join(species_genes %>% 
                 dplyr::select(gene, entrez_id) %>% 
-                dplyr::rename(species_gene=gene, species_entrez_id=entrez_id)) %>%
+                dplyr::rename(species_gene = gene, species_entrez_id = entrez_id)) %>%
     left_join(human_genes %>% 
                 dplyr::select(gene, entrez_id) %>% 
-                dplyr::rename(human_gene=gene, human_entrez_id=entrez_id)) %>%
+                dplyr::rename(human_gene = gene, human_entrez_id = entrez_id)) %>%
     dplyr::select(species_entrez_id, human_entrez_id) %>% 
     filter(!is.na(species_entrez_id) & !is.na(human_entrez_id)) %>% 
     distinct()
   
   same_name_entrez <- (species_genes %>% 
-                         mutate(gene_name=tolower(gene_name)) %>% 
+                         mutate(gene_name = tolower(gene_name)) %>% 
                          dplyr::select(gene_name, entrez_id) %>% 
                          filter(!is.na(entrez_id)) %>% 
-                         dplyr::rename(species_entrez_id=entrez_id)) %>%
+                         dplyr::rename(species_entrez_id = entrez_id)) %>%
     inner_join(human_genes %>% 
-                 mutate(gene_name=tolower(gene_name)) %>% 
+                 mutate(gene_name = tolower(gene_name)) %>% 
                  dplyr::select(gene_name, entrez_id) %>% 
                  filter(!is.na(entrez_id)) %>% 
-                 dplyr::rename(human_entrez_id=entrez_id)) %>%
+                 dplyr::rename(human_entrez_id = entrez_id)) %>%
     dplyr::select(-gene_name) %>% 
     distinct()
   
@@ -1034,7 +1040,7 @@ get_gene_sets <- function(species, gene_set_name) {
     return(gene_sets)
   }
   
-  pb <- txtProgressBar(max=length(gene_sets), style=3)
+  pb <- txtProgressBar(max = length(gene_sets), style = 3)
   count <- 0
   
   ortholog_info <- get_human_vs_species_ortholog_info(species)
@@ -1057,10 +1063,10 @@ get_camera_results <- function(dds, gene_sets, gene_info) {
   
   ids <- expression_data %>% 
     as.data.frame %>% 
-    tibble::rownames_to_column(var="gene") %>% 
+    tibble::rownames_to_column(var = "gene") %>% 
     inner_join(gene_info) 
   
-  idx <- gene_sets %>% ids2indices(id=ids$entrez_id)
+  idx <- gene_sets %>% ids2indices(id = ids$entrez_id)
   
   design_matrix <- model.matrix(design_formula, vst %>% colData)
   
@@ -1069,7 +1075,7 @@ get_camera_results <- function(dds, gene_sets, gene_info) {
 
 plot_gene_set <- function(results, gene_sets, gene_set_name, prefix) {
   idx <- gene_sets %>% 
-    ids2indices(id=results$entrez_id) %>%
+    ids2indices(id = results$entrez_id) %>%
     extract2(gene_set_name)
   
   pval <- prefix %>% str_c(".pval") %>% rlang::sym()
@@ -1078,7 +1084,7 @@ plot_gene_set <- function(results, gene_sets, gene_set_name, prefix) {
   results %>% 
     mutate(signed_p = -log10(!!pval) * sign(!!l2fc)) %>%
     pull(signed_p) %>% 
-    barcodeplot(index=idx, quantiles = c(-1,1)*(-log10(0.05)))
+    barcodeplot(index = idx, quantiles = c(-1,1)*(-log10(0.05)))
 }
 
 get_gene_set_results_matrix <- function(results, gene_sets, gene_set_name) {
@@ -1091,7 +1097,7 @@ get_gene_set_results_matrix <- function(results, gene_sets, gene_set_name) {
     extract(idx, ) %>%
     dplyr::select(gene) %>%
     group_by(gene) %>%
-    filter(row_number()==1) %>%
+    filter(row_number() == 1) %>%
     ungroup
 
   genes_in_set[gene_set_name] = "T"
@@ -1104,22 +1110,24 @@ get_gene_set_results_matrix <- function(results, gene_sets, gene_set_name) {
 
 write_camera_results <- function(
   gene_set_collection_name, gene_set_collection, comparison_name, species, de_results, camera_results,
-  barcodeplots=FALSE, fdr_cutoff=0.1) {
+  barcodeplots = FALSE, fdr_cutoff = 0.1) {
 
   top_dir <- str_c("results/differential_expression/gsa/",species, "/", comparison_name)
   if (!dir.exists(top_dir)) {
-    dir.create(top_dir,recursive=TRUE)
+    dir.create(top_dir, recursive = TRUE)
   }
 
-  camera_results %>% tibble::rownames_to_column(var="GeneSet") %>% filter(FDR < fdr_cutoff) %>%
+  camera_results %>% tibble::rownames_to_column(var = "GeneSet") %>% filter(FDR < fdr_cutoff) %>%
     write_csv(str_c(top_dir, "/", gene_set_collection_name, "_enriched_sets.csv"))
 
-  ret <- list(enriched_sets=camera_results %>% tibble::rownames_to_column(var="GeneSet") %>% filter(FDR < fdr_cutoff))
+  ret <- list(enriched_sets = camera_results %>% 
+                tibble::rownames_to_column(var="GeneSet") %>% 
+                filter(FDR < fdr_cutoff))
 
   # Save only the significant gene sets
   camera_results %<>%
-  tibble::rownames_to_column(var="GeneSet") %>%
-  filter(FDR < fdr_cutoff)
+    tibble::rownames_to_column(var="GeneSet") %>%
+    filter(FDR < fdr_cutoff)
 
   if ((camera_results %>% nrow) == 0) {
     return()
@@ -1135,7 +1143,7 @@ write_camera_results <- function(
       if (barcodeplots) {
         sub_dir <- str_c(top_dir, "/", gene_set_collection_name)
         if (!dir.exists(sub_dir))
-        dir.create(sub_dir,recursive=TRUE)
+        dir.create(sub_dir, recursive = TRUE)
 
         start_plot(str_c(sub_dir, "/", x))
         plot_gene_set(de_results, gene_set_collection, x, comparison_name)
@@ -1144,7 +1152,7 @@ write_camera_results <- function(
     })
 
   # Merge all GSA results into one file
-  gene_set_names <- camera_results %>% extract2("GeneSet") %>% sort(method="radix")
+  gene_set_names <- camera_results %>% extract2("GeneSet") %>% sort(method = "radix")
   gene_set_results <- gene_set_names %>%
     map_dfc(function(x) {
       de_results %>% get_gene_set_results_matrix(gene_set_collection, x)
@@ -1163,39 +1171,59 @@ write_camera_results <- function(
 #' This function reads in all the GSA results and tracks the given gene sets
 #' @example:
 #' track_gene_sets(target_terms=c('GO_RIBOSOME','GO_PROTEASOME_COMPLEX','GO_TRANSLATIONAL_INITIATION'), category='GO',comparison_table=COMPARISON_TABLE)
-track_gene_sets <- function(target_terms=c('GO_RIBOSOME','GO_PROTEASOME_COMPLEX','GO_TRANSLATIONAL_INITIATION'), category='GO',
-                            gs_results=get('GS_results', envir = .GlobalEnv),
-                            comparison_table=COMPARISON_TABLE,print_table=TRUE, output_table_file=NA,
-                            left_out_comparison=c(),heat_map.fdr.midpoint=0.05){
+track_gene_sets <- function(target_terms = c('GO_RIBOSOME', 'GO_PROTEASOME_COMPLEX', 'GO_TRANSLATIONAL_INITIATION'), 
+                            category = 'GO',
+                            gs_results = get('GS_results', envir = .GlobalEnv),
+                            comparison_table = COMPARISON_TABLE,
+                            print_table = TRUE, 
+                            output_table_file = NA,
+                            left_out_comparison = c(),
+                            heat_map.fdr.midpoint = 0.05){
   
-  ## create a master table for all comparison and the gene sets results
-  gsa_res_tb <- COMPARISON_TABLE %>% pull(comparison) %>% extract(which(!. %in% left_out_comparison)) %>% set_names(.) %>%
-    sapply(simplify = FALSE,USE.NAMES = TRUE,function(x){
-      gs_results %>% extract2(x) %>% extract2(category) %>%
-        tibble::rownames_to_column('GeneSet') %>%  dplyr::mutate(comparison=x)
-    }) %>% reduce(rbind)
+  ## create a master table for all comparisons and the gene sets results
+  gsa_res_tb <- COMPARISON_TABLE %>% 
+    pull(comparison) %>% 
+    extract(which(!. %in% left_out_comparison)) %>% 
+    set_names(.) %>%
+    sapply(simplify = FALSE, USE.NAMES = TRUE, function(x) {
+      gs_results %>% 
+        extract2(x) %>% 
+        extract2(category) %>%
+        tibble::rownames_to_column('GeneSet') %>% 
+        dplyr::mutate(comparison = x)
+    }) %>% 
+    reduce(rbind)
   
   ## we only keep gene sets of interests
-  gsa_res_tb <- gsa_res_tb %>% filter(GeneSet %in% target_terms) %>%
+  gsa_res_tb <- gsa_res_tb %>% 
+    filter(GeneSet %in% target_terms) %>%
     # for plotting
     mutate(log10fdr=log10(FDR))
   
-  if(print_table)
-    print(gsa_res_tb %>% arrange(GeneSet,FDR))
+  if (print_table) {
+    print(gsa_res_tb %>% arrange(GeneSet, FDR))
+  }
   
   # we output the FDR table to csv
-  if(!is.na(output_table_file))
-    gsa_res_tb %>% arrange(GeneSet,FDR) %>% dplyr::select(GeneSet,FDR,comparison) %>%
+  if (!is.na(output_table_file)) {
+    gsa_res_tb %>% 
+      arrange(GeneSet, FDR) %>% 
+      dplyr::select(GeneSet, FDR, comparison) %>%
     reshape(idvar = "comparison", timevar = "GeneSet", direction = "wide") %>%
-    write.csv(file = output_table_file )
+    write.csv(file = output_table_file)
+  }
   
-  
-  gsa_res_tb %>% ggplot(aes(GeneSet,comparison)) +
+  gsa_res_tb %>% ggplot(aes(GeneSet, comparison)) +
     geom_tile(aes(fill = log10fdr)) +
-    scale_fill_gradient2(low = "red",high = "blue",mid = "white",midpoint = log10(heat_map.fdr.midpoint)) +
-    theme(axis.text.x = element_text(angle = 0)) + geom_text(aes(label = ifelse(Direction=='Up',"^",""))) +
-    theme_bw() + theme(panel.border = element_blank(),panel.background = element_blank()) + labs(fill ="log10(FDR)") +
-    labs(title=str_c('FDR = ',heat_map.fdr.midpoint, '. ^ indicates up regulation.'))
+    scale_fill_gradient2(low = "red", high = "blue", mid = "white", 
+                         midpoint = log10(heat_map.fdr.midpoint)) +
+    theme(axis.text.x = element_text(angle = 0)) + 
+    geom_text(aes(label = ifelse(Direction == 'Up', "^", ""))) +
+    theme_bw() + 
+    theme(panel.border = element_blank(),
+          panel.background = element_blank()) + 
+    labs(fill = "log10(FDR)") +
+    labs(title = str_c('FDR = ', heat_map.fdr.midpoint, '. ^ indicates up regulation.'))
 }
 
 ##### Quality surrogate variable analysis

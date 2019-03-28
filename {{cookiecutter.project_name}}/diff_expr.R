@@ -30,7 +30,7 @@ total_dds_data <- get_total_dds(SAMPLE_DATA, SPECIES, qSVA=qSVA, design_formula=
 total_vst <- total_dds_data %>% varianceStabilizingTransformation(blind=TRUE)
 
 start_plot("pca_all")
-total_vst %>% plot_pca_with_labels(intgroup=PCA_FEATURE) %>% print()
+total_vst %>% plot_pca(intgroup=PCA_FEATURE) %>% print()
 end_plot()
 
 num_features <- SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>% length()

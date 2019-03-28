@@ -34,7 +34,7 @@ total_dds_data <- get_total_dds_tximport(SAMPLE_DATA, QUANT_METHOD, TX_LEVEL)
 total_vst <- total_dds_data %>% varianceStabilizingTransformation
 
 start_plot("pca_all_tx")
-total_vst %>% plot_pca_with_labels(intgroup=c("condition"))
+total_vst %>% plot_pca(intgroup=c("condition"))
 end_plot()
 
 

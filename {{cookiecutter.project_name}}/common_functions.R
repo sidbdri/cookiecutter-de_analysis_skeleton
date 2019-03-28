@@ -431,28 +431,25 @@ read_de_results <- function(filename, num_samples, num_conditions, num_compariso
 
 ##### Quality control checks and plots
 
-plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE, label_name='name', include_gene=c(),
-                        removeBatchEffect=FALSE, batch=NULL){
+plot_pca <- function(vst, intgroup=c("condition"), plot_label = TRUE, label_name='name', include_gene = c(),
+                     removeBatchEffect = FALSE, batch = NULL){
 
-    if(removeBatchEffect){
-        if(is.null(batch)) stop('batch cannot be NULL.')
-        assay(vst) <- limma::removeBatchEffect( assay(vst), vst %>% extract2(batch) )
-    }
+  if (removeBatchEffect) {
+      if (is.null(batch)) {
+        stop('batch cannot be NULL.')
+      }
+    
+      assay(vst) <- limma::removeBatchEffect(assay(vst), vst %>% extract2(batch))
+  }
 
-
-    if(length(include_gene) > 0){
-        ## This is to use only a subset of genes for the PCA plot
-        pca_data <- vst %>% plotPCA2(intgroup=intgroup, returnData=TRUE, include_gene=include_gene)
-    }else{
-        pca_data <- vst %>% plotPCA(intgroup=intgroup, returnData=TRUE)
-    }
+  pca_data <- vst %>% plotPCA2(intgroup = intgroup, returnData = TRUE, include_gene = include_gene)
 
   percent_var <- round(100 * attr(pca_data, "percentVar"))
 
   intgroup.df <- as.data.frame(colData(vst)[, intgroup, drop = FALSE])
   group <- if (length(intgroup) > 1) {
     factor(apply(intgroup.df, 1, paste, collapse = " : "))
-  }else {
+  } else {
     colData(vst)[[intgroup]]
   }
 
@@ -460,56 +457,56 @@ plot_pca <- function(vst, intgroup=c("condition"),plot_label=TRUE, label_name='n
   ggplot(aes(PC1, PC2, color=group)) + geom_point(size=3) +
     xlab(str_c("PC1: ", percent_var[1], "% variance")) +
     ylab(str_c("PC2: ", percent_var[2], "% variance")) +
-    theme(legend.position="right")
+    theme(legend.position = "right")
 
   if(plot_label)
-    p <- p + geom_text(aes(label = !!parse_expr(label_name)), colour="darkgrey", position=position_nudge(y = 1), size=3)
+    p <- p + geom_text(aes(label = !!parse_expr(label_name)), colour="darkgrey", 
+                       position=position_nudge(y = 1), size=3)
 
-  if(length(intgroup) == 1){
+  if (length(intgroup) == 1) {
     p <- p + guides(color=guide_legend(title=intgroup))
   }
 
   p
 }
 
-plot_pca_with_labels <- function(vst, intgroup=c("condition"),label_name='name',include_gene=c(),removeBatchEffect=FALSE, batch=NULL) {
-  plot_pca(vst, intgroup, plot_label=TRUE, label_name=label_name, include_gene=include_gene,removeBatchEffect=FALSE, batch=NULL)
-}
-
-plotPCA2 <- function(object, ...){
+plotPCA2 <- function(object, ...) {
     # This function is a hack of the plotPCA function from DESeq2 package. Instead of using all the genes 
     # for the PCA plot, this function accepts a parameter include_gene=c() which filters the genes in the
     # expression array. This can be use to make a PCA plot for only a subset of gene of interests.
-    .local <- function (object, intgroup = "condition", ntop = 500,
-    returnData = FALSE, include_gene=c()) {
+    .local <- function(object, intgroup = "condition", ntop = 500,
+                       returnData = FALSE, include_gene=c()) {
+      
         count_data <- assay(object)
 
-        if(length(include_gene)>0){
-            include_gene<-include_gene[which(include_gene %in% (count_data %>% rownames()))]
-            count_data<-count_data[include_gene,]
+        if (length(include_gene) > 0) {
+            include_gene <- include_gene[which(include_gene %in% (count_data %>% rownames()))]
+            count_data <- count_data[include_gene,]
         }
 
         rv <- rowVars(count_data)
-        select <- order(rv, decreasing = TRUE)[seq_len(min(ntop,
-        length(rv)))]
+        select <- order(rv, decreasing = TRUE)[seq_len(min(ntop, length(rv)))]
         pca <- prcomp(t(count_data[select, ]))
         percentVar <- pca$sdev^2/sum(pca$sdev^2)
+        
         if (!all(intgroup %in% names(colData(object)))) {
             stop("the argument 'intgroup' should specify columns of colData(dds)")
         }
-        intgroup.df <- as.data.frame(colData(object)[, intgroup,
-        drop = FALSE])
+        
+        intgroup.df <- as.data.frame(colData(object)[, intgroup, drop = FALSE])
         group <- if (length(intgroup) > 1) {
             factor(apply(intgroup.df, 1, paste, collapse = ":"))
         }else {
             colData(object)[[intgroup]]
         }
-        d <- data.frame(PC1 = pca$x[, 1], PC2 = pca$x[, 2], group = group,
-        intgroup.df, name = colnames(object))
+        
+        d <- data.frame(PC1 = pca$x[, 1], PC2 = pca$x[, 2], group = group, intgroup.df, name = colnames(object))
+        
         if (returnData) {
             attr(d, "percentVar") <- percentVar[1:2]
             return(d)
         }
+        
         ggplot(data = d, aes_string(x = "PC1", y = "PC2", color = "group")) +
             geom_point(size = 3) + xlab(paste0("PC1: ", round(percentVar[1] * 100), "% variance")) +
             ylab(paste0("PC2: ", round(percentVar[2] *  100), "% variance")) + coord_fixed()
@@ -525,18 +522,18 @@ plot_heat_map <- function(vst, sample_names) {
   
   hc <- distsRL %>% hclust
   hmcol <- colorRampPalette(brewer.pal(9, "GnBu"))(100)
-  heatmap.2(mat, Rowv=hc %>% as.dendrogram, 
-            symm=TRUE, trace="none",
-            col = hmcol %>% rev, margin=c(10, 10))
+  heatmap.2(mat, Rowv = hc %>% as.dendrogram, 
+            symm = TRUE, trace = "none",
+            col = hmcol %>% rev, margin = c(10, 10))
 }
 
-plot_count_distribution <- function(dds, norm=T) {
+plot_count_distribution <- function(dds, norm = T) {
   counts <- dds %>% 
-    get_count_data(norm=norm) %>% 
-    melt(id.vars=c("gene"), variable.name="sample", value.name="count") 
+    get_count_data(norm = norm) %>% 
+    melt(id.vars=c("gene"), variable.name = "sample", value.name = "count") 
   
   p <- ggplot(counts, aes(sample, 1 + count)) + 
-    geom_violin(aes(fill=sample), scale="width") + 
+    geom_violin(aes(fill = sample), scale="width") + 
     geom_boxplot(width=.1, outlier.shape=NA) + 
     coord_trans(y = "log10") + 
     scale_y_continuous(breaks=c(1, 10, 100, 1000, 10000, 100000, 1000000)) +
@@ -552,7 +549,7 @@ plot_pvalue_distribution <- function(results, pvalue_column) {
     dplyr::select_(pvalue_column)
   
   p <- ggplot(pvals, aes_string(pvalue_column)) + 
-    geom_histogram(binwidth=0.025) 
+    geom_histogram(binwidth = 0.025) 
   
   print(p)
   p
@@ -602,54 +599,77 @@ plot_pvalue_distribution <- function(results, pvalue_column) {
 #'   }
 #'   p=''
 #' }
-plot_gene_fpkms <- function(gene_identifier,result_table=NULL,debug=FALSE,print_graph=FALSE,
-                          feature_group=c(), filter_string='', plot_feature=c( ),plot_label="",plot_x=""){
+plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE, print_graph = FALSE,
+                            feature_group = c(), filter_string = '', plot_feature = c(), 
+                            plot_label = "", plot_x = "") {
+  
   # devtools::install_github("thomasp85/patchwork",force = TRUE)
   # devtools::install_github("slowkow/ggrepel")
   require(patchwork)
   require(ggrepel)
   require(knitr)
   
-  if(is.null(result_table)) result_table<-str_c('./results/differential_expression/de_gene/deseq2_results_fpkm_',SPECIES,'.csv')
-  if(is_string(result_table)){
-    if(!file.exists(result_table)) stop(str_c("result_table [",result_table,"] does not exist."))
-    result_table<-read.csv(result_table)
+  if (is.null(result_table)) {
+    result_table <- str_c('./results/differential_expression/de_gene/deseq2_results_fpkm_', SPECIES, '.csv')
   }
   
-  fpkm_debug <- result_table %>% dplyr::select(gene, gene_name, chromosome, entrez_id,
-                                               dplyr::ends_with("_fpkm"),-dplyr::ends_with("avg_fpkm"),
-                                               -dplyr::ends_with(".stat")) %>%
-    dplyr::filter(gene_name==gene_identifier | gene==gene_identifier | entrez_id==gene_identifier )
+  if (is_string(result_table)) {
+    if (!file.exists(result_table)) {
+      stop(str_c("result_table [", result_table, "] does not exist."))
+    }
+    
+    result_table <- read.csv(result_table)
+  }
   
-  gene_name=fpkm_debug$gene_name %>% as.vector()
+  fpkm_debug <- result_table %>% 
+    dplyr::select(gene, gene_name, chromosome, entrez_id,
+                  dplyr::ends_with("_fpkm"), 
+                  -dplyr::ends_with("avg_fpkm"),
+                  -dplyr::ends_with(".stat")) %>%
+    dplyr::filter(gene_name==gene_identifier | gene==gene_identifier | entrez_id==gene_identifier)
   
-  fpkm_debug_long <- fpkm_debug  %>% as_tibble() %>%
-    melt(id.var=c("gene","gene_name","chromosome","entrez_id"),
-         variable.name='sample_meta',value.name='fpkm')
+  gene_name <- fpkm_debug$gene_name %>% as.vector()
   
-  if(feature_group %>% length() == 0){
+  fpkm_debug_long <- fpkm_debug %>% 
+    as_tibble() %>%
+    melt(id.var=c("gene", "gene_name", "chromosome", "entrez_id"),
+         variable.name = 'sample_meta', value.name = 'fpkm')
+  
+  if (feature_group %>% length() == 0) {
     ## No feature group provided, we are going to plot the FPKM using the sample name and color.
-    plot_x='sample_meta'
-    plot_label='sample_meta'
-    if(filter_string!='') fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
-    p <- fpkm_debug_long %>% ggplot( mapping=aes_string(y="fpkm",x=plot_x)) + aes_string(color=plot_x)+ geom_point(size=3) +
-      geom_text_repel(aes(label=!!parse_expr(plot_label)),nudge_x=-0.35,direction="y",hjust= 0.5,segment.size= 0.1,size=3) +
-      ggtitle(gene_identifier %>% str_c(gene_name,sep=':')) + theme(legend.position='none') +
-      theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank())
-  }else{
+    plot_x <- 'sample_meta'
+    plot_label <- 'sample_meta'
+    
+    if (filter_string!='') {
+      fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
+    }
+    
+    p <- fpkm_debug_long %>% 
+      ggplot(mapping=aes_string(y="fpkm", x = plot_x)) + 
+      aes_string(color = plot_x) + 
+      geom_point(size = 3) +
+      geom_text_repel(aes(label = !!parse_expr(plot_label)),
+                      nudge_x = -0.35, direction = "y", hjust = 0.5, 
+                      segment.size = 0.1, size = 3) +
+      ggtitle(gene_identifier %>% str_c(gene_name, sep = ':')) + 
+      theme(legend.position = 'none') +
+      theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+  } else {
     ## We are using sample info for plotting
     fpkm_debug_long %<>%
-      tidyr::separate(meta,sep='_',into=c(feature_group,"tmp"),remove=TRUE) %>%
-      tidyr::unite(col="sample_meta",feature_group,remove = FALSE) %>%
+      tidyr::separate(meta,sep='_', into = c(feature_group, "tmp"), remove=TRUE) %>%
+      tidyr::unite(col = "sample_meta", feature_group, remove = FALSE) %>%
       dplyr::select(-tmp)
     
     ## We want to plot only these samples
-    if(filter_string!='') fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
+    if (filter_string != '') {
+      fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
+    }
     
-    p <- fpkm_debug_long %>% ggplot( mapping=aes_string(y="fpkm",x=plot_x))
+    p <- fpkm_debug_long %>% ggplot(mapping = aes_string(y = "fpkm", x = plot_x))
     
     ## add features
-    for(i in which(plot_feature!='')){
+    for (i in which(plot_feature!='')) {
       switch(plot_feature[i],
              'color' = p <- p + aes_string(color=feature_group[i]),
              'shape' = p <- p + aes_string(shape=feature_group[i]),
@@ -657,15 +677,23 @@ plot_gene_fpkms <- function(gene_identifier,result_table=NULL,debug=FALSE,print_
       )
     }
     
-    p <- p +  geom_point(size=3) +
-      geom_text_repel(aes(label=!!parse_expr(plot_label)),nudge_x=-0.35,direction="y",hjust= 0.5,segment.size= 0.1,size=3) +
-      ggtitle(gene_identifier %>% str_c(gene_name,sep=':')) + theme(legend.position="top")
+    p <- p + geom_point(size = 3) +
+      geom_text_repel(aes(label = !!parse_expr(plot_label)),
+                      nudge_x = -0.35, direction = "y", hjust= 0.5, 
+                      segment.size = 0.1, size = 3) +
+      ggtitle(gene_identifier %>% str_c(gene_name, sep = ':')) + 
+      theme(legend.position = "top")
   }
   
-  if(print_graph) p %>% print()
-  if(debug) fpkm_debug %>% kable( format = 'markdown', digits=99) %>% print()
+  if (print_graph) {
+    p %>% print()
+  }
   
-  list("info"=fpkm_debug,'graph'=p)
+  if(debug) {
+    fpkm_debug %>% kable(format = 'markdown', digits = 99) %>% print()
+  }
+  
+  list("info" = fpkm_debug, 'graph' = p)
 }
 
 #' This function calls the plot_gene_fpkms function and plots FPKMs for the genes defined in the 
@@ -675,42 +703,46 @@ plot_gene_fpkms <- function(gene_identifier,result_table=NULL,debug=FALSE,print_
 #'   - a result table object generated by diff_expr.R script.
 #'  If left empty, will by default read: 
 #'    "./results/differential_expression/de_gene/deseq2_results_fpkm_{SPECIES}.csv"
-check_cell_type <- function(result_table, fpkm_check_cutoff=5,
-                            print_check_log=TRUE, print_fpkm_table=FALSE){
-  gene_markers<-GENE_MARKERS %>% pull(SPECIES) %>% split(f = GENE_MARKERS$cell_type)
-  fpkm_info<-data.frame()
-  p=''
+check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
+                            print_check_log = TRUE, print_fpkm_table = FALSE) {
+  
+  gene_markers <- GENE_MARKERS %>% pull(SPECIES) %>% split(f = GENE_MARKERS$cell_type)
+  fpkm_info <- data.frame()
+  p <- ''
   message("Cell type check results are saved in [", GRAPHS_DIR,"]")
+  
   # for(g in split(genes_markers, ceiling(seq_along(genes)/4)) ){
-  for(cell_type in gene_markers %>% names()  ){
-    genes<-gene_markers %>% extract2(cell_type)
+  for (cell_type in gene_markers %>% names()) {
+    genes <- gene_markers %>% extract2(cell_type)
     
-    for( i in genes ){
-      plot_name<-str_c(cell_type,'_',i)
-      l<-plot_gene_fpkms(i, result_table=result_table, debug=FALSE, print=FALSE)
-      l$graph <- l$graph + geom_hline(yintercept=fpkm_check_cutoff, linetype="dashed", color = "black")
-      assign(plot_name,l$graph)
-      fpkm_info <- l$info %>% mutate(gene_marker_cell_tpye=cell_type) %>%
-        rbind(fpkm_info)
-      ifelse(nchar(p)==0,
-             p<-plot_name,
-             p<-str_c(p,plot_name,sep = '+')
+    for (i in genes) {
+      plot_name <- str_c(cell_type, '_', i)
+      l <- plot_gene_fpkms(i, result_table = result_table, debug = FALSE, print = FALSE)
+      l$graph <- l$graph + geom_hline(yintercept = fpkm_check_cutoff, linetype = "dashed", color = "black")
+      assign(plot_name, l$graph)
+      fpkm_info <- l$info %>% mutate(gene_marker_cell_type = cell_type) %>% rbind(fpkm_info)
+      
+      ifelse(nchar(p) == 0,
+             p <- plot_name,
+             p <- str_c(p, plot_name, sep = '+')
       )
     }
     
-    start_plot(str_c("cell_type_check_",cell_type))
-    if(length(genes)<2){
+    start_plot(str_c("cell_type_check_", cell_type))
+    
+    if (length(genes) < 2) {
       p %>% parse_expr() %>% eval() %>% print()
-    }else{
-      str_c(p," plot_layout(ncol = 2)",sep = '+') %>% parse_expr() %>% eval() %>% print()
+    } else {
+      str_c(p, " plot_layout(ncol = 2)", sep = '+') %>% parse_expr() %>% eval() %>% print()
     }
+    
     end_plot()
-    p=''
+    p <- ''
   }
   
   ## check fpkms
-  if(print_check_log){
-    # gene_marker_cell_tpye       sample         fpkm    is
+  if (print_check_log) {
+    # gene_marker_cell_type       sample         fpkm    is
     # 1        oligodendrocyte  IN_AS1_fpkm 2.361160e+00 FALSE
     # 2        oligodendrocyte  IN_AS1_fpkm 5.220813e-03 FALSE
     # 3                 neuron  IN_AS1_fpkm 1.467844e-02 FALSE
@@ -720,9 +752,10 @@ check_cell_type <- function(result_table, fpkm_check_cutoff=5,
     # 7              astrocyte  IN_AS1_fpkm 2.133310e+03  TRUE
     # 8              astrocyte  IN_AS1_fpkm 1.320389e+02  TRUE
     # 9        oligodendrocyte  IN_AS2_fpkm 1.769229e+00 FALSE
-    check_result<-fpkm_info %>% dplyr::select(contains('fpkm'),gene_marker_cell_tpye) %>%
-      reshape2::melt(id.vars=c('gene_marker_cell_tpye'),variable.name='sample',value.name='fpkm') %>%
-      mutate(is=fpkm>fpkm_check_cutoff)
+    check_result <- fpkm_info %>%
+      dplyr::select(contains('fpkm'), gene_marker_cell_type) %>%
+      reshape2::melt(id.vars = c('gene_marker_cell_type'), variable.name = 'sample', value.name = 'fpkm') %>%
+      mutate(is = fpkm > fpkm_check_cutoff)
     
     # sample       is
     # <fct>        <chr>
@@ -735,24 +768,23 @@ check_cell_type <- function(result_table, fpkm_check_cutoff=5,
     # 7 IN_AE61_fpkm astrocyte
     # 8 IN_AE62_fpkm astrocyte
     # 9 IN_AE63_fpkm astrocyte
-    ## For each sample, amount all the cell tpyes, which cell type has the most gene markers passed the cutoff?
-    check_result %<>% group_by(sample,gene_marker_cell_tpye) %>%
-      summarise(like=sum(is)/n()) %>%
-      # summarise(is=gene_marker_cell_tpye[which(like == max(like) )] %>% paste(collapse = ' / '))
-      summarise(is=gene_marker_cell_tpye[which(like >=0.5  )] %>% paste(collapse = ' / '))
-    
+    ## For each sample, amount all the cell types, which cell type has the most gene markers passed the cutoff?
+    check_result %<>% 
+      group_by(sample, gene_marker_cell_type) %>%
+      summarise(like = sum(is)/n()) %>%
+      # summarise(is=gene_marker_cell_type[which(like == max(like) )] %>% paste(collapse = ' / '))
+      summarise(is = gene_marker_cell_type[which(like >=0.5)] %>% paste(collapse = ' / '))
     
     cat("Cell type check result:\n")
-    for (i in check_result %>% pull(sample) %>% levels()){
+    for (i in check_result %>% pull(sample) %>% levels()) {
       str_c(i %>% strsplit('_fpkm') %>% extract2(1),
             ' looks like **',
-            check_result %>% filter(sample==i) %>% pull(is) %>% toupper(),
+            check_result %>% filter(sample == i) %>% pull(is) %>% toupper(),
             "**\n") %>% cat()
-      
     }
   }
   
-  if(print_fpkm_table){
+  if (print_fpkm_table) {
     fpkm_info %>% print()
   }
 }

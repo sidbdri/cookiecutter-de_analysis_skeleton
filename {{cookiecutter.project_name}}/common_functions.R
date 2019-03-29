@@ -1257,6 +1257,65 @@ track_gene_sets <- function(target_terms = c('GO_RIBOSOME', 'GO_PROTEASOME_COMPL
           panel.border = element_blank(),panel.background = element_blank())
 }
 
+track_go <- function(target_terms = c('GO:0051492', 'GO:0010811'),
+                            category = 'BP',
+                            gs_results = get_global('GO_results'),
+                            comparison_table = COMPARISON_TABLE,
+                            print_table = TRUE,
+                            output_table_file = NA,
+                            left_out_comparison = c(),
+                            heat_map.p.midpoint = 0.05){
+
+  ## create a master table for all comparisons and the gene sets results
+  gsa_res_tb <- COMPARISON_TABLE %>%
+    pull(comparison) %>%
+    extract(which(!. %in% left_out_comparison)) %>%
+    set_names(.) %>%
+    sapply(simplify = FALSE, USE.NAMES = TRUE, function(x) {
+      gs_results %>%
+        extract2(x) %>%  extract2(str_c(x,'.all')) %>%
+        extract2(category) %>%  extract2('go_results') %>%
+        dplyr::mutate(comparison = x)
+    }) %>%
+    reduce(rbind)
+
+  ## we only keep gene sets of interests
+  gsa_res_tb <- gsa_res_tb %>%
+    filter(GO.ID %in% target_terms) %>%
+    mutate(log10p=log10(as.numeric(weight_fisher))) # for plotting
+
+  gsa_res_tb$comparison %<>% factor(levels = COMPARISON_TABLE %>% pull(comparison) %>% rev)
+  gsa_res_tb$GO.ID %<>% factor(levels = target_terms)
+
+  if (print_table) {
+    print(gsa_res_tb %>% arrange(GO.ID, log10p))
+  }
+
+  # we output the FDR table to csv
+  if (!is.na(output_table_file)) {
+    gsa_res_tb %>%
+      arrange(GO.ID, log10p) %>%
+      dplyr::select(GO.ID, weight_fisher, comparison) %>%
+      reshape(idvar = "comparison", timevar = "GO.ID", direction = "wide") %>%
+      write.csv(file = output_table_file)
+  }
+
+  gsa_res_tb %>%
+  ggplot(aes(GO.ID, comparison)) +
+    geom_tile(aes(fill = log10p)) +
+    scale_fill_gradient2(low = "red", high = "white", mid = "white",
+    midpoint = log10(heat_map.p.midpoint)) +
+  # geom_text(aes(label = if_else(log10p < log10(heat_map.p.midpoint),
+  #                               ifelse(Direction=='Up', "UP", "DOWN"),
+  #                               "")), alpha = 0.75, size=3) +
+    labs(fill ="log10(p)") +
+    labs(title=str_c('p cutoff = ',heat_map.p.midpoint),
+    xlab="GO.ID", ylab="Comparison") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = -90, size=7),
+    panel.border = element_blank(),panel.background = element_blank())
+}
+
 ##### Quality surrogate variable analysis
 
 get_quality_surrogate_variables <- function(dds) {

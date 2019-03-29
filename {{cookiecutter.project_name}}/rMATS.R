@@ -6,19 +6,19 @@ RMATS_402 = '/opt/rMATS.4.0.2'
 RMATS_325 = '/opt/rMATS.3.2.5/MATS/rMATS_Paired.sh'
 
 rMAT_PARA_t = 'paired'
-#This is for rMATS4 statistic. we are not using this atm
+# This is for rMATS4 statistics. We are not using this at the moment.
 rMAT_PARA_tstat=1
 rMAT_PARA_readLength=75
 rMAT_PARA_cstat = 0.1
 
 
-#This is the number of thread used in each rMATS run
+# This is the number of threads used in each rMATS run
 rMAT_PARA_nthread={{cookiecutter.number_total_threads}}
-#This is the number of rMATS running in parallal 
+# This is the number of rMATS running in parallel 
 XARG_PARA_nthread=1
 rMAT3_PARA_splicing_difference = 0.1
 
-#averge count must above a threadhold
+# Average count must above a threadhold
 avg_count_cutoff=5
 
 sSUMMARY_TB %<>% mutate(Up_regulated_gene=integer(),
@@ -114,7 +114,7 @@ write('#!/bin/bash
 #trap "kill 0" EXIT',tmp_script)
 
 
-#write cmd to bash script to run rMATS 4.0.2 and 3.2.5
+# Write command to bash script to run rMATS 4.0.2 and 3.2.5
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   x=COMPARISON_TABLE %>% filter(comparison==x)
   
@@ -132,10 +132,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
 cmd = str_c('bash ',tmp_script,sep = '')
 system(cmd)
 
-#when finish, parse the result
-
-####################################
-#when finish, parse the result
+# When finished, parse the result
 
 total_dds_data <- get_total_dds(SAMPLE_DATA,species=SPECIES)
 
@@ -158,11 +155,11 @@ inner_join(fpkms) %>%
     inner_join(gene_info) %>%
     inner_join(gene_lengths)
 
-# we do not need counts for samples
+# We do not need counts for samples
 results %<>% dplyr::select(-one_of(SAMPLE_DATA %>% rownames()))
 
 
-#load rMATS results and join with result table
+# Load rMATS results and join with result table
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
     x=COMPARISON_TABLE %>% filter(comparison==x)
 
@@ -228,13 +225,13 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
                   Comparison_level_condition=x$condition,
                   Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
                   Sample_names_in_comparison_level_condition=sample_data %>% tibble::rownames_to_column(var = "tmp_row_names") %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(tmp_row_names) %>% str_c(collapse = ','),
-                  p.adj.cutoff=0.05,
-                  Up_regulated= result.table %>% filter(FDR < 0.05 & IncLevelDifference < 0 ) %>% nrow(),
-                  Down_regulated=result.table %>% filter(FDR < 0.05 & IncLevelDifference > 0) %>% nrow(),
-                  D.E.total=result.table %>% filter(FDR < 0.05) %>% nrow(),
-                  Up_regulated_gene = result.table %>% filter(FDR < 0.05 & IncLevelDifference < 0)  %>% pull(gene) %>% unique() %>% length(),
-                  Down_regulated_gene = result.table %>% filter(FDR < 0.05 & IncLevelDifference > 0) %>% pull(gene) %>% unique() %>% length(),
-                  D.E.total_gene = result.table %>% filter(FDR < 0.05) %>% pull(gene) %>% unique() %>% length()
+                  p.adj.cutoff=P.ADJ.CUTOFF,
+                  Up_regulated= result.table %>% filter(FDR < P.ADJ.CUTOFF & IncLevelDifference < 0 ) %>% nrow(),
+                  Down_regulated=result.table %>% filter(FDR < P.ADJ.CUTOFF & IncLevelDifference > 0) %>% nrow(),
+                  D.E.total=result.table %>% filter(FDR < P.ADJ.CUTOFF) %>% nrow(),
+                  Up_regulated_gene = result.table %>% filter(FDR < P.ADJ.CUTOFF & IncLevelDifference < 0)  %>% pull(gene) %>% unique() %>% length(),
+                  Down_regulated_gene = result.table %>% filter(FDR < P.ADJ.CUTOFF & IncLevelDifference > 0) %>% pull(gene) %>% unique() %>% length(),
+                  D.E.total_gene = result.table %>% filter(FDR < P.ADJ.CUTOFF) %>% pull(gene) %>% unique() %>% length()
           )
         assign("SUMMARY_TB", SUMMARY_TB,envir = .GlobalEnv)
 
@@ -247,7 +244,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
     }
 })
 
-# modify/reformat summary table
+# Modify/reformat summary table
 SUMMARY_TB %>% dplyr::select(-DESeq_model_formula) %>% 
   write_csv(str_c(output_folder,"/AS_summary_",SPECIES,".csv"))
 

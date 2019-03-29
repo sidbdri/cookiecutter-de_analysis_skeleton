@@ -37,6 +37,7 @@ ln -s ${GENOME_DATA_DIR}/SALMON_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/KALLISTO_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/*orthologs.tsv  ${ENSEMBL_DIR}
 
+# refactor base on /srv/data/genome/mouse/ensembl-95
 # Generating refFlat file for Picard RNA-seq metrics
 mkdir -p ${PICARD_DATA}/{{ s }}
 gtfToGenePred -genePredExt -geneNameAsName2 ${GTF_FILE} ${PICARD_DATA}/{{ s }}/refFlat.tmp.txt

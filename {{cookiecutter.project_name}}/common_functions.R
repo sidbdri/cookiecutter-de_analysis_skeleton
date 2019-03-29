@@ -69,11 +69,20 @@ check_formulas <- function() {
   }
 }
 
-start_plot <- function(prefix, width=12, height=12) {
+start_plot <- function(prefix,width=12, height=12, path=GRAPHS_DIR, num_plots=1) {
+  .adjust_pdf_size<-function(num_plots){
+    num_features <- num_plots
+    num_row<-sqrt(num_features) %>% ceiling()
+    num_column<-num_features/num_row %>% ceiling()
+    c('width'= max(num_row/2,1),'height'=max(num_column/2,1))
+  }
+
+  sf <- .adjust_pdf_size(num_plots)
+
   if (PLOT_TO_FILE) {
-    prefix %>% 
-      str_c(GRAPHS_DIR, ., "_", SPECIES, ".pdf") %>% 
-      pdf(width=width, height=height)
+    prefix %>%
+      str_c(path, ., "_", SPECIES, ".pdf") %>%
+      pdf(width=width*sf['width'], height=height*sf['height'])
   }
 }
 

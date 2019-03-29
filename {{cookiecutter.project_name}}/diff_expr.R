@@ -33,10 +33,9 @@ start_plot("pca_all")
 total_vst %>% plot_pca(intgroup = PCA_FEATURE) %>% print()
 end_plot()
 
-num_features <- SAMPLE_DATA %>% dplyr::select(-species, -sample_name) %>% colnames() %>% length()
-pdf_scale_factor <- 6
-
-start_plot("pca_features")
+# scale the pdf base on number of features to be plotted
+num_features <- SAMPLE_DATA %>% dplyr::select(-contains('species'), -contains('sample_name')) %>% colnames() %>% length()
+start_plot("pca_features",num_plots=num_features)
 
 if (global_exists('patchworkplot')) {
   rm_global(patchworkplot)

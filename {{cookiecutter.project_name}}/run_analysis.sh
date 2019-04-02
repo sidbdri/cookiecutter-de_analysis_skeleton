@@ -163,6 +163,13 @@ for species in ${!SPECIES[@]};do
 done
 {% endif %}
 
+## we index all the final bam file
+for sample in ${SAMPLES}; do
+    for species in ${!SPECIES[@]}; do
+        echo "sambamba index -t ${NUM_THREADS_PER_SAMPLE} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam "
+    done
+done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
+
 
 ####################################################################################
 ##### featureCount
@@ -213,16 +220,10 @@ done |  xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 
 
 
+
+
 {% if cookiecutter.qSVA == "yes" %}
 ##### Pre-processing for qSVA
-for sample in ${SAMPLES}; do
-    for species in ${!SPECIES[@]}; do
-        checkBusy
-        sambamba index -t ${NUM_THREADS_PER_SAMPLE} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam &
-    done
-done
-wait
-
 for sample in ${SAMPLES}; do
     for species in ${!SPECIES[@]}; do
         checkBusy

@@ -1169,7 +1169,7 @@ write_camera_results <- function(
   }
 
   camera_results %>% tibble::rownames_to_column(var = "GeneSet") %>% filter(FDR < fdr_cutoff) %>%
-    write_csv(str_c(top_dir, "/", gene_set_collection_name, "_enriched_sets.csv"))
+      write_csv(str_c(top_dir, "/", comparison_name, "-", gene_set_collection_name, "_sets.csv"))
 
   ret <- list(enriched_sets = camera_results %>% 
                 tibble::rownames_to_column(var="GeneSet") %>% 
@@ -1212,7 +1212,7 @@ write_camera_results <- function(
 
   de_results %>%
     cbind(gene_set_results) %>%
-    write_csv(str_c(top_dir, "/", gene_set_collection_name, "_genes_in_sets.csv"))
+    write_csv(str_c(top_dir, "/", comparison_name, "-", gene_set_collection_name, "_genes_in_sets.csv"))
 
   ret[['genes_in_sets']]<- de_results %>% cbind(gene_set_results)
 

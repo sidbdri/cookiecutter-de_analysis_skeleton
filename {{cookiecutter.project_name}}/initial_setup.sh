@@ -14,7 +14,7 @@ pip install git+https://github.com/statbio/Sargasso.git@master
 {% endif %}
 
 ## clone sidbdri-utils package
-git clone -b refactor https://github.com/sidbdri/sidbdri-utils.git
+git clone https://github.com/sidbdri/sidbdri-utils.git
 source sidbdri-utils/includes.sh
 
 DATA_DIR=data

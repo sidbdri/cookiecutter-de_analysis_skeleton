@@ -125,16 +125,11 @@ wait $(jobs -p)
 mkdir -p ${FINAL_BAM_DIR}
 for species in ${!SPECIES[@]};do
     for sample in ${SAMPLES}; do
-        checkBusy
-        sambamba sort --tmpdir ${TMP_DIR} -t ${NUM_THREADS_PER_SAMPLE} -o ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${FILTERED_DIR}/${sample}___${SPECIES[$species]}___filtered.bam &
+        echo "sambamba sort --tmpdir ${TMP_DIR} -t ${NUM_THREADS_PER_SAMPLE} -o ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${FILTERED_DIR}/${sample}___${SPECIES[$species]}___filtered.bam "
     done
-######## NEED TEST WHICH IS BETTER IN THE NEXT PROJECT
-#    for species in ${!SPECIES[@]};do
-#        echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c \
-#        "sambamba sort -t ${NUM_THREADS_PER_SAMPLE} -o ${FINAL_BAM_DIR}/%.${SPECIES[$species]}.bam ${FILTERED_DIR}/%.${SPECIES[$species]}_filtered.bam"
-#    done
-done
-wait
+done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
+
+
 {% else %}
 ##### Map reads for single species
 mkdir -p ${MAPPING_DIR} ${FINAL_BAM_DIR} ${LOG_DIR}/star
@@ -215,14 +210,12 @@ done |  xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 ##### Pre-processing for qSVA
 for sample in ${SAMPLES}; do
     for species in ${!SPECIES[@]}; do
-        checkBusy
-        python ${REGION_MATRIX_DIR}/region_matrix.py \
+        echo "python ${REGION_MATRIX_DIR}/region_matrix.py \
                 --regions ${REGION_MATRIX_DIR}/sorted_polyA_degradation_regions_v2.bed \
                 --bams ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam \
-                --wiggletools ${WIGGLETOOLS} > ${COUNTS_DIR}/${sample}.${SPECIES[$species]}.dm.tsv &
+                --wiggletools ${WIGGLETOOLS} > ${COUNTS_DIR}/${sample}.${SPECIES[$species]}.dm.tsv "
     done
-done
-wait
+done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 {% endif %}
 
 ##### Alternative splicing
@@ -246,58 +239,50 @@ wait
 #    for sample in ${SAMPLES}; do
 #        read_1=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}.${SPECIES[$species]}.bam_1.fastq.gz
 #        read_2=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}.${SPECIES[$species]}.bam_2.fastq.gz
-#        checkBusy
 #        if [ $PAIRED_END_READ = "yes" ]; then
-#            ${SALMON_EXECUTABLE} quant -i ${SALMON_INDEX[$species]} -l A -1 ${read_1} -2 ${read_2} -o ${SALMON_QUANT_DIR}/${SPECIES[$species]}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
+#            echo "${SALMON_EXECUTABLE} quant -i ${SALMON_INDEX[$species]} -l A -1 ${read_1} -2 ${read_2} -o ${SALMON_QUANT_DIR}/${SPECIES[$species]}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} "
 #        else
 #            echo "not implement"
 #            #${SALMON_EXECUTABLE} quant -i ${SALMON_INDEX[$species]} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.fastq.gz) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
 #        fi
-#
 #    done
-#done
+#done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 #
 #for species in ${!SPECIES[@]};do
 #    mkdir -p ${KALLISTO_QUANT_DIR}/${SPECIES[$species]}
 #    for sample in ${SAMPLES}; do
 #        read_1=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}.${SPECIES[$species]}.bam_1.fastq.gz
 #        read_2=${BAM2READS_DIR}/${SPECIES[$species]}/${sample}.${SPECIES[$species]}.bam_2.fastq.gz
-#        checkBusy
 #        if [ $PAIRED_END_READ = "yes" ]; then
-#            ${KALLISTO_EXECUTABLE} quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${SPECIES[$species]}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} ${read_1} ${read_2} &
+#            echo "${KALLISTO_EXECUTABLE} quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${SPECIES[$species]}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} ${read_1} ${read_2} "
 #        else
 #            echo "not implement"
 #        fi
-#
 #    done
-#done
-#wait
+#done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 {% else %}
 #mkdir -p ${SALMON_QUANT_DIR}/${SPECIES[0]}
 #
 #for sample in ${SAMPLES}; do
-#    checkBusy
 #    if [ $PAIRED_END_READ = "yes" ]; then
-#        ${SALMON_EXECUTABLE} quant -i ${SALMON_INDEX[$species]} -l A -1 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz) -2 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_2.fastq.gz) -o ${SALMON_QUANT_DIR}/${SPECIES[0]}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
+#        echo "${SALMON_EXECUTABLE} quant -i ${SALMON_INDEX[$species]} -l A -1 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz) -2 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_2.fastq.gz) -o ${SALMON_QUANT_DIR}/${SPECIES[0]}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]}"
 #    else
 #        echo "not tested"
 #        #${SALMON_EXECUTABLE} quant -i ${SALMON_INDEX[$species]} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.fastq.gz) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
 #   fi
-#done
+#done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 #
 ###### Quantify transcript expression with Kallisto
 #mkdir -p ${KALLISTO_QUANT_DIR}/${SPECIES[0]}
 #
 #for sample in ${SAMPLES}; do
-#    checkBusy
 #    if [ $PAIRED_END_READ = "yes" ]; then
-#        ${KALLISTO_EXECUTABLE} quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${SPECIES[0]}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*)01_1.fastq.gz/\101_2.fastq.gz/' | tr '\n' ' ') &
+#        echo "${KALLISTO_EXECUTABLE} quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${SPECIES[0]}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*)01_1.fastq.gz/\101_2.fastq.gz/' | tr '\n' ' ')"
 #    else
 #        echo "not tested"
 #        #${KALLISTO_EXECUTABLE} quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --single -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*.fastq.gz ) &
-#    fi
-#done
-#wait
+#    fiNEED TEST WHICH IS BE
+#done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 {% endif %}
 
 ##### Gather all QC data

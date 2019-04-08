@@ -46,6 +46,8 @@ _n.b._:
 
 * In the first instance, the `l2fc` and `padj` columns are the ones to look at.
 * In a comparison named "B\_vs\_A", a positive log2 fold change means that gene expression is higher in the "comparison" condition B than in the "base" condition A, and vice-versa for a negative fold change. If there is any confusion about which are the "comparison" and "base" conditions (e.g. if we have named the comparison incorrectly) then consulting the appropriate entry in the **\*de_summary\*.csv** file will indicate exactly which conditions were used as comparison and base.
+* p-values and fold changes may be missing for some genes. If the raw p-value is missing, this means that the expression of the gene across all samples is negligible, and the gene was filtered before differential expression was performed (in this case, the fold change and adjusted p-value columns will be empty too). If the raw p-value is present, but the adjusted p-value is missing, this means that the gene was filtered by DESeq2 prior to multiple testing correction (DESeq2 tries to reduce the burden of this correction by excluding genes from its final calculation that it believes, due to their expression being below a comparison-specific expression threshold, are unlikely to be discovered as significantly differentially expressed).
+* The raw log2 fold change column may contain the values `Inf` or `-Inf` – these indicate that expression in one of the experimental conditions being compared was zero in all samples, and hence a finite raw fold change could not be calculated.
 
 ### Gene Ontology enrichment analysis
 

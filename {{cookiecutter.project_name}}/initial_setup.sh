@@ -13,7 +13,7 @@ pip install git+https://github.com/sidbdri/transcript-utils.git
 pip install git+https://github.com/statbio/Sargasso.git@master
 {% endif %}
 
-## clone sidbdri-utils package
+## Clone sidbdri-utils package
 git clone https://github.com/sidbdri/sidbdri-utils.git
 source sidbdri-utils/includes.sh
 
@@ -40,11 +40,10 @@ ln -s ${GENOME_DATA_DIR}/SALMON_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/KALLISTO_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/*orthologs.tsv  ${ENSEMBL_DIR}
 
-## instead of using the genes.tsv from ${GENOME_DATA_DIR}, we download it from ensembl
-## ln -s ${GENOME_DATA_DIR}/genes.tsv ${ENSEMBL_DIR}
+## Instead of using the genes.tsv from ${GENOME_DATA_DIR}, we download it from Ensembl
 download_gene_tb {{ s }} {{cookiecutter.ensembl_version}} > ${ENSEMBL_DIR}/genes.tsv
 
-# refactor base on /srv/data/genome/mouse/ensembl-95
+# Refactor based on /srv/data/genome/mouse/ensembl-95
 # Generating refFlat file for Picard RNA-seq metrics
 mkdir -p ${PICARD_DATA}/{{ s }}
 ln -s ${GENOME_DATA_DIR}/picard/{{cookiecutter.rff_files[s]}} ${REF_FLAT}
@@ -54,8 +53,8 @@ ln -s ${GENOME_DATA_DIR}/picard/{{cookiecutter.rff_files[s]}} ${REF_FLAT}
 {% if "human" not in cookiecutter.species.split(' ') %}
 HUMAN_ENSEMBL_DIR=${DATA_DIR}/human_ensembl_{{cookiecutter.ensembl_version}}
 mkdir -p ${HUMAN_ENSEMBL_DIR}
-## instead of using the genes.tsv from ${GENOME_DATA_DIR}, we download it from ensembl
-#ln -s /srv/data/genome/human/ensembl-{{cookiecutter.ensembl_version}}/genes.tsv ${HUMAN_ENSEMBL_DIR}
+
+## Instead of using the genes.tsv from ${GENOME_DATA_DIR}, we download it from Ensembl
 download_gene_tb human {{cookiecutter.ensembl_version}} > ${HUMAN_ENSEMBL_DIR}/genes.tsv
 {% endif %}
 

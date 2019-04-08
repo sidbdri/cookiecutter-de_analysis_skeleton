@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 function cleanup {
    echo "Cleaning tmp..."
    rm -rf ${MAIN_DIR}/*.tmp
@@ -78,8 +77,6 @@ NUM_PARALLEL_JOBS=$(awk '{print int($1/$2)}' <<< "${NUM_TOTAL_THREADS} ${NUM_THR
 THREAD_USING=0
 MEM_USING=0
 
-
-
 qSVA="{{cookiecutter.qSVA}}"
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
 PAIRED_END_READ="{{cookiecutter.paired_end_read}}"
@@ -110,7 +107,6 @@ echo "Running fastqc ...."
 echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c \
 "mkdir -p ${LOG_DIR}/fastqc/% ${QC_DIR}/%; zcat ${RNASEQ_DIR}/%/*.fastq.gz | fastqc --outdir=${QC_DIR}/% stdin 2>${LOG_DIR}/fastqc/fastqc.log"  &
 wait
-
 
 ####################################################################################
 #### MAPPING
@@ -170,10 +166,9 @@ for sample in ${SAMPLES}; do
     done
 done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 
-
 ####################################################################################
-##### featureCount
-echo "Running featureCount ...."
+##### featureCounts
+echo "Running featureCounts...."
 mkdir -p ${COUNTS_DIR} ${LOG_DIR}/featureCount
 
 # run the test
@@ -201,26 +196,20 @@ for species in ${!SPECIES[@]}; do
     done
 done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 
-
 ####################################################################################
 #### Run Picard alignment metrics summary
-echo "Running Picard ...."
+echo "Running Picard...."
 mkdir -p ${PICARD_DIR} ${LOG_DIR}/picard
 
 for species in ${!SPECIES[@]};do
     echo "mkdir -p ${PICARD_DIR}/${SPECIES[$species]}; grep rRNA ${GTF_FILE[$species]}  | cut -s -f 1,4,5,7,9 > ${PICARD_DATA}/${SPECIES[$species]}/intervalListBody.txt"
 done |  xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 
-
 for species in ${!SPECIES[@]};do
     for sample in ${SAMPLES}; do
         echo "picard_rnaseq_metrics ${sample} ${FINAL_BAM_DIR}/${sample}.${SPECIES[$species]}.bam ${PICARD_DIR}/${SPECIES[$species]} ${REF_FLAT[$species]} ${PICARD_DATA}/${SPECIES[$species]} ${strandness_flag} > ${LOG_DIR}/picard/${SPECIES[$species]}.log 2>&1"
     done
 done |  xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
-
-
-
-
 
 {% if cookiecutter.qSVA == "yes" %}
 ##### Pre-processing for qSVA

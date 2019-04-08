@@ -69,11 +69,20 @@ check_formulas <- function() {
   }
 }
 
-start_plot <- function(prefix, width=12, height=12) {
+start_plot <- function(prefix,width=12, height=12, path=GRAPHS_DIR, num_plots=1) {
+  .adjust_pdf_size<-function(num_plots){
+    num_features <- num_plots
+    num_row<-sqrt(num_features) %>% ceiling()
+    num_column<-num_features/num_row %>% ceiling()
+    c('width'= max(num_row/2,1),'height'=max(num_column/2,1))
+  }
+
+  sf <- .adjust_pdf_size(num_plots)
+
   if (PLOT_TO_FILE) {
-    prefix %>% 
-      str_c(GRAPHS_DIR, ., "_", SPECIES, ".pdf") %>% 
-      pdf(width=width, height=height)
+    prefix %>%
+      str_c(path, ., "_", SPECIES, ".pdf") %>%
+      pdf(width=width*sf['width'], height=height*sf['height'])
   }
 }
 
@@ -369,29 +378,32 @@ get_fpkms <- function(all_counts, gene_lengths, samples, col_suffix) {
   fpkms %>% left_join(get_avg_fpkm(fpkms))
 }
 
-get_avg_fpkm <- function(fpkms) {
-  for (g in AVG_FPKM_GROUP) {
-    sample_data <- SAMPLE_DATA
-    sample_data %<>% tibble::rownames_to_column(var = "tmp_row_names") %>% 
+.get_avg_fpkm_table <- function(){
+  lapply(AVG_FPKM_GROUP,function(g){
+    SAMPLE_DATA %>%  tibble::rownames_to_column(var = "tmp_row_names") %>%
       group_by(.dots=g) %>%
       summarise(samples=str_c(tmp_row_names, '_fpkm', sep = '', collapse = ',')) %>%
-      tidyr::unite('avg_name', g, sep = '_')
-    
-    for (avg in sample_data %>% pull(avg_name)) {
-      samples <- sample_data %>%
-        filter(avg_name == avg) %>%
-        pull(samples) %>%
-        str_split(',') %>% 
-        unlist()
-      
-      avg_fpkm <- fpkms %>% dplyr::select(one_of(samples)) %>%
-        mutate(avg_fpkm = rowMeans(.)) %>%
-        dplyr::pull(avg_fpkm)
-      
-      fpkms %<>% mutate(!!str_c(avg, '_avg_fpkm', sep = '') := avg_fpkm)
-    }
+      tidyr::unite('avg_name', g, sep='_')
+  }) %>% reduce(rbind)
+}
+
+get_avg_fpkm <- function(fpkms) {
+  avg_table <- .get_avg_fpkm_table()
+
+  for (avg in avg_table$avg_name) {
+    samples <- avg_table %>%
+      filter(avg_name == avg) %>%
+      pull(samples) %>%
+      str_split(',') %>%
+      unlist()
+
+    avg_fpkm <- fpkms %>% dplyr::select(one_of(samples)) %>%
+      mutate(avg_fpkm=rowMeans(.)) %>%
+      dplyr::pull(avg_fpkm)
+
+    fpkms %<>% mutate(!!str_c(avg,'_avg_fpkm',sep='') := avg_fpkm)
   }
-  
+
   fpkms %>% dplyr::select(gene, contains('avg'))
 }
 
@@ -408,13 +420,31 @@ save_results_by_group <- function(results) {
       filter(group != g) %>% 
       pull(comparison) %>% 
       str_c("^", ., collapse = '|')
-    
+
+    samples_to_include <- SAMPLE_DATA %>%
+      filter(!!parse_expr(COMPARISON_TABLE %>% filter(group==g) %>% pull(filter) %>% str_c(collapse = '|'))) %>%
+      pull(sample_name) %>% as.vector()
+
+    samples_to_exclude <- SAMPLE_DATA %>%
+      filter(! sample_name %in% samples_to_include) %>%
+      pull(sample_name) %>% as.vector()
+
+    samples_to_exclude_pattern <- samples_to_exclude %>% str_c('^',.,sep='',collapse = '|')
+
+    ## work out what avg column to be exclude for group
+    avg_tb<-.get_avg_fpkm_table()
+    avg_to_exclude<- lapply(avg_tb$avg_name,function(x){
+      samples_in_avg <- avg_tb %>% filter(avg_name==x) %>% pull(samples) %>% strsplit(',') %>% extract2(1) %>% gsub('_fpkm','',x=.)
+      (samples_in_avg %in% samples_to_include) %>% all
+    }) %>% unlist() %>% `!` %>% filter(.data=avg_tb) %>% pull(avg_name)
+
     # save results
     results %>%
       dplyr::select(
         gene, gene_name, chromosome, description, entrez_id, gene_type,
-        gene_length, max_transcript_length,
-        everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat"), -matches(n_comparisons)) %>%
+        gene_length, max_transcript_length, everything(),
+        -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat"),
+        -matches(n_comparisons), -(samples_to_exclude)) %>%
       write_csv(str_c(OUTPUT_DIR, "/", g, "_deseq2_results_count_", SPECIES, ".csv"))
     
     results %>%
@@ -428,7 +458,10 @@ save_results_by_group <- function(results) {
           unlist() %>%
           as.vector() %>%
           unique(),
-        -dplyr::ends_with(".stat"), -matches(n_comparisons)) %>%
+        -dplyr::ends_with(".stat"), -matches(n_comparisons),
+        -matches(samples_to_exclude_pattern),
+        -one_of(avg_to_exclude %>% str_c('_avg_fpkm'))
+      ) %>%
       write_csv(str_c(OUTPUT_DIR, "/", g ,"_deseq2_results_fpkm_", SPECIES, ".csv"))
     
     SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
@@ -872,6 +905,7 @@ get_total_dds_tximport <- function(sample_data, quant_method = 'salmon', tx_leve
   total_dds
 }
 
+
 get_avg_tpm <- function(tpms, tx_level) {
   sample_data <- SAMPLE_DATA
   sample_data %<>% tibble::rownames_to_column(var = "tmp_row_names") %>% 
@@ -1135,7 +1169,7 @@ write_camera_results <- function(
   }
 
   camera_results %>% tibble::rownames_to_column(var = "GeneSet") %>% filter(FDR < fdr_cutoff) %>%
-    write_csv(str_c(top_dir, "/", gene_set_collection_name, "_enriched_sets.csv"))
+      write_csv(str_c(top_dir, "/", comparison_name, "-", gene_set_collection_name, "_sets.csv"))
 
   ret <- list(enriched_sets = camera_results %>% 
                 tibble::rownames_to_column(var="GeneSet") %>% 
@@ -1178,7 +1212,7 @@ write_camera_results <- function(
 
   de_results %>%
     cbind(gene_set_results) %>%
-    write_csv(str_c(top_dir, "/", gene_set_collection_name, "_genes_in_sets.csv"))
+    write_csv(str_c(top_dir, "/", comparison_name, "-", gene_set_collection_name, "_genes_in_sets.csv"))
 
   ret[['genes_in_sets']]<- de_results %>% cbind(gene_set_results)
 
@@ -1246,6 +1280,65 @@ track_gene_sets <- function(target_terms = c('GO_RIBOSOME', 'GO_PROTEASOME_COMPL
     theme_minimal() + 
     theme(axis.text.x = element_text(angle = -90, size=7), 
           panel.border = element_blank(),panel.background = element_blank())
+}
+
+track_go <- function(target_terms = c('GO:0051492', 'GO:0010811'),
+                            category = 'BP',
+                            gs_results = get_global('GO_results'),
+                            comparison_table = COMPARISON_TABLE,
+                            print_table = TRUE,
+                            output_table_file = NA,
+                            left_out_comparison = c(),
+                            heat_map.p.midpoint = 0.05){
+
+  ## create a master table for all comparisons and the gene sets results
+  gsa_res_tb <- COMPARISON_TABLE %>%
+    pull(comparison) %>%
+    extract(which(!. %in% left_out_comparison)) %>%
+    set_names(.) %>%
+    sapply(simplify = FALSE, USE.NAMES = TRUE, function(x) {
+      gs_results %>%
+        extract2(x) %>%  extract2(str_c(x,'.all')) %>%
+        extract2(category) %>%  extract2('go_results') %>%
+        dplyr::mutate(comparison = x)
+    }) %>%
+    reduce(rbind)
+
+  ## we only keep gene sets of interests
+  gsa_res_tb <- gsa_res_tb %>%
+    filter(GO.ID %in% target_terms) %>%
+    mutate(log10p=log10(as.numeric(weight_fisher))) # for plotting
+
+  gsa_res_tb$comparison %<>% factor(levels = COMPARISON_TABLE %>% pull(comparison) %>% rev)
+  gsa_res_tb$GO.ID %<>% factor(levels = target_terms)
+
+  if (print_table) {
+    print(gsa_res_tb %>% arrange(GO.ID, log10p))
+  }
+
+  # we output the FDR table to csv
+  if (!is.na(output_table_file)) {
+    gsa_res_tb %>%
+      arrange(GO.ID, log10p) %>%
+      dplyr::select(GO.ID, weight_fisher, comparison) %>%
+      reshape(idvar = "comparison", timevar = "GO.ID", direction = "wide") %>%
+      write.csv(file = output_table_file)
+  }
+
+  gsa_res_tb %>%
+  ggplot(aes(GO.ID, comparison)) +
+    geom_tile(aes(fill = log10p)) +
+    scale_fill_gradient2(low = "red", high = "white", mid = "white",
+    midpoint = log10(heat_map.p.midpoint)) +
+  # geom_text(aes(label = if_else(log10p < log10(heat_map.p.midpoint),
+  #                               ifelse(Direction=='Up', "UP", "DOWN"),
+  #                               "")), alpha = 0.75, size=3) +
+    labs(fill ="log10(p)") +
+    labs(title=str_c('p cutoff = ',heat_map.p.midpoint),
+    xlab="GO.ID", ylab="Comparison") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = -90, size=7),
+    panel.border = element_blank(),panel.background = element_blank())
 }
 
 ##### Quality surrogate variable analysis

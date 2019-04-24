@@ -85,7 +85,8 @@ USE_SARGASSO="{{cookiecutter.sargasso}}"
 {% if cookiecutter.sargasso == "yes" %}
 STRATEGY="{{cookiecutter.strategy}}"
 #### Create Sargasso samples.tsv file
-addSample2tsv ${MAIN_DIR}/sample.tsv {{ cookiecutter.rnaseq_samples_dir }} \
+SAMPLE_TSV=${MAIN_DIR}/sample.tsv
+addSample2tsv ${SAMPLE_TSV} {{ cookiecutter.rnaseq_samples_dir }} \
 {{ cookiecutter.read1_identifier}} {{ cookiecutter.read2_identifier}} {{ cookiecutter.fastq_suffix }} \
 {{ cookiecutter.paired_end_read}} {{cookiecutter.rnaseq_samples}}
 {% endif %}

@@ -5,33 +5,33 @@ FEATURE_COUNTS=featureCounts{{cookiecutter.featurecounts_version}}
 PICARD=/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar
 
 function listFiles {
-    DELIMITER=$1
-    shift
-    FILES=$@
+    local DELIMITER=$1
+    local shift
+    local FILES=$@
 
-    OUTPUT=$(ls -1 $FILES | tr '\n' "${DELIMITER}")
+    local OUTPUT=$(ls -1 $FILES | tr '\n' "${DELIMITER}")
     echo ${OUTPUT%$DELIMITER}
 }
 
 function listFilesNoNewLine {
-    DELIMITER=$1
-    shift
-    FILES=$@
+    local DELIMITER=$1
+    local shift
+    local FILES=$@
 
-    OUTPUT=$(ls -1 $FILES | tr '\n' "${DELIMITER}")
+    local OUTPUT=$(ls -1 $FILES | tr '\n' "${DELIMITER}")
     echo -n ${OUTPUT%$DELIMITER}
 }
 
 function map_reads {
-    SAMPLE=$1
-    INDEX_DIR=$2
-    NUM_THREADS=$3
-    READ_1_FILES=$4
-    READ_2_FILES=$5
-    MAPPING_DIR=$6
+    local SAMPLE=$1
+    local INDEX_DIR=$2
+    local NUM_THREADS=$3
+    local READ_1_FILES=$4
+    local READ_2_FILES=$5
+    local MAPPING_DIR=$6
 
 
-    star_tmp=${SAMPLE}.tmp
+    local star_tmp=${SAMPLE}.tmp
     mkdir ${star_tmp}
 
     if [ -z "$READ_2_FILES" ]
@@ -52,14 +52,14 @@ function map_reads {
 }
 
 function picard_rnaseq_metrics {
-    SAMPLE=$1
-    INPUT_BAM=$2
-    OUTPUT_DIR=$3
-    REF_FLAT=$4
-    RIBOSOMAL_DIR=$5
-    STRANDNESS_FLAG=${6:-2}
+    local SAMPLE=$1
+    local INPUT_BAM=$2
+    local OUTPUT_DIR=$3
+    local REF_FLAT=$4
+    local RIBOSOMAL_DIR=$5
+    local STRANDNESS_FLAG=${6:-2}
 
-    S=''
+    local S=''
 
     case ${STRANDNESS_FLAG} in
     "0") S=NONE ;;
@@ -75,14 +75,14 @@ function picard_rnaseq_metrics {
 }
 
 function count_reads_for_features {
-    NUM_THREADS=$1
-    FEATURES_GTF=$2
-    BAM_FILE=$3
-    COUNTS_OUTPUT_FILE=$4
-    STRANDNESS_FLAG=${5:-2}
+    local NUM_THREADS=$1
+    local FEATURES_GTF=$2
+    local BAM_FILE=$3
+    local COUNTS_OUTPUT_FILE=$4
+    local STRANDNESS_FLAG=${5:-2}
 
 
-    counts_tmp=.$(basename "${BAM_FILE}").counts_tmp
+    local counts_tmp=.$(basename "${BAM_FILE}").counts_tmp
 
     ${FEATURE_COUNTS} -T ${NUM_THREADS} -p -a ${FEATURES_GTF} -o ${counts_tmp} -s ${STRANDNESS_FLAG} ${BAM_FILE}
     tail -n +3 ${counts_tmp} | cut -f 1,7 > ${COUNTS_OUTPUT_FILE}
@@ -95,12 +95,12 @@ function count_reads_for_features {
 function detect_stranness {
     ## If 1 is close to 2, then it is 0
     ## Otherwise, it is the larger one among 1 and 2.
-    DIR=$1
-    SAMPLE_NAME=${2:-''}
+    local DIR=$1
+    local SAMPLE_NAME=${2:-''}
 
-    zero="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[0].testsummary* | awk '{print $2}')"
-    one="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[1].testsummary* | awk '{print $2}')"
-    two="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[2].testsummary* | awk '{print $2}')"
+    local zero="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[0].testsummary* | awk '{print $2}')"
+    local one="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[1].testsummary* | awk '{print $2}')"
+    local two="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[2].testsummary* | awk '{print $2}')"
 #    echo -n ${SAMPLE_NAME}: ${zero} ${one} ${two} ""
 #    echo ${one} ${two} | awk '{print ($1-$2)/($1+$2)}'
 
@@ -115,12 +115,12 @@ function detect_stranness {
 
 
 function count_reads_for_features_strand_test {
-    NUM_THREADS=$1
-    FEATURES_GTF=$2
-    BAM_FILE=$3
-    COUNTS_OUTPUT_FILE=$4
+    local NUM_THREADS=$1
+    local FEATURES_GTF=$2
+    local BAM_FILE=$3
+    local COUNTS_OUTPUT_FILE=$4
 
-    counts_tmp=.$(basename "${BAM_FILE}").counts_tmp
+    local counts_tmp=.$(basename "${BAM_FILE}").counts_tmp
 
 
     for i in 0 1 2; do
@@ -133,23 +133,23 @@ function count_reads_for_features_strand_test {
 }
 
 function clean_de_results {
-    DE_RESULTS_FILE=$1
+    local DE_RESULTS_FILE=$1
 
     sed -i "s/-Inf/'-Inf/g;s/,NA,/,,/g;s/,NA,/,,/g;s/,NA$/,/g;s/,NaN,/,,/g;s/,NaN,/,,/g;s/,NaN$/,/g" ${DE_RESULTS_FILE}
 }
 
 function addSample2tsv {
-    SAMPLE_TSV=$1 && shift
-    BASE_DIR=$1 && shift
-    READ1_IDENTIFIER=$1 && shift
-    READ2_IDENTIFIER=$1 && shift
-    FASTQ_SUFFIX=$1 && shift
-    PAIRED_READ=$1 && shift
+    local SAMPLE_TSV=$1 && shift
+    local BASE_DIR=$1 && shift
+    local READ1_IDENTIFIER=$1 && shift
+    local READ2_IDENTIFIER=$1 && shift
+    local FASTQ_SUFFIX=$1 && shift
+    local PAIRED_READ=$1 && shift
     if [ -z "$READ2_IDENTIFIER" ];then
-        PAIRED_READ=0
+        local PAIRED_READ=0
     fi
     echo -ne '' > ${SAMPLE_TSV}
-    SAMPLE=$@
+    local SAMPLE=$@
     for sample in ${SAMPLE}; do
         echo -ne ${sample}" " >> ${SAMPLE_TSV}
         echo -n $(listFilesNoNewLine "," ${BASE_DIR}/${sample}/*${READ1_IDENTIFIER}.${FASTQ_SUFFIX}) >> ${SAMPLE_TSV}

@@ -152,10 +152,10 @@ function addSample2tsv {
     SAMPLE=$@
     for sample in ${SAMPLE}; do
         echo -ne ${sample}" " >> ${SAMPLE_TSV}
-        echo -n $(listFilesNoNewLine "," ${BASE_DIR}/${sample}/*${READ1_IDENTIFIER}*.${FASTQ_SUFFIX}) >> ${SAMPLE_TSV}
+        echo -n $(listFilesNoNewLine "," ${BASE_DIR}/${sample}/*${READ1_IDENTIFIER}.${FASTQ_SUFFIX}) >> ${SAMPLE_TSV}
         if [ "$PAIRED_READ"=="yes" ]; then
             echo -n " "  >> ${SAMPLE_TSV}
-            echo -n $(listFilesNoNewLine "," ${BASE_DIR}/${sample}/*${READ2_IDENTIFIER}*.${FASTQ_SUFFIX}) >> ${SAMPLE_TSV}
+            echo -n $(listFilesNoNewLine "," ${BASE_DIR}/${sample}/*${READ2_IDENTIFIER}.${FASTQ_SUFFIX}) >> ${SAMPLE_TSV}
         fi
         echo "" >> ${SAMPLE_TSV}
     done

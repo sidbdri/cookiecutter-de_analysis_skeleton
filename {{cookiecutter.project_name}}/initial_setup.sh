@@ -43,11 +43,8 @@ ln -s ${GENOME_DATA_DIR}/*orthologs.tsv  ${ENSEMBL_DIR}
 ## Instead of using the genes.tsv from ${GENOME_DATA_DIR}, we download it from Ensembl
 download_gene_tb {{ s }} {{cookiecutter.ensembl_version}} > ${ENSEMBL_DIR}/genes.tsv
 
-# Refactor based on /srv/data/genome/mouse/ensembl-95
 # Generating refFlat file for Picard RNA-seq metrics
-mkdir -p ${PICARD_DATA}/{{ s }}
-ln -s ${GENOME_DATA_DIR}/picard/{{cookiecutter.rff_files[s]}} ${REF_FLAT}
-
+generate_picard_refFlat ${PICARD_DATA}/{{ s }} {{ s }} {{cookiecutter.ensembl_version}} ${GTF_FILE} &
 {% endfor %}
 
 {% if "human" not in cookiecutter.species.split(' ') %}

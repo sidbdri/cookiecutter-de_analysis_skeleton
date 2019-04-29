@@ -6,15 +6,37 @@ source /usr/local/bin/virtualenvwrapper.sh
 
 mkproject -f {{cookiecutter.project_name}}
 
+### we find out the current master hash of transcript-utils and sidbdri-utils
+### and put them in the config.sh, if they are not set
+function findHashFromBranchName {
+    repo_name=$1
+    commit_hash=$2
+    echo $(curl --silent -H "Accept: application/vnd.github.VERSION.sha" \
+    https://api.github.com/repos/sidbdri/${repo_name}/commits/${commit_hash})
+}
+
+
+if grep -Fq "unknown_hash" config.sh; then
+    echo "## we replace the unknow has with the master hash"
+    sed -i "s/unknown_hash_transcript-utils/$(findHashFromBranchName "transcript-utils" "master")/" config.sh
+    sed -i "s/unknown_hash_sidbdri-utils/$(findHashFromBranchName "sidbdri-utils" "master")/" config.sh
+    {% if cookiecutter.sargasso == "yes" %}
+    sed -i "s/unknown_hash_sargasso/$(findHashFromBranchName "Sargasso" "master")/" config.sh
+    {% endif %}
+fi
+
+source config.sh
+
 pip install scipy
 pip install multiqc
-pip install git+https://github.com/sidbdri/transcript-utils.git
+pip install git+https://github.com/sidbdri/transcript-utils.git@${transcript_utils_hash}
 {% if cookiecutter.sargasso == "yes" %}
-pip install git+https://github.com/statbio/Sargasso.git@master
+pip install git+https://github.com/statbio/Sargasso.git@${sargasso_hash}
 {% endif %}
 
 ## Clone sidbdri-utils package
-git clone https://github.com/sidbdri/sidbdri-utils.git
+rm -rf sidbdri-utils && git clone https://github.com/sidbdri/sidbdri-utils.git
+(cd sidbdri-utils && git checkout -q ${sidbdri_utils_hash})
 source sidbdri-utils/includes.sh
 
 DATA_DIR=data

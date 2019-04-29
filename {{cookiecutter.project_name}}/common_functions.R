@@ -299,14 +299,14 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
   # Create a PCA plot and heatmap for this comparison
   if (!use_tx) {
     vst <- dds %>% varianceStabilizingTransformation
-    vst %>% plot_pca_with_labels(intgroup = c(x$condition_name)) %>% print
+    vst %>% plot_pca(intgroup = c(x$condition_name)) %>% print
     vst %>% plot_heat_map(sample_data %>%
                           mutate(sample_info = str_c(!!parse_expr(x$condition_name), 
                                                      sample_name_tmp, sep = ":")) %>%
                           extract2("sample_info"))
     
     start_plot(str_c("pca_", x$comparison))
-    vst %>% plot_pca_with_labels(intgroup=x$condition_name) %>% print()
+    vst %>% plot_pca(intgroup=x$condition_name) %>% print()
     end_plot()
 
     start_plot(str_c("heatmap_", x$comparison))
@@ -984,7 +984,7 @@ perform_go_analyses <- function(significant_genes, expressed_genes, comparison_n
     return()
   }
 
-  top_dir < -str_c("results/differential_expression/go/", species, '/', comparison_name, sep = '')
+  top_dir <- str_c("results/differential_expression/go/", species, '/', comparison_name, sep = '')
   if (!dir.exists(top_dir)) {
     dir.create(top_dir, recursive = TRUE)
   }

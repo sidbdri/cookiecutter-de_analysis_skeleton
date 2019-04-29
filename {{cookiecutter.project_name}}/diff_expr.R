@@ -140,7 +140,7 @@ comparisons_results <- COMPARISON_TABLE %>% pull(comparison) %>% lapply_fork(
     list(comparison_name = comparison_name,
          res = res$res,
          dds = res$dds,
-         results_tb = res$results_tb,
+         results_tb = results_tb,
          summary_tb = res$summary_tb_row,
          p_plot = p_plot)
   }
@@ -157,9 +157,9 @@ lapply(comparisons_results, function(cmp) {
     set_global("results")
 
   # merge the cmp summary table into global SUMMARY_TABLE
-  get_global("SUMMARY_TB") %>% 
-    rbind(cmp$summary_tb) %>% 
-    set_global("results")
+  get_global("SUMMARY_TB") %>%
+    rbind(cmp$summary_tb %>% as.data.frame(stringsAsFactors=FALSE)) %>%
+    set_global("SUMMARY_TB")
 
   # merge the p value plots
   add_to_patchwork(cmp$p_plot, plot_var_name = 'all_comparison_pvalue_distribution')

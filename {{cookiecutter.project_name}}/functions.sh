@@ -6,7 +6,7 @@ PICARD=/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar
 
 function listFiles {
     local DELIMITER=$1
-    local shift
+    shift
     local FILES=$@
 
     local OUTPUT=$(ls -1 $FILES | tr '\n' "${DELIMITER}")
@@ -15,7 +15,7 @@ function listFiles {
 
 function listFilesNoNewLine {
     local DELIMITER=$1
-    local shift
+    shift
     local FILES=$@
 
     local OUTPUT=$(ls -1 $FILES | tr '\n' "${DELIMITER}")

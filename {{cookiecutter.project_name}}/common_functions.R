@@ -69,6 +69,33 @@ check_formulas <- function() {
   }
 }
 
+check_samples <- function(){
+    COMPARISON_TABLE %>% pull(comparison) %>% lapply(function(comparison_name){
+        x <- COMPARISON_TABLE %>% filter(comparison==comparison_name)
+        sample_data<-SAMPLE_DATA %>% filter(!!parse_expr(x$filter))
+        list(
+        Comparison = x$comparison,
+        Total_samples = sample_data %>% nrow(),
+        base_level_condition = x$condition_base,
+        num_base = sample_data %>%
+            filter(!!parse_expr(x$condition_name) == x$condition_base) %>%
+            nrow(),
+        base_samples = sample_data %>%
+            filter(!!parse_expr(x$condition_name) == x$condition_base) %>%
+            pull(sample_name) %>%
+            str_c(collapse = ','),
+        Comparison_level_condition = x$condition,
+        comparison_samples = sample_data %>%
+            filter(!!parse_expr(x$condition_name) == x$condition) %>%
+            nrow(),
+        Sample_names_in_comparison_level_condition = sample_data %>%
+            filter(!!parse_expr(x$condition_name) == x$condition) %>%
+            pull(sample_name) %>%
+            str_c(collapse = ',')
+        ) %>% as.data.frame()
+    }) %>% reduce(rbind)
+}
+
 start_plot <- function(prefix,width=12, height=12, path=GRAPHS_DIR, num_plots=1) {
   .adjust_pdf_size<-function(num_plots){
     num_features <- num_plots

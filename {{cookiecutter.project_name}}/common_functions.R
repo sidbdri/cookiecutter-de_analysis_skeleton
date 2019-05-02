@@ -16,7 +16,7 @@ global_exists <- function(variable) {
 }
 
 rm_global <- function(variable) {
-  rm(variable, envir = .GlobalEnv)
+  rm(list=c(variable), envir = .GlobalEnv)
 }
 
 filter_with_rownames <- function(.data, ...) {

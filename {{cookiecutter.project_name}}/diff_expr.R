@@ -231,10 +231,6 @@ results %>%
 SUMMARY_TB %>%
   write_csv(str_c(OUTPUT_DIR, "/de_summary_", SPECIES, ".csv"))
 
-rws <- str_c("results/Rworkspace/", SPECIES, '/',sep = '')
-if (!dir.exists(rws)) {
-  dir.create(rws, recursive = TRUE)
-}
 
 #####
 
@@ -343,10 +339,9 @@ GS_results <- COMPARISON_TABLE %>%
 ##### Saving and loading the workspace
 
 # Save the objects in the workspace for future analysis
-
-rws <- "results/Rworkspace/"
+rws <- str_c("results/Rworkspace/", SPECIES, '/',sep = '')
 if (!dir.exists(rws)) {
-  dir.create(rws,recursive=TRUE)
+dir.create(rws, recursive = TRUE)
 }
 
 save(list = ls() %>% grep(x = ., pattern='comparisons_results', value = T,invert = T),

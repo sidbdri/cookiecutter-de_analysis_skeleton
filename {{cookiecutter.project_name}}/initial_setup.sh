@@ -6,23 +6,28 @@ source /usr/local/bin/virtualenvwrapper.sh
 
 mkproject -f {{cookiecutter.project_name}}
 
-### we find out the current master hash of transcript-utils and sidbdri-utils
-### and put them in the config.sh, if they are not set
+# If this is the first time the script has been run, We find out the current
+# master hash of transcript-utils and sidbdri-utils and put them in the
+# config.sh, if they are not set. We also set up the directory as a git
+# repository.
 function findHashFromBranchName {
-    repo_name=$1
-    commit_hash=$2
+    org=$1
+    repo_name=$2
+    commit_hash=$3
     echo $(curl --silent -H "Accept: application/vnd.github.VERSION.sha" \
-    https://api.github.com/repos/sidbdri/${repo_name}/commits/${commit_hash})
+    https://api.github.com/repos/${org}/${repo_name}/commits/${commit_hash})
 }
 
-
 if grep -Fq "unknown_hash" config.sh; then
-    echo "## we replace the unknow has with the master hash"
-    sed -i "s/unknown_hash_transcript-utils/$(findHashFromBranchName "transcript-utils" "master")/" config.sh
-    sed -i "s/unknown_hash_sidbdri-utils/$(findHashFromBranchName "sidbdri-utils" "master")/" config.sh
+    echo "# We replace the unknown hash with the master branch hash"
+    sed -i "s/unknown_hash_transcript-utils/$(findHashFromBranchName "sidbdri" "transcript-utils" "master")/" config.sh
+    sed -i "s/unknown_hash_sidbdri-utils/$(findHashFromBranchName "sidbdri" "sidbdri-utils" "master")/" config.sh
     {% if cookiecutter.sargasso == "yes" %}
-    sed -i "s/unknown_hash_sargasso/$(findHashFromBranchName "Sargasso" "master")/" config.sh
+    sed -i "s/unknown_hash_sargasso/$(findHashFromBranchName "statbio" "Sargasso" "master")/" config.sh
     {% endif %}
+
+    git init
+    mv gitignore .gitignore
 fi
 
 source config.sh
@@ -78,6 +83,3 @@ download_gene_tb human {{cookiecutter.ensembl_version}} > ${HUMAN_ENSEMBL_DIR}/g
 {% endif %}
 
 ln -s /srv/data/genome/human/msigdb ${DATA_DIR}
-
-git init
-mv gitignore .gitignore

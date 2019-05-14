@@ -176,37 +176,11 @@ start_plot("all_comparison_pvalue_distribution")
 all_comparison_pvalue_distribution
 end_plot()
 
-#####
-#
-## Work out the Sargasso error ratio: calculate the proportion of reads incorrectly assigned to 
-## other species in pure samples for each 1-to-1 orthologous gene.
-#
-# RAT_ONLY_SAMPLES <- c('a1','a2','a3')
-# rat_only_mouse_counts <- RAT_ONLY_SAMPLES %>% 
-#   get_single_species_only_counts("mouse") %>% 
-#   rename(mouse_gene = gene, rat_only_mouse_count=total)
-
-# rat_only_rat_counts <- RAT_ONLY_SAMPLES %>% 
-#   get_single_species_only_counts("rat") %>% 
-#   rename(rat_gene = gene, rat_only_rat_count=total)
-
-# ortholog_info <- get_mouse_rat_ortholog_info()
-
-# rat_only_mapping_info <- ortholog_info %>%
-#   left_join(rat_only_mouse_counts) %>%
-#   left_join(rat_only_rat_counts) %>%
-#   mutate(rat_only_total_count=rat_only_mouse_count + rat_only_rat_count,
-#          rat_only_mouse_frac=rat_only_mouse_count/rat_only_total_count)
-#
-### easier do the join when writing result to csv
-# results %<>% left_join(rat_only_mapping_info, by=c("gene" = "rat_gene"))
-#####
-
+# save results
 if (COMPARISON_TABLE %>% pull(group) %>% unique() %>% length() > 1) {
   save_results_by_group(results)
 }
 
-# save results
 results %>% 
   dplyr::select(
     gene, gene_name, chromosome, description, entrez_id, gene_type,
@@ -230,11 +204,6 @@ results %>%
 
 SUMMARY_TB %>%
   write_csv(str_c(OUTPUT_DIR, "/de_summary_", SPECIES, ".csv"))
-
-rws <- str_c("results/Rworkspace/", SPECIES, '/',sep = '')
-if (!dir.exists(rws)) {
-  dir.create(rws, recursive = TRUE)
-}
 
 #####
 

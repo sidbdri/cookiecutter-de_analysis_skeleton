@@ -171,34 +171,34 @@ lapply_fork <- function(X, FUN, cores = NA) {
   }
 }
 
-lapply_socket <- function(X, FUN, cores = NA, export_objects=c("expressed_genes", "results", "PARALLEL")) {
+lapply_socket <- function(X, FUN, cores = NA, export_objects=c("expressed_genes", "results", "PARALLEL","META_DATA")) {
   # This is the socket approach of parallel lapply:
   # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#starting-a-cluster
-  
-  if (get_global('PARALLEL')) {
+
+  if (get("PARALLEL", envir = .GlobalEnv)) {
     # create cluster
     if (is.na(cores)) {
-      cores <- getOption("mc.cores", get_global('NUM_CORES'))
+      cores <- getOption("mc.cores", get('NUM_CORES', envir = .GlobalEnv))
     }
-    
+
     cl <- makeCluster(cores)
-    
-    clusterEvalQ(cl, {
-      source("meta_data.R")
-    })
-    
+
     # export variables
     if (length(export_objects) > 0) {
       clusterExport(cl, varlist = export_objects)
       clusterExport(cl, varlist = c('export_objects'), envir = environment())
     }
-    
+
+    clusterEvalQ(cl, {
+      source(get('META_DATA',envir = environment()))
+    })
+
     # run the parallel code
     ret <- parSapply(cl = cl, X = X, simplify = FALSE, USE.NAMES = TRUE, FUN=FUN)
-    
+
     # stop cluster
     stopCluster(cl)
-    
+
     ret
   } else {
     # run the normal lapply in single core

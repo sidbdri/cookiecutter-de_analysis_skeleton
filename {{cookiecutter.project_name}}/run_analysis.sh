@@ -70,6 +70,7 @@ STAR_EXECUTABLE=STAR{{cookiecutter.star_version}}
 BOWTIE2_EXECUTABLE=kallisto{{cookiecutter.bowtie2_version}}
 SALMON_EXECUTABLE=salmon{{cookiecutter.salmon_version}}
 KALLISTO_EXECUTABLE=kallisto{{cookiecutter.kallisto_version}}
+FASTQC_EXECUTABLE=fastqc{{cookiecutter.fastqc_version}}
 
 NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}
 NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
@@ -106,7 +107,7 @@ wait
 mkdir -p ${QC_DIR}
 echo "Running fastqc ...."
 echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c \
-"mkdir -p ${LOG_DIR}/fastqc/% ${QC_DIR}/%; zcat ${RNASEQ_DIR}/%/*.fastq.gz | fastqc --outdir=${QC_DIR}/% stdin 2>${LOG_DIR}/fastqc/fastqc.log"  &
+"mkdir -p ${LOG_DIR}/fastqc/% ${QC_DIR}/%; zcat ${RNASEQ_DIR}/%/*.fastq.gz | ${FASTQC_EXECUTABLE} --outdir=${QC_DIR}/% stdin 2>${LOG_DIR}/fastqc/fastqc.log"  &
 wait
 
 ####################################################################################

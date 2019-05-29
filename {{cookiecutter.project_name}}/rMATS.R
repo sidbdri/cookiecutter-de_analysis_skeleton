@@ -8,8 +8,11 @@ RMATS_325 = '/opt/rMATS.3.2.5/MATS/rMATS_Paired.sh'
 rMAT_PARA_t = 'paired'
 # This is for rMATS4 statistics. We are not using this at the moment.
 rMAT_PARA_tstat=1
-rMAT_PARA_readLength=75
 rMAT_PARA_cstat = 0.1
+
+rMAT_PARA_readLength = system("find -L ./data -name '*.fastq.gz' | xargs -I % bash -c 'zcat % | head -2 | tail -1 | tr -d \"\n\"  | wc -c'",
+                        ignore.stderr=T,intern=T) %>% unique()
+if(length(rMAT_PARA_readLength) > 1) stop('rMAT_PARA_readLength cannot be detected.')
 
 libType=switch(system('bash -c "source functions.sh; detect_stranness ./results_1/read_counts"',intern=T),
                 '0' = "fr-unstranded", '1' = 'fr-firststrand', '2' = 'fr-secondstrand', '-1' = 'unknown')

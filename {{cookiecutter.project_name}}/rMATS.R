@@ -28,7 +28,7 @@ rMAT3_PARA_splicing_difference = 0.1
 # Average count must above a threadhold
 avg_count_cutoff=5
 
-sSUMMARY_TB %<>% mutate(Up_regulated_gene=integer(),
+SUMMARY_TB %<>% mutate(Up_regulated_gene=integer(),
                       Down_regulated_gene=integer(),
                       D.E.total_gene=integer())
 

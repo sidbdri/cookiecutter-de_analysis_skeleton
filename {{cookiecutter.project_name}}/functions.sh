@@ -98,17 +98,17 @@ function detect_stranness {
     local DIR=$1
     local SAMPLE_NAME=${2:-''}
 
-    local zero="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[0].testsummary* | awk '{print $2}')"
-    local one="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[1].testsummary* | awk '{print $2}')"
-    local two="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[2].testsummary* | awk '{print $2}')"
+    local zero="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[0].testsummary* | awk '{print $2}' | head -1 ) "
+    local one="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[1].testsummary* | awk '{print $2}' | head -1 )"
+    local two="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[2].testsummary* | awk '{print $2}' | head -1 )"
 #    echo -n ${SAMPLE_NAME}: ${zero} ${one} ${two} ""
 #    echo ${one} ${two} | awk '{print ($1-$2)/($1+$2)}'
 
     echo ${one} ${two} | awk 'function abs(v) {return v < 0 ? -v : v}
                                 { d=($1-$2)/($1+$2)
-                                if( abs(d)<0.2) {print 0}
-                                else if(d>0.5) {print 1}
-                                else if(d<-0.5) {print 2}
+                                if( abs(d)<0.75) {print 0}
+                                else if(d>=0.75) {print 1}
+                                else if(d<=-0.75) {print 2}
                                 else {print -1}
                                 }'
     }

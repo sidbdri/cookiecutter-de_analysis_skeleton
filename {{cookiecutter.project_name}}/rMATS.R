@@ -11,6 +11,10 @@ rMAT_PARA_tstat=1
 rMAT_PARA_readLength=75
 rMAT_PARA_cstat = 0.1
 
+libType=switch(system('bash -c "source functions.sh; detect_stranness ./results_1/read_counts"',intern=T),
+                '0' = "fr-unstranded", '1' = 'fr-firststrand', '2' = 'fr-secondstrand', '-1' = 'unknown')
+if(libType=='unknown') stop('libType is unknown!')
+
 
 # This is the number of threads used in each rMATS run
 rMAT_PARA_nthread={{cookiecutter.number_total_threads}}
@@ -72,7 +76,8 @@ generate_rmats_count_cmd <- function(sample_data,species,cmp_name){
                "--readLength", rMAT_PARA_readLength,
                "--statoff",
                "--cstat", rMAT_PARA_cstat,
-               "--libType fr-unstranded",sep = " "
+               "--libType",libType,
+               sep = " "
   )
   
   cmd_stat <- generate_rmats_stat_cmd(species,cmp_name)

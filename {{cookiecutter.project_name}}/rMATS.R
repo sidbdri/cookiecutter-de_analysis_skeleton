@@ -60,12 +60,12 @@ generate_rmats_count_cmd <- function(sample_data,species,cmp_name){
   reps %>% 
     filter(!!parse_expr(x$condition_name) == x$condition_base) %>% 
     pull(replicates) %>%
-    write(b1)
+    write(b2)
   
   reps %>% 
     filter(!!parse_expr(x$condition_name) == x$condition) %>% 
     pull(replicates) %>%
-    write(b2)
+    write(b1)
   
   cmd_count <- str_c( str_c("cd", RMATS_402,sep=' '), " && python rmats.py",
                "--b1", b1, 

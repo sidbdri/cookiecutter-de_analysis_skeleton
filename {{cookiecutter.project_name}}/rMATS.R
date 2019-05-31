@@ -14,7 +14,7 @@ rMAT_PARA_readLength = system("find -L ./data -name '*.fastq.gz' | xargs -I % ba
                         ignore.stderr=T,intern=T) %>% unique()
 if(length(rMAT_PARA_readLength) > 1) stop('rMAT_PARA_readLength cannot be detected.')
 
-libType=switch(system('bash -c "source functions.sh; detect_stranness ./results_1/read_counts"',intern=T),
+libType=switch(system('bash -c "source functions.sh; detect_stranness ./results/read_counts"',intern=T),
                 '0' = "fr-unstranded", '1' = 'fr-firststrand', '2' = 'fr-secondstrand', '-1' = 'unknown')
 if(libType=='unknown') stop('libType is unknown!')
 

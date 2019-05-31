@@ -51,6 +51,10 @@ COMPARISON_TABLE <- tribble(
 # condition is the last item in the formula
 check_formulas()
 
+# This is to check the samples in each comparison to make sure the 'filter'
+# is construct correctly in the COMPARISON_TABLE
+check_samples()
+
 # This table specifies the samples used to estimate the misassignment percentage for each condition. Leave the 
 # table blank (rows=0) to skip the estimation. Otherwise, two columns will be generated in the results CSV:
 #

@@ -1,4 +1,6 @@
-source("meta_data.R")
+META_DATA='meta_data.R'
+
+source(META_DATA)
 
 SPECIES <- "{{cookiecutter.species}}"
 

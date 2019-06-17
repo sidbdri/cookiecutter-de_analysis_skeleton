@@ -165,8 +165,10 @@ lapply(comparisons_results, function(cmp) {
   add_to_patchwork(cmp$p_plot, plot_var_name = 'all_comparison_pvalue_distribution')
   
   # export the res and dds
-  cmp$res %>% set_global(cmp$comparison %>% str_c('res', sep = '_'))
-  cmp$dds %>% set_global(cmp$comparison %>% str_c('dds', sep = '_'))
+  # commnet out for now.
+  # see https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/83
+  # cmp$res %>% set_global(cmp$comparison %>% str_c('res', sep = '_'))
+  # cmp$dds %>% set_global(cmp$comparison %>% str_c('dds', sep = '_'))
 
   'success'
 }) 

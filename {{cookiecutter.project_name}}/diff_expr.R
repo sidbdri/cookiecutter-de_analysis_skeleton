@@ -1,4 +1,5 @@
-source("meta_data.R")
+META_DATA='meta_data.R'
+source(META_DATA)
 
 SPECIES <- "{{cookiecutter.species}}"
 
@@ -38,7 +39,7 @@ num_features <- SAMPLE_DATA %>% dplyr::select(-contains('species'), -contains('s
 start_plot("pca_features",num_plots=num_features)
 
 if (global_exists('patchworkplot')) {
-  rm_global(patchworkplot)
+  rm_global('patchworkplot')
 }
 
 # This is to plot individually every feature defined in the SAMPLE_DATA table
@@ -168,7 +169,7 @@ lapply(comparisons_results, function(cmp) {
   # commnet out for now.
   # see https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/83
   # cmp$res %>% set_global(cmp$comparison %>% str_c('res', sep = '_'))
-  # cmp$dds %>% set_global(cmp$comparison %>% str_c('dds', sep = '_'))
+  cmp$dds %>% set_global(cmp$comparison %>% str_c('dds', sep = '_'))
 
   'success'
 }) 

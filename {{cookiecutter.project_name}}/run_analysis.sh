@@ -267,23 +267,25 @@ done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 #
 #for sample in ${SAMPLES}; do
 #    if [ $PAIRED_END_READ = "yes" ]; then
-#        echo "${SALMON_EXECUTABLE} quant -i ${SALMON_INDEX[$species]} -l A -1 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz) -2 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_2.fastq.gz) -o ${SALMON_QUANT_DIR}/${SPECIES[0]}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]}"
+#        echo "${SALMON_EXECUTABLE} quant -i ${SALMON_INDEX[0]} -l A -1 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz) -2 $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*01_2.fastq.gz) -o ${SALMON_QUANT_DIR}/${SPECIES[0]}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[0]}"
 #    else
 #        echo "not tested"
-#        #${SALMON_EXECUTABLE} quant -i ${SALMON_INDEX[$species]} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.fastq.gz) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[$species]} &
-#   fi
+#        #${SALMON_EXECUTABLE} quant -i ${SALMON_INDEX[0]} -l A -r $(listFiles ' ' ${RNASEQ_DIR}/${sample}/*.fastq.gz) -o ${SALMON_QUANT_DIR}/${sample} --seqBias --gcBias -p ${NUM_THREADS_PER_SAMPLE} -g ${GTF_FILE[0]} &
+#    fi
 #done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 #
+
+## KALLISTO is not working...I am getting index problem and for now, decided to use salmon
 ###### Quantify transcript expression with Kallisto
 #mkdir -p ${KALLISTO_QUANT_DIR}/${SPECIES[0]}
 #
 #for sample in ${SAMPLES}; do
 #    if [ $PAIRED_END_READ = "yes" ]; then
-#        echo "${KALLISTO_EXECUTABLE} quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${SPECIES[0]}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*)01_1.fastq.gz/\101_2.fastq.gz/' | tr '\n' ' ')"
+#        echo "${KALLISTO_EXECUTABLE} quant -i ${KALLISTO_INDEX[0]} -o ${KALLISTO_QUANT_DIR}/${SPECIES[0]}/${sample} --bias --rf-stranded -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*01_1.fastq.gz | sed -r 's/(.*)/\1 \1/' | sed -r 's/(.* .*)01_1.fastq.gz/\101_2.fastq.gz/' | tr '\n' ' ')"
 #    else
 #        echo "not tested"
-#        #${KALLISTO_EXECUTABLE} quant -i ${KALLISTO_INDEX[$species]} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --single -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*.fastq.gz ) &
-#    fiNEED TEST WHICH IS BE
+#        #${KALLISTO_EXECUTABLE} quant -i ${KALLISTO_INDEX[0]} -o ${KALLISTO_QUANT_DIR}/${sample} --bias --single -t ${NUM_THREADS_PER_SAMPLE} $(ls -1 ${RNASEQ_DIR}/${sample}/*.fastq.gz ) &
+#    fi
 #done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 {% endif %}
 

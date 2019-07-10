@@ -12,6 +12,7 @@ start_parallel(nrow(COMPARISON_TABLE))
 #stop_parallel()
 
 TX_LEVEL <- FALSE
+ID_COLUMN <- ifelse(TX_LEVEL,'transcript','gene')
 QUANT_METHOD <- 'salmon'
 USE_TX <- TRUE
 
@@ -85,27 +86,28 @@ tpms <- txi$abundance %>%
   rename_all(funs(str_c(., "_tpm")))
 
 if (TX_LEVEL) {
-    tpms %<>% tibble::rownames_to_column('transcript')
-    tpms %<>% inner_join(get_transcripts_to_genes(SPECIES)) %>%
-        left_join(get_avg_tpm(tpms, TX_LEVEL))
-
-    results %<>% rename(transcript=gene) %>%
-        left_join(txi$Length %>% 
-                    rename(transcript_length=length) %>% 
-                    tibble::rownames_to_column('transcript')) %>%
-        left_join(get_transcripts_to_genes(SPECIES)) %>%
-        left_join(tpms) %>%
-        left_join(gene_info) %>%
-        left_join(gene_lengths)
-
-    # number of transcripts
-    results %<>% left_join(
-      results %>%
-        dplyr::select(gene,transcript) %>%
-        group_by(gene) %>% summarise(number_of_transcript = n()))
+  #The gene column here is acturally transcript.
+  tpms %<>% tibble::rownames_to_column('gene') 
+  tpms %<>% left_join(get_avg_tpm(., TX_LEVEL)) %>%
+    rename(transcript=gene)
+  
+  results %<>% rename(transcript=gene) %>%
+    left_join(txi$Length %>% 
+                rename(transcript_length=length) %>% 
+                tibble::rownames_to_column('transcript')) %>%
+    left_join(get_transcripts_to_genes(SPECIES)) %>%
+    left_join(tpms) %>%
+    left_join(gene_info) %>%
+    left_join(gene_lengths)
+  
+  # number of transcripts
+  results %<>% left_join(
+    results %>%
+      dplyr::select(gene,transcript) %>%
+      group_by(gene) %>% summarise(number_of_transcript = n()))
 } else {
-    tpms %<>% tibble::rownames_to_column('gene')
-    tpms %<>% inner_join(get_transcripts_to_genes(SPECIES)) %>%
+    tpms %<>% tibble::rownames_to_column('gene') %>%
+        inner_join(get_transcripts_to_genes(SPECIES)) %>%
         left_join(get_avg_tpm(tpms,TX_LEVEL))
 
     results %<>%
@@ -113,14 +115,6 @@ if (TX_LEVEL) {
         left_join(gene_info) %>%
         left_join(gene_lengths)
 }
-
-# #workout avg tpm
-# results %<>% dplyr::select(gene,dplyr::contains("_tpm")) %>% group_by(gene) %>%
-#                 summarise_all(.funs = sum) %>%
-#                 mutate(sum=rowSums(dplyr::select(., dplyr::contains("_tpm"))),
-#                 n=ncol(dplyr::select(., dplyr::contains("_tpm")))) %>%
-#                 mutate(avg_gene_tpm=sum/n) %>%
-#                 dplyr::select(gene,avg_gene_tpm) %>% right_join(results)
 
 
 
@@ -159,7 +153,7 @@ comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapply_fork (
     list(comparison_name = comparison_name,
          res = res$res,
          dds = res$dds,
-         results_tb = results_tb %>% dplyr::select(gene,contains('.')),
+         results_tb = results_tb %>% dplyr::select(ID_COLUMN,contains('.')),
          summary_tb = res$summary_tb_row,
          p_plot = p_plot)
   }
@@ -174,8 +168,8 @@ lapply(comparisons_results,function(cmp){
     set_global("results")
   
   ## merge the cmp summary table into global SUMMARY_TABLE
-  get_global("SUMMARY_TB") %>% 
-    rbind(cmp$summary_tb) %>% as.data.frame(stringsAsFactors=FALSE) %>%
+  get_global("SUMMARY_TB") %>%
+    rbind(cmp$summary_tb %>% as.data.frame(stringsAsFactors=FALSE)) %>%
     set_global("SUMMARY_TB")
   
   ## merge the p value plots
@@ -193,13 +187,9 @@ all_comparison_pvalue_distribution
 end_plot()
 
 # save results
-if (TX_LEVEL) {
-  columns_included <- c('transcript', 'transcript_length', 'gene', 'number_of_transcript')
-  tx_level_str <- "transcript"
-} else {
-  columns_included <- c('gene','gene_length', 'max_transcript_length')
-  tx_level_str <- "gene"
-}
+columns_included <- ifelse(TX_LEVEL,
+                            c('transcript', 'transcript_length', 'gene', 'number_of_transcript'),
+                            c('gene','gene_length', 'max_transcript_length'))
 
 if (COMPARISON_TABLE %>% pull(group) %>% unique() %>% length() > 1) {
   save_results_by_group(results,USE_TX)
@@ -209,7 +199,7 @@ results %>%
   dplyr::select(
     columns_included, gene_name, chromosome, description, entrez_id, gene_type, everything(),
     -dplyr::contains("_tpm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_count_", SPECIES, "_tx_", tx_level_str, "_", QUANT_METHOD, ".csv"))
+  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_count_", SPECIES, "_tx_", ID_COLUMN, "_", QUANT_METHOD, ".csv"))
 
 results %>%
   dplyr::select(
@@ -223,10 +213,10 @@ results %>%
       unique(),
     -dplyr::ends_with(".stat")
   ) %>%
-  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_tpm_", SPECIES, "_tx_",tx_level_str, "_", QUANT_METHOD, ".csv"))
+  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_tpm_", SPECIES, "_tx_",ID_COLUMN, "_", QUANT_METHOD, ".csv"))
 
 SUMMARY_TB %>%
-  write_csv(str_c(OUTPUT_DIR, "/de_summary_", SPECIES, "_tx_",tx_level_str, "_", QUANT_METHOD, ".csv"))
+  write_csv(str_c(OUTPUT_DIR, "/de_summary_", SPECIES, "_tx_",ID_COLUMN, "_", QUANT_METHOD, ".csv"))
 
 
 

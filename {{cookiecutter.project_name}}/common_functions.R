@@ -437,8 +437,7 @@ get_avg_fpkm <- function(fpkms,use_tpm=FALSE) {
 
 get_avg_tpm <- function(tpms, tx_level) {
   avg_tpm <- get_avg_fpkm(tpms,T)
-  id_column <- ifelse(tx_level, 'transcript', 'gene')
-  avg_tpm %>% dplyr::select(!!id_column, contains('avg'))
+  avg_tpm %>% dplyr::select(gene, contains('avg'))
 }
 
 

@@ -405,36 +405,45 @@ get_fpkms <- function(all_counts, gene_lengths, samples, col_suffix) {
   fpkms %>% left_join(get_avg_fpkm(fpkms))
 }
 
-.get_avg_fpkm_table <- function(){
+.get_avg_fpkm_table <- function(use_tpm=FALSE){
+  unit <- ifelse(use_tpm,'_tpm','_fpkm')
   lapply(AVG_FPKM_GROUP,function(g){
     SAMPLE_DATA %>%  tibble::rownames_to_column(var = "tmp_row_names") %>%
       group_by(.dots=g) %>%
-      summarise(samples=str_c(tmp_row_names, '_fpkm', sep = '', collapse = ',')) %>%
+      summarise(samples=str_c(tmp_row_names, unit, sep = '', collapse = ',')) %>%
       tidyr::unite('avg_name', g, sep='_')
   }) %>% reduce(rbind)
 }
 
-get_avg_fpkm <- function(fpkms) {
-  avg_table <- .get_avg_fpkm_table()
-
+get_avg_fpkm <- function(fpkms,use_tpm=FALSE) {
+  avg_table <- .get_avg_fpkm_table(use_tpm)
+  avg_postfix <- ifelse(use_tpm,'_avg_tpm','_avg_fpkm')
   for (avg in avg_table$avg_name) {
     samples <- avg_table %>%
       filter(avg_name == avg) %>%
       pull(samples) %>%
       str_split(',') %>%
       unlist()
-
+    
     avg_fpkm <- fpkms %>% dplyr::select(one_of(samples)) %>%
-      mutate(avg_fpkm=rowMeans(.)) %>%
-      dplyr::pull(avg_fpkm)
-
-    fpkms %<>% mutate(!!str_c(avg,'_avg_fpkm',sep='') := avg_fpkm)
+      mutate(avg=rowMeans(.)) %>%
+      dplyr::pull(avg)
+    
+    fpkms %<>% mutate(!!str_c(avg,avg_postfix,sep='') := avg_fpkm)
   }
-
+  
   fpkms %>% dplyr::select(gene, contains('avg'))
 }
 
-save_results_by_group <- function(results) {
+get_avg_tpm <- function(tpms, tx_level) {
+  avg_tpm <- get_avg_fpkm(tpms,T)
+  id_column <- ifelse(tx_level, 'transcript', 'gene')
+  avg_tpm %>% dplyr::select(!!id_column, contains('avg'))
+}
+
+
+
+save_results_by_group <- function(results,use_tx=FALSE) {
   # This function will, for each group defined in the COMPARISON_TABLE, save the comparisons into
   # a CSV file, prefixed with the group name.
   for (g in COMPARISON_TABLE %>% pull(group) %>% unique()) {
@@ -459,40 +468,78 @@ save_results_by_group <- function(results) {
     samples_to_exclude_pattern <- samples_to_exclude %>% str_c('^',.,sep='',collapse = '|')
 
     ## work out what avg column to be exclude for group
-    avg_tb<-.get_avg_fpkm_table()
+    avg_tb<-.get_avg_fpkm_table(use_tx)
     avg_to_exclude<- lapply(avg_tb$avg_name,function(x){
-      samples_in_avg <- avg_tb %>% filter(avg_name==x) %>% pull(samples) %>% strsplit(',') %>% extract2(1) %>% gsub('_fpkm','',x=.)
+      samples_in_avg <- avg_tb %>% filter(avg_name==x) %>% pull(samples) %>% strsplit(',') %>% extract2(1) %>% gsub('_fpkm|_tpm','',x=.)
       (samples_in_avg %in% samples_to_include) %>% all
     }) %>% unlist() %>% `!` %>% filter(.data=avg_tb) %>% pull(avg_name)
+    
+    if(use_tx){
+      
+      if ('transcript' %in% colnames(results)) {
+        columns_included <- c('transcript', 'transcript_length', 'gene', 'number_of_transcript')
+        tx_level_str <- "transcript"
+      } else {
+        columns_included <- c('gene','gene_length', 'max_transcript_length')
+        tx_level_str <- "gene"
+      }
 
-    # save results
-    results %>%
-      dplyr::select(
-        gene, gene_name, chromosome, description, entrez_id, gene_type,
-        gene_length, max_transcript_length, everything(),
-        -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat"),
-        -matches(n_comparisons), -(samples_to_exclude)) %>%
-      write_csv(str_c(OUTPUT_DIR, "/", g, "_deseq2_results_count_", SPECIES, ".csv"))
-    
-    results %>%
-      dplyr::select(
-        gene, gene_name, chromosome, description, entrez_id, gene_type,
-        gene_length, max_transcript_length,
-        dplyr::contains("_fpkm"),
-        COMPARISON_TABLE %>%
-          pull(comparison) %>%
-          sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>% 
-          unlist() %>%
-          as.vector() %>%
-          unique(),
-        -dplyr::ends_with(".stat"), -matches(n_comparisons),
-        -matches(samples_to_exclude_pattern),
-        -one_of(avg_to_exclude %>% str_c('_avg_fpkm'))
-      ) %>%
-      write_csv(str_c(OUTPUT_DIR, "/", g ,"_deseq2_results_fpkm_", SPECIES, ".csv"))
-    
-    SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
-      write_csv(str_c(OUTPUT_DIR, "/", g ,"_de_summary_", SPECIES, ".csv"))
+      results %>%
+        dplyr::select(
+          columns_included, gene_name, chromosome, description, entrez_id, gene_type, everything(),
+          -dplyr::contains("_tpm"), -dplyr::ends_with(".stat"),
+          -matches(n_comparisons), -(samples_to_exclude)) %>%
+        write_csv(str_c(OUTPUT_DIR, "/", g, "_deseq2_results_count_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv"))
+      
+      results %>%
+        dplyr::select(
+          columns_included, gene_name, chromosome, description, entrez_id, gene_type,
+          dplyr::contains("_tpm"),
+          COMPARISON_TABLE %>%
+            pull(comparison) %>%
+            sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>% 
+            unlist() %>%
+            as.vector() %>%
+            unique(),
+          -dplyr::ends_with(".stat"), -matches(n_comparisons),
+          -matches(samples_to_exclude_pattern),
+          -one_of(avg_to_exclude %>% str_c('_avg_tpm'))
+        ) %>%
+        write_csv(str_c(OUTPUT_DIR, "/", g ,"_deseq2_results_tpm_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv"))
+      
+      SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
+        write_csv(str_c(OUTPUT_DIR, "/", g ,"_de_summary_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv"))
+    }else{
+      # non-tx
+      results %>%
+        dplyr::select(
+          gene, gene_name, chromosome, description, entrez_id, gene_type,
+          gene_length, max_transcript_length, everything(),
+          -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat"),
+          -matches(n_comparisons), -(samples_to_exclude)) %>%
+        write_csv(str_c(OUTPUT_DIR, "/", g, "_deseq2_results_count_", SPECIES, ".csv"))
+      
+      results %>%
+        dplyr::select(
+          gene, gene_name, chromosome, description, entrez_id, gene_type,
+          gene_length, max_transcript_length,
+          dplyr::contains("_fpkm"),
+          COMPARISON_TABLE %>%
+            pull(comparison) %>%
+            sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>% 
+            unlist() %>%
+            as.vector() %>%
+            unique(),
+          -dplyr::ends_with(".stat"), -matches(n_comparisons),
+          -matches(samples_to_exclude_pattern),
+          -one_of(avg_to_exclude %>% str_c('_avg_fpkm'))
+        ) %>%
+        write_csv(str_c(OUTPUT_DIR, "/", g ,"_deseq2_results_fpkm_", SPECIES, ".csv"))
+      
+      SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
+        write_csv(str_c(OUTPUT_DIR, "/", g ,"_de_summary_", SPECIES, ".csv"))
+    }
+   
   }
 }
 
@@ -1005,13 +1052,13 @@ perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP",
   )
 }
 
-perform_go_analyses <- function(significant_genes, expressed_genes, comparison_name, file_prefix, species) {
+perform_go_analyses <- function(significant_genes, expressed_genes, comparison_name, file_prefix, out_dir="results/differential_expression/go/") {
   if (significant_genes %>% nrow == 0) {
     message("No significant genes supplied.")
     return()
   }
 
-  top_dir <- str_c("results/differential_expression/go/", species, '/', comparison_name, sep = '')
+  top_dir <- str_c(out_dir, species, '/', comparison_name, sep = '')
   if (!dir.exists(top_dir)) {
     dir.create(top_dir, recursive = TRUE)
   }
@@ -1030,7 +1077,7 @@ perform_go_analyses <- function(significant_genes, expressed_genes, comparison_n
 ##### Reactome pathway analysis
 
 perform_pathway_enrichment <- function(significant_genes, expressed_genes, 
-                                       comparison_name, file_prefix, species) {
+                                       comparison_name, file_prefix, species, out_dir="results/differential_expression/reactome/") {
     
   gene_info <- get_gene_info(species)
   
@@ -1048,7 +1095,7 @@ perform_pathway_enrichment <- function(significant_genes, expressed_genes,
     pvalueCutoff = 0.1, readable = T) %>%
     as.data.frame()
 
-    top_dir <- str_c("results/differential_expression/reactome/",species, '/', comparison_name, sep = '')
+    top_dir <- str_c(out_dir,species, '/', comparison_name, sep = '')
     if (!dir.exists(top_dir)) {
       dir.create(top_dir, recursive = TRUE)
     }
@@ -1188,9 +1235,9 @@ get_gene_set_results_matrix <- function(results, gene_sets, gene_set_name) {
 
 write_camera_results <- function(
   gene_set_collection_name, gene_set_collection, comparison_name, species, de_results, camera_results,
-  barcodeplots = FALSE, fdr_cutoff = 0.1) {
+  barcodeplots = FALSE, fdr_cutoff = 0.1, out_dir="results/differential_expression/gsa/") {
 
-  top_dir <- str_c("results/differential_expression/gsa/",species, "/", comparison_name)
+  top_dir <- str_c(out_dir,species, "/", comparison_name)
   if (!dir.exists(top_dir)) {
     dir.create(top_dir, recursive = TRUE)
   }

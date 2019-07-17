@@ -319,7 +319,7 @@ Rscript diff_expr.R > de_expr.log 2>&1 &
 
 wait
 
-for de_results in $(find ${DIFF_EXPR_DIR} -name 'de**.csv'); do
+for de_results in $(find ${DIFF_EXPR_DIR} -name '*de**.csv'); do
     clean_de_results ${de_results} &
 done
 wait

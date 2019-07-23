@@ -13,7 +13,7 @@ SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
 SAMPLE_DATA <- data.frame(
   condition=...,
   species=SPECIES,
-  row.names=SAMPLE_NAMES %>% str_c(species, sep = '.')
+  row.names=SAMPLE_NAMES
 ) %>% 
   tibble::rownames_to_column(var = "tmp_row_names") %>%
   filter(species==!!SPECIES) %>%

@@ -455,17 +455,17 @@ save_results_by_group <- function(results,use_tx=FALSE) {
       filter(group != g) %>% 
       pull(comparison) %>% 
       str_c("^", ., collapse = '|')
-
+    
     samples_to_include <- SAMPLE_DATA %>%
       filter(!!parse_expr(COMPARISON_TABLE %>% filter(group==g) %>% pull(filter) %>% str_c(collapse = '|'))) %>%
       pull(sample_name) %>% as.vector()
-
+    
     samples_to_exclude <- SAMPLE_DATA %>%
       filter(! sample_name %in% samples_to_include) %>%
       pull(sample_name) %>% as.vector()
-
+    
     samples_to_exclude_pattern <- samples_to_exclude %>% str_c('^',.,sep='',collapse = '|')
-
+    
     ## work out what avg column to be exclude for group
     avg_tb<-.get_avg_fpkm_table(use_tx)
     avg_to_exclude<- lapply(avg_tb$avg_name,function(x){
@@ -482,7 +482,7 @@ save_results_by_group <- function(results,use_tx=FALSE) {
         columns_included <- c('gene','gene_length', 'max_transcript_length')
         tx_level_str <- "gene"
       }
-
+      
       results %>%
         dplyr::select(
           columns_included, gene_name, chromosome, description, entrez_id, gene_type, everything(),
@@ -490,7 +490,7 @@ save_results_by_group <- function(results,use_tx=FALSE) {
           -matches(n_comparisons), -(samples_to_exclude)) %>%
         write_csv(str_c(OUTPUT_DIR, "/", g, "_deseq2_results_count_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv"))
       
-      results %>%
+      tpm_output <- results %>%
         dplyr::select(
           columns_included, gene_name, chromosome, description, entrez_id, gene_type,
           dplyr::contains("_tpm"),
@@ -500,11 +500,18 @@ save_results_by_group <- function(results,use_tx=FALSE) {
             unlist() %>%
             as.vector() %>%
             unique(),
-          -dplyr::ends_with(".stat"), -matches(n_comparisons),
-          -matches(samples_to_exclude_pattern),
-          -one_of(avg_to_exclude %>% str_c('_avg_tpm'))
-        ) %>%
-        write_csv(str_c(OUTPUT_DIR, "/", g ,"_deseq2_results_tpm_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv"))
+          -dplyr::ends_with(".stat"), -matches(n_comparisons)
+        )
+      
+      if (length(samples_to_exclude) > 0) {
+        tpm_output %<>% dplyr::select(-matches(samples_to_exclude_pattern))
+      }
+      
+      if (length(avg_to_exclude) > 0) {
+        tpm_output %<>% dplyr::select(-one_of(avg_to_exclude %>% str_c('_avg_tpm')))
+      }
+      
+      tpm_output %>% write_csv(str_c(OUTPUT_DIR, "/", g ,"_deseq2_results_tpm_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv"))
       
       SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
         write_csv(str_c(OUTPUT_DIR, "/", g ,"_de_summary_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv"))
@@ -518,7 +525,7 @@ save_results_by_group <- function(results,use_tx=FALSE) {
           -matches(n_comparisons), -(samples_to_exclude)) %>%
         write_csv(str_c(OUTPUT_DIR, "/", g, "_deseq2_results_count_", SPECIES, ".csv"))
       
-      results %>%
+      fpkm_output <- results %>%
         dplyr::select(
           gene, gene_name, chromosome, description, entrez_id, gene_type,
           gene_length, max_transcript_length,
@@ -529,16 +536,23 @@ save_results_by_group <- function(results,use_tx=FALSE) {
             unlist() %>%
             as.vector() %>%
             unique(),
-          -dplyr::ends_with(".stat"), -matches(n_comparisons),
-          -matches(samples_to_exclude_pattern),
-          -one_of(avg_to_exclude %>% str_c('_avg_fpkm'))
-        ) %>%
-        write_csv(str_c(OUTPUT_DIR, "/", g ,"_deseq2_results_fpkm_", SPECIES, ".csv"))
+          -dplyr::ends_with(".stat"), -matches(n_comparisons)
+        ) 
+      
+      if (length(samples_to_exclude) > 0) {
+        fpkm_output %<>% dplyr::select(-matches(samples_to_exclude_pattern))
+      }
+      
+      if (length(avg_to_exclude) > 0) {
+        fpkm_output %<>% dplyr::select(-one_of(avg_to_exclude %>% str_c('_avg_fpkm')))
+      }
+      
+      fpkm_output %>% write_csv(str_c(OUTPUT_DIR, "/", g ,"_deseq2_results_fpkm_", SPECIES, ".csv"))
       
       SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
         write_csv(str_c(OUTPUT_DIR, "/", g ,"_de_summary_", SPECIES, ".csv"))
     }
-   
+    
   }
 }
 

@@ -1065,7 +1065,7 @@ perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP",
   )
 }
 
-perform_go_analyses <- function(significant_genes, expressed_genes, comparison_name, file_prefix, out_dir="results/differential_expression/go/") {
+perform_go_analyses <- function(significant_genes, expressed_genes, comparison_name, file_prefix, species, out_dir="results/differential_expression/go/") {
   if (significant_genes %>% nrow == 0) {
     message("No significant genes supplied.")
     return()

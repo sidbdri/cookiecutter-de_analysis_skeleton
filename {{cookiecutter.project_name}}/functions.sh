@@ -98,9 +98,14 @@ function detect_stranness {
     local DIR=$1
     local SAMPLE_NAME=${2:-''}
 
-    local zero="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[0].testsummary* | awk '{print $2}' | head -1 ) "
-    local one="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[1].testsummary* | awk '{print $2}' | head -1 )"
-    local two="$(grep Assigned ${DIR}/*${SAMPLE_NAME}*[2].testsummary* | awk '{print $2}' | head -1 )"
+    # we need to find out the correct species file for this sample, that is whichever has
+    # the largest amount of assigned reads from the [0]s. See https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/85
+    local species=`grep Assigned ${DIR}/*${SAMPLE_NAME}*[0].testsummary* | \
+    awk '{print $2"\t"$1}' | sort -nr | head -1 | cut -f 2 | awk -F"." '{print $4}'`
+
+    local zero="$(grep Assigned ${DIR}/*${SAMPLE_NAME}.${species}.counts.0.testsummary* | awk '{print $2}' ) "
+    local one="$(grep Assigned ${DIR}/*${SAMPLE_NAME}.${species}.counts.1.testsummary* | awk '{print $2}'  )"
+    local two="$(grep Assigned ${DIR}/*${SAMPLE_NAME}.${species}.counts.2.testsummary* | awk '{print $2}'  )"
 #    echo -n ${SAMPLE_NAME}: ${zero} ${one} ${two} ""
 #    echo ${one} ${two} | awk '{print ($1-$2)/($1+$2)}'
 

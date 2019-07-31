@@ -158,16 +158,32 @@ adjust_parallel_cores <- function() {
 lapply_fork <- function(X, FUN, cores = NA) {
   # This is the fork approach of parallel lapply:
   # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#starting-a-cluster
-  
+
   if (get_global('PARALLEL')) {
     if (is.na(cores)) {
       cores <- getOption("mc.cores", get_global('NUM_CORES'))
     }
-    
-    mclapply(mc.cores = cores, X = X, FUN = FUN)
+
+    res <- mclapply(mc.cores = cores, X = X, FUN = FUN)
   } else {
     #run the normal lapply in single core
-    lapply(X = X, FUN = FUN)
+    res <- lapply(X = X, FUN = FUN)
+  }
+
+  #check error
+  error_index <- sapply(res,function(x){
+    inherits(x,'try-error')
+  }) %>% which()
+
+  if(length(error_index) > 0 ){
+    error_msg<-''
+    for(i in error_index){
+      error_msg <- str_c(error_msg,
+      str_c("Error from node ",i, ":"),
+      res[[i]])
+    }
+
+    stop(str_c("\n",error_msg),call. = F)
   }
 }
 

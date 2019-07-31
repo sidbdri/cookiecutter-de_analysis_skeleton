@@ -199,7 +199,7 @@ results %>%
   dplyr::select(
     columns_included, gene_name, chromosome, description, entrez_id, gene_type, everything(),
     -dplyr::contains("_tpm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_count_", SPECIES, "_tx_", ID_COLUMN, "_", QUANT_METHOD, ".csv"))
+  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_count_", SPECIES, "_tx_", ID_COLUMN, "_", QUANT_METHOD, ".csv"),na = "")
 
 results %>%
   dplyr::select(
@@ -213,10 +213,10 @@ results %>%
       unique(),
     -dplyr::ends_with(".stat")
   ) %>%
-  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_tpm_", SPECIES, "_tx_",ID_COLUMN, "_", QUANT_METHOD, ".csv"))
+  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_tpm_", SPECIES, "_tx_",ID_COLUMN, "_", QUANT_METHOD, ".csv"),na = "")
 
 SUMMARY_TB %>%
-  write_csv(str_c(OUTPUT_DIR, "/de_summary_", SPECIES, "_tx_",ID_COLUMN, "_", QUANT_METHOD, ".csv"))
+  write_csv(str_c(OUTPUT_DIR, "/de_summary_", SPECIES, "_tx_",ID_COLUMN, "_", QUANT_METHOD, ".csv"),na = "")
 
 
 

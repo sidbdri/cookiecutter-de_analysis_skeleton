@@ -248,11 +248,11 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
           dplyr::select(-PValue,-FDR, everything(), 
                         -one_of(str_c(sample_data %>% rownames(),'_fpkm')),
                         -IncFormLen,-SkipFormLen) %>% 
-          write_csv(str_c(out_dir,'/AS_results_fpkm_',basename(f),'_',SPECIES,".csv"))
+          write_csv(str_c(out_dir,'/AS_results_fpkm_',basename(f),'_',SPECIES,".csv"),na = "")
     }
 })
 
 # Modify/reformat summary table
 SUMMARY_TB %>% dplyr::select(-DESeq_model_formula) %>% 
-  write_csv(str_c(output_folder,"/AS_summary_",SPECIES,".csv"))
+  write_csv(str_c(output_folder,"/AS_summary_",SPECIES,".csv"),na = "")
 

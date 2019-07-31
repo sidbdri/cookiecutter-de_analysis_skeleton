@@ -276,7 +276,7 @@ perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix)
   c("BP", "MF", "CC") %>% walk(
     function(x) {
       perform_go_analysis(expressed_genes, significant_genes, x) %>%
-        write_csv(str_c(RESULTS_DIR, file_prefix, "_go_", x %>% tolower, ".csv"))      
+        write_csv(str_c(RESULTS_DIR, file_prefix, "_go_", x %>% tolower, ".csv"),na = "")
     }
   )
 }
@@ -380,7 +380,7 @@ output %<>% inner_join(mouse_gene_info)
 output %<>% 
   dplyr::select(gene, gene_name, description, chromosome, module, 
                 eigengene_cor, condition1_cor, condition2_cor) %>% 
-  write_csv(str_c(RESULTS_DIR, "genes_to_modules.csv"))
+  write_csv(str_c(RESULTS_DIR, "genes_to_modules.csv"),na = "")
 
 # For each module:
 # (i)   Scatter plots of gene-variable correlations against gene-eigengene correlations

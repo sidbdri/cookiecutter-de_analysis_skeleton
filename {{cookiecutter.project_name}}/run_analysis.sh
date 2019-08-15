@@ -118,7 +118,7 @@ wait
 #        --num-total-threads ${NUM_TOTAL_THREADS} \
 echo "Running Sargasso ...."
 mkdir -p ${LOG_DIR}/sargasso
-species_separator rnaseq --mapper-executable ${STAR_EXECUTABLE}  --sambamba-sort-tmp-dir=${TMP_DIR} \
+species_separator {{cookiecutter.data_type}} --mapper-executable ${STAR_EXECUTABLE}  --sambamba-sort-tmp-dir=${TMP_DIR} \
         --${STRATEGY} --num-threads ${NUM_TOTAL_THREADS} \
         ${SAMPLE_TSV} ${SARGASSO_RESULTS_DIR} ${SPECIES_PARA[@]}
 cd ${SARGASSO_RESULTS_DIR} && make >${LOG_DIR}/sargasso/sargasso.log 2>&1 &

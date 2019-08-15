@@ -65,6 +65,7 @@ ln -s ${GENOME_DATA_DIR}/STAR_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/{{cookiecutter.gtf_files[s]}} ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/SALMON_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/KALLISTO_indices ${ENSEMBL_DIR}
+ln -s ${GENOME_DATA_DIR}/BOWTIE2_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/*orthologs.tsv  ${ENSEMBL_DIR}
 
 ## Instead of using the genes.tsv from ${GENOME_DATA_DIR}, we download it from Ensembl

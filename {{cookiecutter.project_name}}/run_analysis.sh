@@ -67,7 +67,7 @@ SPECIES_PARA+=("{{ s }} ${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_versi
 {% endfor %}
 
 STAR_EXECUTABLE=STAR{{cookiecutter.star_version}}
-BOWTIE2_EXECUTABLE=kallisto{{cookiecutter.bowtie2_version}}
+BOWTIE2_EXECUTABLE=bowtie2-{{cookiecutter.bowtie2_version}}
 SALMON_EXECUTABLE=salmon{{cookiecutter.salmon_version}}
 KALLISTO_EXECUTABLE=kallisto{{cookiecutter.kallisto_version}}
 FASTQC_EXECUTABLE=fastqc{{cookiecutter.fastqc_version}}

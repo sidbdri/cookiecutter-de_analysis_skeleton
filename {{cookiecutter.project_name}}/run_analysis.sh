@@ -72,6 +72,12 @@ SALMON_EXECUTABLE=salmon{{cookiecutter.salmon_version}}
 KALLISTO_EXECUTABLE=kallisto{{cookiecutter.kallisto_version}}
 FASTQC_EXECUTABLE=fastqc{{cookiecutter.fastqc_version}}
 
+{% if cookiecutter.data_type == "rnaseq" %}
+MAPPER_EXECUTABLE=STAR_EXECUTABLE
+{% else %}
+MAPPER_EXECUTABLE=BOWTIE2_EXECUTABLE
+{% endif %}
+
 NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}
 NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
 NUM_PARALLEL_JOBS=$(awk '{print int($1/$2)}' <<< "${NUM_TOTAL_THREADS} ${NUM_THREADS_PER_SAMPLE}")
@@ -118,7 +124,7 @@ wait
 #        --num-total-threads ${NUM_TOTAL_THREADS} \
 echo "Running Sargasso ...."
 mkdir -p ${LOG_DIR}/sargasso
-species_separator {{cookiecutter.data_type}} --mapper-executable ${STAR_EXECUTABLE}  --sambamba-sort-tmp-dir=${TMP_DIR} \
+species_separator {{cookiecutter.data_type}} --mapper-executable ${MAPPER_EXECUTABLE}  --sambamba-sort-tmp-dir=${TMP_DIR} \
         --${STRATEGY} --num-threads ${NUM_TOTAL_THREADS} \
         ${SAMPLE_TSV} ${SARGASSO_RESULTS_DIR} ${SPECIES_PARA[@]}
 cd ${SARGASSO_RESULTS_DIR} && make >${LOG_DIR}/sargasso/sargasso.log 2>&1 &

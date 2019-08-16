@@ -73,9 +73,9 @@ KALLISTO_EXECUTABLE=kallisto{{cookiecutter.kallisto_version}}
 FASTQC_EXECUTABLE=fastqc{{cookiecutter.fastqc_version}}
 
 {% if cookiecutter.data_type == "rnaseq" %}
-MAPPER_EXECUTABLE=STAR_EXECUTABLE
+MAPPER_EXECUTABLE=${STAR_EXECUTABLE}
 {% else %}
-MAPPER_EXECUTABLE=BOWTIE2_EXECUTABLE
+MAPPER_EXECUTABLE=${BOWTIE2_EXECUTABLE}
 {% endif %}
 
 NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}

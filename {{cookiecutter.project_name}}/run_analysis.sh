@@ -296,7 +296,7 @@ done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 {% endif %}
 
 ##### Gather all QC data
-multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargasso -m picard ${RESULTS_DIR}
+multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargasso -m picard -m bowtie2 ${RESULTS_DIR}
 
 ##### Perform differential expression
 mkdir -p ${DIFF_EXPR_DIR}/go

@@ -185,6 +185,8 @@ lapply_fork <- function(X, FUN, cores = NA) {
 
     stop(str_c("\n",error_msg),call. = F)
   }
+  
+  res
 }
 
 lapply_socket <- function(X, FUN, cores = NA, export_objects=c("expressed_genes", "results", "PARALLEL","META_DATA")) {

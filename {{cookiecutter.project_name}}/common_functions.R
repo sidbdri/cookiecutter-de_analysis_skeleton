@@ -1184,7 +1184,7 @@ get_human_vs_species_ortholog_info <- function(species) {
 }
 
 get_gene_sets <- function(species, gene_set_name) {
-  msigdb_data <- str_c("data/msigdb/v6.2/", gene_set_name, ".all.v6.2.entrez.gmt") %>%
+  msigdb_data <- str_c("data/msigdb/v7.0/", gene_set_name, ".all.v7.0.entrez.gmt") %>%
     read_lines()
   
   gene_set_names <- map_chr(msigdb_data, function(x) {str_split(x, "\t")[[1]][1]})

@@ -23,4 +23,4 @@ library(patchwork)
 sessionInfo()
 
 writeLines("")
-source("https://bioconductor.org/biocLite.R")
+BiocManager::version()

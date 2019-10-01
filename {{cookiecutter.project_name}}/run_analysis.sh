@@ -67,10 +67,16 @@ SPECIES_PARA+=("{{ s }} ${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_versi
 {% endfor %}
 
 STAR_EXECUTABLE=STAR{{cookiecutter.star_version}}
-BOWTIE2_EXECUTABLE=kallisto{{cookiecutter.bowtie2_version}}
+BOWTIE2_EXECUTABLE=bowtie2-{{cookiecutter.bowtie2_version}}
 SALMON_EXECUTABLE=salmon{{cookiecutter.salmon_version}}
 KALLISTO_EXECUTABLE=kallisto{{cookiecutter.kallisto_version}}
 FASTQC_EXECUTABLE=fastqc{{cookiecutter.fastqc_version}}
+
+{% if cookiecutter.data_type == "rnaseq" %}
+MAPPER_EXECUTABLE=${STAR_EXECUTABLE}
+{% else %}
+MAPPER_EXECUTABLE=${BOWTIE2_EXECUTABLE}
+{% endif %}
 
 NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}
 NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
@@ -118,7 +124,7 @@ wait
 #        --num-total-threads ${NUM_TOTAL_THREADS} \
 echo "Running Sargasso ...."
 mkdir -p ${LOG_DIR}/sargasso
-species_separator rnaseq --mapper-executable ${STAR_EXECUTABLE}  --sambamba-sort-tmp-dir=${TMP_DIR} \
+species_separator {{cookiecutter.data_type}} --mapper-executable ${MAPPER_EXECUTABLE}  --sambamba-sort-tmp-dir=${TMP_DIR} \
         --${STRATEGY} --num-threads ${NUM_TOTAL_THREADS} \
         ${SAMPLE_TSV} ${SARGASSO_RESULTS_DIR} ${SPECIES_PARA[@]}
 cd ${SARGASSO_RESULTS_DIR} && make >${LOG_DIR}/sargasso/sargasso.log 2>&1 &
@@ -290,7 +296,7 @@ done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 {% endif %}
 
 ##### Gather all QC data
-multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargasso -m picard ${RESULTS_DIR}
+multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargasso -m picard -m bowtie2 ${RESULTS_DIR}
 
 ##### Perform differential expression
 mkdir -p ${DIFF_EXPR_DIR}/go

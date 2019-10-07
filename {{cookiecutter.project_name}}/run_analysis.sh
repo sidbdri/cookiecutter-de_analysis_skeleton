@@ -151,7 +151,7 @@ echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c \
 echo -n ${SAMPLES} | xargs -t -d ' ' -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c \
     "map_reads % ${STAR_INDEX} ${NUM_THREADS_PER_SAMPLE} \
     \$(listFiles , ${RNASEQ_DIR}/%/*.{{cookiecutter.fastq_suffix}}) \
-    "" \
+    '""' \
     ${MAPPING_DIR} > ${LOG_DIR}/star/%.log 2>&1 "
 {% endif %}
 

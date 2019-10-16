@@ -86,6 +86,7 @@ MEM_USING=0
 
 qSVA="{{cookiecutter.qSVA}}"
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
+SAMPLE_STRAND_TEST=${SAMPLES%% *}
 PAIRED_END_READ="{{cookiecutter.paired_end_read}}"
 USE_SARGASSO="{{cookiecutter.sargasso}}"
 
@@ -177,12 +178,12 @@ mkdir -p ${COUNTS_DIR} ${LOG_DIR}/featureCount
 # run the test
 for species in ${!SPECIES[@]}; do
     echo "count_reads_for_features_strand_test ${NUM_THREADS_PER_SAMPLE} ${GTF_FILE[$species]} \
-    ${FINAL_BAM_DIR}/${SAMPLES%% *}.${SPECIES[$species]}.bam \
-    ${COUNTS_DIR}/strand_test.${SAMPLES%% *}.${SPECIES[$species]}.counts >${LOG_DIR}/featureCount/test.${SPECIES[$species]}.log 2>&1 "
+    ${FINAL_BAM_DIR}/${SAMPLE_STRAND_TEST}.${SPECIES[$species]}.bam \
+    ${COUNTS_DIR}/strand_test.${SAMPLE_STRAND_TEST}.${SPECIES[$species]}.counts >${LOG_DIR}/featureCount/test.${SAMPLE_STRAND_TEST}.${SPECIES[$species]}.log 2>&1 "
 done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 
 ##detect the right setting for feature count -s flag
-strandness_flag="$(detect_stranness ${COUNTS_DIR})"
+strandness_flag="$(detect_stranness ${COUNTS_DIR} ${SAMPLE_STRAND_TEST})"
 case $strandness_flag in
     "0") echo "It seems that the reads are **UNSTRANDED**, setting the featureCount -s to 0" ;;
     "1") echo "It seems that the reads are **STRANDED**, setting the featureCount -s to 1" ;;

@@ -92,7 +92,7 @@ check_cell_type(results, fpkm_check_cutoff = 5, print_check_log = TRUE, print_fp
 # For debugging, it may be worth calling stop_parallel(), because the mclapply has a problem printing 
 # out stdout in rstudio; see:
 # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#forking-with-mclapply
-comparisons_results <- COMPARISON_TABLE %>% pull(comparison) %>% lapply_fork(
+comparisons_results <- COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>%  lapply_fork(
   function(comparison_name) {
     res <- get_res(comparison_name, fpkms, SPECIES, qSVA = qSVA)
     

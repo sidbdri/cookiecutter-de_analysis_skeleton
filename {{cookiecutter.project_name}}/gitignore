@@ -1,8 +1,0 @@
-.R*
-*.Rproj
-data
-results
-multiqc*
-!multiqc_config.yaml
-nohup.out
-README

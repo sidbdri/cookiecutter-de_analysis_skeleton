@@ -1,0 +1,242 @@
+
+from glob import glob
+from subprocess import call, check_output
+import yaml
+import os
+
+
+MAIN_DIR = '~/{{cookiecutter.projects_base}}/{{cookiecutter.project_name}}'
+DATA_DIR = os.path.join(MAIN_DIR, 'data')
+PICARD_DIR = os.path.join(DATA_DIR, 'picard')
+SPECIES=[]
+ENSEMBL_DIR=[]
+STAR_INDEX=[]
+GTF_FILE=[]
+SPECIES_PARA=[]
+REF_FLAT=[]
+
+{% for s in cookiecutter.species.split(' ') %}
+SPECIES.append({{ s }})
+ENSEMBL_DIR.append(DATA_DIR/{{ s }}_ensembl_{{cookiecutter.ensembl_version}})
+STAR_INDEX.append(DATA_DIR/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/STAR_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.star_version}})
+BOWTIE2_INDEX.append(DATA_DIR/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/BOWTIE2_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.bowtie2_version}})
+GTF_FILE.append(DATA_DIR/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecutter.gtf_files[s]}})
+REF_FLAT.append(PICARD_DATA/{{ s }}/{{cookiecutter.rff_files[s]}})
+SALMON_INDEX.append(DATA_DIR/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/SALMON_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.salmon_version}})
+KALLISTO_INDEX.append(DATA_DIR/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/KALLISTO_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.kallisto_version}})
+{% if cookiecutter.data_type == "rnaseq" %}
+SPECIES_PARA.append("{{ s }} ${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/STAR_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.star_version}}")
+{% else %}
+SPECIES_PARA.append("{{ s }} ${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/BOWTIE2_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.bowtie2_version}}")
+{% endif %}
+{% endfor %}
+
+
+STAR_EXECUTABLE=STAR{{cookiecutter.star_version}}
+BOWTIE2_EXECUTABLE=bowtie2-{{cookiecutter.bowtie2_version}}
+SALMON_EXECUTABLE=salmon{{cookiecutter.salmon_version}}
+KALLISTO_EXECUTABLE=kallisto{{cookiecutter.kallisto_version}}
+FASTQC_EXECUTABLE=fastqc{{cookiecutter.fastqc_version}}
+
+{% if cookiecutter.data_type == "rnaseq" %}
+MAPPER_EXECUTABLE=${STAR_EXECUTABLE}
+{% else %}
+MAPPER_EXECUTABLE=${BOWTIE2_EXECUTABLE}
+{% endif %}
+
+NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}
+NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
+NUM_PARALLEL_JOBS=$(awk '{print int($1/$2)}' <<< "${NUM_TOTAL_THREADS} ${NUM_THREADS_PER_SAMPLE}")
+THREAD_USING=0
+MEM_USING=0
+
+SAMPLE_STRAND_TEST=${SAMPLES%% *}
+PAIRED_END_READ="{{cookiecutter.paired_end_read}}"
+USE_SARGASSO="{{cookiecutter.sargasso}}"
+
+gtf_dict = dict(zip(SPECIES, GTF_FILE))
+SAMPLES="{{cookiecutter.rnaseq_samples}}"
+SAMPLES=SAMPLES.split()
+
+
+
+def pick_first_sample():
+    test_sample = SAMPLES[0]
+    test_species = SPECIES[0]
+    test_gtf = GTF_FILE[0]
+    test_bam = "%s.%s.bam" % (test_sample, test_species)
+    test_bam = os.path.join('results/final_bams/1467_A', '1467_A.rat.bam')
+    return test_bam, test_gtf
+
+
+def run_featurecounts(strand_setting):
+    test_bam, test_gtf = pick_first_sample()
+    call("featureCounts -T 4 -p -a %s -o counts_temp.%s.out -s %s %s" % (test_gtf, strand_setting, strand_setting, test_bam), shell=True)
+
+
+def get_assigned_reads(counts_file):
+    counts = check_output("grep Assigned %s | awk '{print $2}'" % counts_file, universal_newlines=True, shell=True)
+    counts = [int(i) for i in counts.split('\n') if i][0]
+    return counts
+
+
+def calculate_strandedness(strand_dict):
+    strand_zero = strand_dict["0"]
+    strand_one = strand_dict["1"]
+    strand_two = strand_dict["2"]
+    difference = (float(strand_one) - float(strand_two))/(float(strand_one) + float(strand_two))
+    return "2"
+    if abs(difference) < 0.75:
+        return "0"
+    elif difference >= 0.75:
+        return "1"
+    elif difference <= -0.75:
+        return "2"
+    else:
+        raise Exception('Can not calculate strandedness from values: one=%s, two=%s, three=%s' % (strand_zero, strand_one, strand_two))
+
+def strand_test(picard=False):
+    strand_assigned_reads = {"0": 0, "1": 0, "2": 0}
+    for i in strand_assigned_reads:
+        run_featurecounts(i)
+        assigned = get_assigned_reads('counts_temp.%s.out.summary' % i)
+        strand_assigned_reads[i] = assigned
+    strandedness = calculate_strandedness(strand_assigned_reads)
+    picard_strand_value = {"0": "NONE", "1": "FIRST_READ_TRANSCRIPTION_STRAND", "2": "SECOND_READ_TRANSCRIPTION_STRAND"}
+    if picard is True:
+        return picard_strand_value[strandedness]
+    return strandedness
+
+
+rule fastqc:
+    input:
+        forward = lambda wildcards: glob("data/rnaseq/%s/*_1.fastq.gz" % wildcards.sample),
+        reverse = lambda wildcards: glob("data/rnaseq/%s/*_2.fastq.gz" % wildcards.sample)
+    output:
+        "results/fastqc/{sample}/stdin_fastqc.html"
+    params:
+        output_dir = lambda wildcards, output: os.path.dirname(output[0]),
+        fqc = FASTQC_EXECUTABLE
+    shell:
+        """
+        zcat {input.forward} {input.reverse} | {params.fqc} -o {params.output_dir} stdin 
+        """
+
+
+rule star_paired_end:
+    input:
+        forward = lambda wildcards: glob("data/rnaseq/%s/*_1.fastq.gz" % wildcards.sample),
+        reverse = lambda wildcards: glob("data/rnaseq/%s/*_2.fastq.gz" % wildcards.sample)
+    output:
+        "results/mapped_reads/{sample}/{sample}Aligned.out.bam"
+    params:
+        index = "/home/kemelianova/projects/test_katie/data/rat_ensembl_96/STAR_indices/toplevel_2.7.0f",
+        star = STAR_EXECUTABLE,
+        output_dir = lambda wildcards, output: os.path.dirname(output[0]) + "/" + wildcards.sample
+    shell:
+        """
+        {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn {input.forward} {input.reverse}
+        """
+
+
+rule bam_per_species: 
+    input:
+        "results/mapped_reads/{sample}/{sample}Aligned.out.bam"
+    output:
+        "results/final_bams/{sample}/{sample}.{species}.bam"
+
+    shell:
+        """
+        ln -sr {input} {output}
+        """
+
+    
+rule sort_index_bam:
+    input:
+        "results/final_bams/{sample}/{sample}.{species}.bam"
+    output:
+        "results/final_bams/{sample}/{sample}.{species}.sorted.bam.bai"
+    params:
+        threads = NUM_THREADS_PER_SAMPLE
+    shell:
+        """
+        sambamba sort -t {params.threads} {input} {output}
+        """
+
+
+rule bams:
+    input:
+        star = expand("results/mapped_reads/{sample}/{sample}Aligned.out.bam", sample=SAMPLES),
+        fastqc = expand("results/fastqc/{sample}/stdin_fastqc.html", sample=SAMPLES),
+        final_bams = expand("results/final_bams/{sample}/{sample}.{species}.bam", sample=SAMPLES, species=SPECIES),
+        bam_bai = expand("results/final_bams/{sample}/{sample}.{species}.sorted.bam.bai", sample=SAMPLES, species=SPECIES)        
+
+
+
+
+rule feature_counts:
+    input:
+        bam = "results/final_bams/{sample}/{sample}.{species}.bam"
+    output:
+        counts_temp = "results/read_counts/{sample}.{species}.counts.tmp",
+        counts_out = "results/read_counts/{sample}.{species}.counts"
+    params:
+        strandedness_flag = lambda parameter: strand_test(),
+        featurecount = FEATURECOUNTS_EXECUTABLE,
+        num_threads = 4,
+        gtf = lambda wildcards: gtf_dict[wildcards.species]
+    shell:
+        """
+        {params.featurecount} -T {params.num_threads} -p -a {params.gtf} -o {output.counts_temp} -s {params.strandedness_flag} {input.bam}
+        tail -n +3 {output.counts_temp} | cut -f 1,7 > {output.counts_out}
+        """
+
+
+
+
+rule create_rrna_intervals:
+    input:
+        gtf = lambda wildcards: gtf_dict[wildcards.species], 
+        bam = "results/final_bams/{sample}/{sample}.{species}.bam"
+    output:
+        rrna_intervals = "results/alignment_metrics/{species}/{sample}_intervalListBody.txt",
+        rrna_header = "data/picard/{species}/{sample}_header.txt",
+        sample_rrna = "data/picard/{species}/{sample}.txt"
+    shell:
+        """
+        grep rRNA {input.gtf} | cut -s -f 1,4,5,7,9 > {output.rrna_intervals}
+        sambamba view -H {input.bam} > {output.rrna_header}
+        cat {output.rrna_header} {output.rrna_intervals} > {output.sample_rrna} 
+        """
+
+rule run_picard:    
+    input:
+        rrna_intervals = "data/picard/{species}/{sample}.txt",
+        bam = "results/final_bams/{sample}/{sample}.{species}.bam"
+    output:
+        picard_metrics = "results/alignment_metrics/{species}/{sample}.txt"
+    params:
+        picard = PICARD_EXECUTABLE,
+        ref = lambda wildcards: glob("data/picard/%s/*rff" % wildcards.species ),
+        strandedness_flag = lambda parameter: strand_test(picard=True)
+    shell:
+        """
+        java -jar {params.picard} CollectRnaSeqMetrics I={input.bam} O={output.picard_metrics} REF_FLAT={params.ref} STRAND={params.strandedness_flag} RIBOSOMAL_INTERVALS={input.rrna_intervals}
+        """
+
+
+rule multiqc:
+    input:
+         fc = expand("results/read_counts/{sample}.{species}.counts", sample=SAMPLES, species=SPECIES),
+         picard = expand("results/alignment_metrics/{species}/{sample}.txt", sample=SAMPLES, species=SPECIES)
+    output:
+        "multiqc_report.html"
+    params:
+        input_dir = "results"
+    shell:
+        """
+        multiqc -d -f -m star -m fastqc {params.input_dir}
+        """
+
+
+

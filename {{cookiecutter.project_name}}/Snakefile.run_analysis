@@ -24,7 +24,7 @@ GTF_FILE.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecut
 REF_FLAT.append("%s/{{ s }}/{{cookiecutter.rff_files[s]}}" % PICARD_DIR)
 SALMON_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/SALMON_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.salmon_version}}" % DATA_DIR)
 KALLISTO_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/KALLISTO_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.kallisto_version}}" % DATA_DIR)
-
+{% endfor %}
 
 STAR_EXECUTABLE="STAR{{cookiecutter.star_version}}"
 BOWTIE2_EXECUTABLE="bowtie2-{{cookiecutter.bowtie2_version}}"

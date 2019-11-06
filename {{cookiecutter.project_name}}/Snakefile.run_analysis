@@ -19,34 +19,14 @@ REF_FLAT=[]
 SPECIES.append("{{ s }}")
 ENSEMBL_DIR.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}" % DATA_DIR)
 STAR_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/STAR_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.star_version}}" % DATA_DIR)
-BOWTIE2_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/BOWTIE2_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.bowtie2_version}}" % DATA_DIR)
 GTF_FILE.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecutter.gtf_files[s]}}" % DATA_DIR)
 REF_FLAT.append("%s/{{ s }}/{{cookiecutter.rff_files[s]}}" % PICARD_DIR)
-SALMON_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/SALMON_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.salmon_version}}" % DATA_DIR)
-KALLISTO_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/KALLISTO_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.kallisto_version}}" % DATA_DIR)
 {% endfor %}
 
 STAR_EXECUTABLE="STAR{{cookiecutter.star_version}}"
-BOWTIE2_EXECUTABLE="bowtie2-{{cookiecutter.bowtie2_version}}"
-SALMON_EXECUTABLE="salmon{{cookiecutter.salmon_version}}"
-KALLISTO_EXECUTABLE="kallisto{{cookiecutter.kallisto_version}}"
 FASTQC_EXECUTABLE="fastqc{{cookiecutter.fastqc_version}}"
 
-{% if cookiecutter.data_type == "rnaseq" %}
-MAPPER_EXECUTABLE=STAR_EXECUTABLE
-{% else %}
-MAPPER_EXECUTABLE=BOWTIE2_EXECUTABLE
-{% endif %}
-
-NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}
-NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
-THREAD_USING=0
-MEM_USING=0
-
-SAMPLE_STRAND_TEST=${SAMPLES%% *}
 PAIRED_END_READ="{{cookiecutter.paired_end_read}}"
-USE_SARGASSO="{{cookiecutter.sargasso}}"
-
 gtf_dict = dict(zip(SPECIES, GTF_FILE))
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
 SAMPLES=SAMPLES.split()

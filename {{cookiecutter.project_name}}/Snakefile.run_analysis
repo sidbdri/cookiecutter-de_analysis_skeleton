@@ -25,15 +25,14 @@ REF_FLAT.append("%s/{{ s }}/{{cookiecutter.rff_files[s]}}" % PICARD_DIR)
 
 STAR_EXECUTABLE="STAR{{cookiecutter.star_version}}"
 FASTQC_EXECUTABLE="fastqc{{cookiecutter.fastqc_version}}"
-FEATURECOUNTS_EXECUTABLE=featureCounts{{cookiecutter.featurecounts_version}}
-PICARD_EXECUTABLE=/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar
+FEATURECOUNTS_EXECUTABLE="featureCounts{{cookiecutter.featurecounts_version}}
+PICARD_EXECUTABLE="/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar"
 
 NUM_THREADS_PER_SAMPLE=8
-PAIRED_END_READ="{{cookiecutter.paired_end_read}}"
+IS_PAIRED_END="{{cookiecutter.paired_end_read}}"
 gtf_dict = dict(zip(SPECIES, GTF_FILE))
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
 SAMPLES=SAMPLES.split()
-
 
 
 def pick_first_sample():
@@ -83,11 +82,19 @@ def strand_test(picard=False):
         return picard_strand_value[strandedness]
     return strandedness
 
+def retrieve_fastqs(sample):
+    if IS_PAIRED_END == "yes":
+        foward = glob("data/rnaseq/%s/*_1.fastq.gz" % sample)
+        reverse = glob("data/rnaseq/%s/*_2.fastq.gz" % sample)
+        fastq = " ".join(forward + reverse)
+    else:
+        forward = glob("data/rnaseq/%s/*_1.fastq.gz" % sample)
+        fastq = " ".join(forward)
+    return fastq
 
 rule fastqc:
     input:
-        forward = lambda wildcards: glob("data/rnaseq/%s/*_1.fastq.gz" % wildcards.sample),
-        reverse = lambda wildcards: glob("data/rnaseq/%s/*_2.fastq.gz" % wildcards.sample)
+        fastq = lambda wildcards: retrieve_fastqs(wildcards.sample)
     output:
         "results/fastqc/{sample}/stdin_fastqc.html"
     params:
@@ -95,14 +102,12 @@ rule fastqc:
         fqc = FASTQC_EXECUTABLE
     shell:
         """
-        zcat {input.forward} {input.reverse} | {params.fqc} -o {params.output_dir} stdin 
+        zcat {input.fastq} | {params.fqc} -o {params.output_dir} stdin
         """
 
-
-rule star_paired_end:
+rule star:
     input:
-        forward = lambda wildcards: glob("data/rnaseq/%s/*_1.fastq.gz" % wildcards.sample),
-        reverse = lambda wildcards: glob("data/rnaseq/%s/*_2.fastq.gz" % wildcards.sample)
+        fastq = lambda wildcards: retrieve_fastqs(wildcards.sample)
     output:
         "results/mapped_reads/{sample}/{sample}Aligned.out.bam"
     params:
@@ -111,9 +116,8 @@ rule star_paired_end:
         output_dir = lambda wildcards, output: os.path.dirname(output[0]) + "/" + wildcards.sample
     shell:
         """
-        {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn {input.forward} {input.reverse}
+        {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn {input.fastq}
         """
-
 
 rule bam_per_species: 
     input:

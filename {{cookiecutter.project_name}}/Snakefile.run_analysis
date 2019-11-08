@@ -25,7 +25,10 @@ REF_FLAT.append("%s/{{ s }}/{{cookiecutter.rff_files[s]}}" % PICARD_DIR)
 
 STAR_EXECUTABLE="STAR{{cookiecutter.star_version}}"
 FASTQC_EXECUTABLE="fastqc{{cookiecutter.fastqc_version}}"
+FEATURECOUNTS_EXECUTABLE=featureCounts{{cookiecutter.featurecounts_version}}
+PICARD_EXECUTABLE=/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar
 
+NUM_THREADS_PER_SAMPLE=8
 PAIRED_END_READ="{{cookiecutter.paired_end_read}}"
 gtf_dict = dict(zip(SPECIES, GTF_FILE))
 SAMPLES="{{cookiecutter.rnaseq_samples}}"

@@ -22,7 +22,7 @@ rm_global <- function(variable) {
 filter_with_rownames <- function(.data, ...) {
   .data %>%
     tibble::rownames_to_column(var = "tmp_row_names") %>%
-    dplyr::filter(.dots = lazyeval::lazy_dots(...)) %>%
+    filter_(.dots = lazyeval::lazy_dots(...)) %>%
     tibble::column_to_rownames(var = "tmp_row_names")
 }
 
@@ -699,9 +699,9 @@ plot_count_distribution <- function(dds, norm = T) {
 }
 
 plot_pvalue_distribution <- function(results, pvalue_column) {
-  pvals <- results %>% 
-    dplyr::filter(str_c("!is.na(", pvalue_column, ")")) %>%
-    dplyr::select(pvalue_column)
+  pvals <- results %>%
+    filter_(str_c("!is.na(", pvalue_column, ")")) %>%
+    dplyr::select_(pvalue_column)
   
   p <- ggplot(pvals, aes_string(pvalue_column)) + 
     geom_histogram(binwidth = 0.025) 
@@ -964,7 +964,7 @@ get_salmon_tpms <- function(sample) {
     str_c("results/salmon_quant/", ., "/quant.genes.sf") %>% 
     read_tsv %>% 
     dplyr::select(Name, TPM) %>%
-    dplyr::rename(.dots = setNames(names(.), c("gene", str_c(sample, "_tpm"))))
+    rename_(.dots = setNames(names(.), c("gene", str_c(sample, "_tpm"))))
 }
 
 get_kallisto_tpms <- function(sample) {
@@ -978,7 +978,7 @@ get_kallisto_tpms <- function(sample) {
   transcript_tpms %>% 
     group_by(gene) %>% 
     summarise(tpm = sum(tpm)) %>%
-    dplyr::rename(.dots = setNames(names(.), c("gene", str_c(sample, "_tpm"))))
+    rename_(.dots = setNames(names(.), c("gene", str_c(sample, "_tpm"))))
 }
 
 get_tximport <- function(sample_data, quant_method='salmon', tx_level = TRUE) {

@@ -94,9 +94,9 @@ USE_SARGASSO="{{cookiecutter.sargasso}}"
 STRATEGY="{{cookiecutter.strategy}}"
 #### Create Sargasso samples.tsv file
 SAMPLE_TSV=${MAIN_DIR}/sample.tsv
-addSample2tsv ${SAMPLE_TSV} {{ cookiecutter.rnaseq_samples_dir }} \
+addSample2tsv ${SAMPLE_TSV} ${RNASEQ_DIR} \
 {{ cookiecutter.read1_identifier}} {{ cookiecutter.read2_identifier}} {{ cookiecutter.fastq_suffix }} \
-{{ cookiecutter.paired_end_read}} {{cookiecutter.rnaseq_samples}}
+{{ cookiecutter.paired_end_read}} ${SAMPLES}
 {% endif %}
 
 #### Create gene lengths CSV files

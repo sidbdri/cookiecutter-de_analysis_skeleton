@@ -231,9 +231,9 @@ get_genes_for_module <- function(module, modules_to_genes, gene_eigengene_correl
     as.data.frame %>% 
     tibble::rownames_to_column(var="gene") %>% 
     inner_join(gene_info) %>%
-    dplyr::select_("gene", "gene_name", "description", "chromosome", column) %>% 
-    extract(genes_in_module <- modules_to_genes==module,) %>% 
-    arrange_(paste0("desc(", column, ")"))
+    dplyr::select("gene", "gene_name", "description", "chromosome", column) %>%
+    extract(genes_in_module <- modules_to_genes==module,) %>%
+    plyr::arrange(paste0("desc(", column, ")"))
 }
 
 get_gene_info <- function(species = 'mouse') {
@@ -351,8 +351,8 @@ for (module in seq(0, module_eigengenes %>% colnames %>% length - 1)) {
   module_column <- str_c("MM", module)
   
   gecs_for_module <- gene_eigengene_correlations[genes_in_module, ] %>%
-    dplyr::select_(module_column) %>% 
-    rename_("eigengene_cor" = module_column)
+    dplyr::select(module_column) %>%
+    dplyr::rename("eigengene_cor" = module_column)
   
   if (is.null(output)) {
     output <- gecs_for_module 

@@ -19,6 +19,12 @@ SAMPLE_DATA <- data.frame(
   filter(species==!!SPECIES) %>%
   tibble::column_to_rownames(var = "tmp_row_names")
 
+
+
+# https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/103
+# read in picard alignment matrix and extract the MEDIAN_5PRIME_TO_3PRIME_BIAS column for PCA plot later
+SAMPLE_DATA$MEDIAN_5PRIME_TO_3PRIME_BIAS=read_median_5prime_to_3prime_bias(SAMPLE_DATA$sample_name)
+
 # Specify what average FPKMs are needed in the results table. These usually correspond to column names 
 # in the SAMPLE_DATA table. There is no limit to the number of groups. For example, for a sample table
 # as follows:

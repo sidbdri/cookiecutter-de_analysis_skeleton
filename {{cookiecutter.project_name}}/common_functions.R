@@ -1720,6 +1720,16 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
   ret
 }
 
+
+# read picard qc matrix for rna degradation
+read_median_5prime_to_3prime_bias <- function(samples=c()){
+  PICARD_ALIGNMENT_MATRIX=file.path('results/','alignment_metrics',SPECIES)
+  MEDIAN_5PRIME_TO_3PRIME_BIAS <- samples %>% lapply(function(sample){
+    read_tsv(file.path(PICARD_ALIGNMENT_MATRIX,str_c(sample,'.txt')),comment = '#',n_max = 1,col_type = cols()) %>%
+    pull(MEDIAN_5PRIME_TO_3PRIME_BIAS)
+  }) %>% unlist() %>% setNames(samples)
+}
+
 ########
 ## Functions to work out Sargasso error assignment ratio.
 ## Commented out for now.

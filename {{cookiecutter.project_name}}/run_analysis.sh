@@ -105,7 +105,7 @@ echo "Running get_gene_lengths for species ...."
 for species in ${!SPECIES[@]}; do
     if [ ! -f "${ENSEMBL_DIR[$species]}/gene_lengths.csv" ]; then
         mkdir -p ${LOG_DIR}/get_gene_lengths
-        get_gene_lengths <(tail -n +6 ${GTF_FILE[$species]}) > ${ENSEMBL_DIR[$species]}/gene_lengths.csv 2>${LOG_DIR}/get_gene_lengths/${SPECIES[$species]}.log &
+        get_gene_lengths ${GTF_FILE[$species]} > ${ENSEMBL_DIR[$species]}/gene_lengths.csv 2>${LOG_DIR}/get_gene_lengths/${SPECIES[$species]}.log &
     fi
 
     if [ ! -f "${ENSEMBL_DIR[$species]}/tx2gene.tsv" ]; then

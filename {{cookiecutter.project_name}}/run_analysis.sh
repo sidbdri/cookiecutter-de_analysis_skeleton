@@ -99,15 +99,20 @@ addSample2tsv ${SAMPLE_TSV} ${RNASEQ_DIR} \
 {{ cookiecutter.paired_end_read}} ${SAMPLES}
 {% endif %}
 
-#### Create gene lengths CSV files
+#### Create gene lengths CSV files only if we cannot find that file in the genome folder
+#### https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/95
 echo "Running get_gene_lengths for species ...."
 for species in ${!SPECIES[@]}; do
-    mkdir -p ${LOG_DIR}/get_gene_lengths
-    get_gene_lengths <(tail -n +6 ${GTF_FILE[$species]}) > ${ENSEMBL_DIR[$species]}/gene_lengths.csv 2>${LOG_DIR}/get_gene_lengths/${SPECIES[$species]}.log &
-    # Construct transcript->gene mapping file for tximport
-    awk '$3=="transcript" {print $14, $10}' ${GTF_FILE[$species]} | sed 's/"//g;s/;//g' > ${ENSEMBL_DIR[$species]}/tx2gene.tsv &
+    if [ ! -f "${ENSEMBL_DIR[$species]}/gene_lengths.csv" ]; then
+        mkdir -p ${LOG_DIR}/get_gene_lengths
+        get_gene_lengths <(tail -n +6 ${GTF_FILE[$species]}) > ${ENSEMBL_DIR[$species]}/gene_lengths.csv 2>${LOG_DIR}/get_gene_lengths/${SPECIES[$species]}.log &
+    fi
+
+    if [ ! -f "${ENSEMBL_DIR[$species]}/tx2gene.tsv" ]; then
+        # Construct transcript->gene mapping file for tximport
+        awk '$3=="transcript" {print $14, $10}' ${GTF_FILE[$species]} | sed 's/"//g;s/;//g' > ${ENSEMBL_DIR[$species]}/tx2gene.tsv &
+    fi
 done
-wait
 
 ####################################################################################
 #### Perform QC on raw reads

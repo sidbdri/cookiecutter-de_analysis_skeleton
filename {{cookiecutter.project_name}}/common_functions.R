@@ -1089,7 +1089,7 @@ perform_go_analyses <- function(significant_genes, expressed_genes, comparison_n
     return()
   }
 
-  top_dir <- str_c(out_dir, species, '/', comparison_name, sep = '')
+  top_dir <-  file.path(out_dir,species,comparison_name)
   if (!dir.exists(top_dir)) {
     dir.create(top_dir, recursive = TRUE)
   }
@@ -1126,7 +1126,7 @@ perform_pathway_enrichment <- function(significant_genes, expressed_genes,
     pvalueCutoff = 0.1, readable = T) %>%
     as.data.frame()
 
-    top_dir <- str_c(out_dir,species, '/', comparison_name, sep = '')
+    top_dir <-  file.path(out_dir,species,comparison_name)
     if (!dir.exists(top_dir)) {
       dir.create(top_dir, recursive = TRUE)
     }
@@ -1268,7 +1268,7 @@ write_camera_results <- function(
   gene_set_collection_name, gene_set_collection, comparison_name, species, de_results, camera_results,
   barcodeplots = FALSE, fdr_cutoff = 0.1, out_dir="results/differential_expression/gsa/") {
 
-  top_dir <- str_c(out_dir,species, "/", comparison_name)
+  top_dir <- file.path(out_dir,species,comparison_name)
   if (!dir.exists(top_dir)) {
     dir.create(top_dir, recursive = TRUE)
   }

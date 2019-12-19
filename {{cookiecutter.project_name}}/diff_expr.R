@@ -242,7 +242,7 @@ GO_results <- COMPARISON_TABLE %>%
           r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF)
         }
         
-        perform_go_analyses(r, expressed_genes, comparison_name, cmp, SPECIES)
+        perform_go_analyses(r, expressed_genes, comparison_name, cmp, SPECIES, out_dir = file.path(OUTPUT_DIR,"go"))
       }
     ) %>% set_names(str_c(comparison_name,c('.all','.up','.down')))
   }
@@ -267,7 +267,7 @@ Reactome_results<- COMPARISON_TABLE %>%
         } else {
           r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF)
         }
-        perform_pathway_enrichment(r, expressed_genes, comparison_name, cmp, SPECIES)
+        perform_pathway_enrichment(r, expressed_genes, comparison_name, cmp, SPECIES, out_dir = out_dir = file.path(OUTPUT_DIR,"reactome"))
       }
     ) %>% set_names(str_c(comparison_name,c('.all', '.up', '.down')))
   }
@@ -301,7 +301,7 @@ GS_results <- COMPARISON_TABLE %>%
         write_camera_results(
           gene_set_categories[[category]], list_of_gene_sets[[category]], 
           comparison_name, SPECIES,
-          de_res, camera_results[[category]])
+          de_res, camera_results[[category]], out_dir = file.path(OUTPUT_DIR,"gsa"))
       }
     ) 
     

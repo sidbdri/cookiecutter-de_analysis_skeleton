@@ -84,6 +84,11 @@ generate_picard_refFlat ${PICARD_DATA}/{{ s }} {{ s }} {{cookiecutter.ensembl_ve
 # Link gene_length.csv if exist in genome folder
 [[ -f "${GENOME_DATA_DIR}/gene_lengths.csv" ]] && ln -s ${GENOME_DATA_DIR}/gene_lengths.csv ${ENSEMBL_DIR}
 [[ -f "${GENOME_DATA_DIR}/tx2gene.tsv" ]] && ln -s ${GENOME_DATA_DIR}/tx2gene.tsv ${ENSEMBL_DIR}
+
+# Generate species specific de script
+cp diff_expr.R  diff_expr_{{ s }}.R
+sed 's/unknown_species/{{ s }}/' ./diff_expr.R > diff_expr_{{ s }}.R
+sed 's/unknown_species/{{ s }}/' ./meta_data.R > meta_data_{{ s }}.R
 {% endfor %}
 
 {% if "human" not in cookiecutter.species.split(' ') %}

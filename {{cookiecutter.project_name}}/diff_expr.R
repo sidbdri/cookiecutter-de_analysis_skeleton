@@ -1,7 +1,7 @@
 META_DATA='meta_data.R'
 source(META_DATA)
 
-SPECIES <- "{{cookiecutter.species}}"
+SPECIES <- "unknown_species"
 
 # Note that when comparisons are run in parallel in RStudio, the output is silent and the R session 
 # will be hung until all sub-processes finish or are terminated. When running on the command line, 

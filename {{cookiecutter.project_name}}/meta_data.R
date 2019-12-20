@@ -1,7 +1,7 @@
 source("load_packages.R")
 source("common_functions.R")
 
-SPECIES <- "{{cookiecutter.species}}"
+SPECIES <- "unknown_species"
 P.ADJ.CUTOFF <- 0.05
 NUM_CORES <- 30
 
@@ -49,7 +49,7 @@ AVG_FPKM_GROUP <- list(c(), c())
 # https://github.com/sidbdri/cookiecutter-sargasso-de_analysis_skeleton
 # If the group column contains more than one group, the results will be saved into different CSVs by group.
 COMPARISON_TABLE <- tribble(
-  ~comparison, ~formula, ~condition_name, ~condition, ~condition_base, ~filter, ~group,
+  ~comparison, ~formula, ~condition_name, ~condition, ~condition_base, ~filter, species, ~group,
   #"P10_Ctx_KO_vs_WT", "~genotype", "genotype", "KO", "WT", "age=='P10' & region=='Ctx'",group_1
 )
 

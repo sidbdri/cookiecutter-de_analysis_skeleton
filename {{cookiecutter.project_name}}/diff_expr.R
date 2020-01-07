@@ -19,7 +19,7 @@ PLOT_TO_FILE <- TRUE
 
 MISASSIGNMENT_PERCENTAGE <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% nrow() > 0
 
-OUTPUT_DIR <- 'results/differential_expression/de_gene/'
+OUTPUT_DIR <- 'results/differential_expression/'
 if (!dir.exists(OUTPUT_DIR)) dir.create(OUTPUT_DIR, recursive = TRUE)
 
 GRAPHS_DIR <- 'results/differential_expression/graphs/'
@@ -189,7 +189,7 @@ results %>%
     gene, gene_name, chromosome, description, entrez_id, gene_type,
     gene_length, max_transcript_length,
     everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_count_", SPECIES, ".csv"),na = "")
+  write_csv(str_c(OUTPUT_DIR, "/de_gene/deseq2_results_count_", SPECIES, ".csv"),na = "")
 
 results %>% 
   dplyr::select(
@@ -203,10 +203,10 @@ results %>%
       as.vector() %>% 
       unique(), 
     -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_fpkm_", SPECIES, ".csv"),na = "")
+  write_csv(str_c(OUTPUT_DIR, "/de_gene/deseq2_results_fpkm_", SPECIES, ".csv"),na = "")
 
 SUMMARY_TB %>%
-  write_csv(str_c(OUTPUT_DIR, "/de_summary_", SPECIES, ".csv"),na = "")
+  write_csv(str_c(OUTPUT_DIR, "/de_gene/de_summary_", SPECIES, ".csv"),na = "")
 
 #####
 
@@ -267,7 +267,7 @@ Reactome_results<- COMPARISON_TABLE %>%
         } else {
           r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF)
         }
-        perform_pathway_enrichment(r, expressed_genes, comparison_name, cmp, SPECIES, out_dir = out_dir = file.path(OUTPUT_DIR,"reactome"))
+        perform_pathway_enrichment(r, expressed_genes, comparison_name, cmp, SPECIES, out_dir = file.path(OUTPUT_DIR,"reactome"))
       }
     ) %>% set_names(str_c(comparison_name,c('.all', '.up', '.down')))
   }

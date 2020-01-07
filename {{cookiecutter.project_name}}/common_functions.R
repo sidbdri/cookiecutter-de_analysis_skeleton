@@ -1,6 +1,9 @@
 KALLISTO <- "kallisto"
 SALMON <- "salmon"
 
+GO_TERMS <- Term(GOTERM) %>% as.data.frame() %>% tibble::rownames_to_column(var="GO.ID")
+colnames(GO_TERMS) <- c("GO.ID", "FullTerm")
+
 ##### Utility functions
 
 set_global <- function(value, variable) {
@@ -1099,6 +1102,9 @@ perform_go_analyses <- function(significant_genes, expressed_genes, comparison_n
     
     ret %>% 
       extract2('go_results') %>% 
+      inner_join(GO_TERMS) %>% 
+      dplyr::mutate(Term=FullTerm) %>% 
+      dplyr::select(-FullTerm) %>% 
       write_csv(str_c(top_dir, '/', comparison_name, file_prefix, "_go_", x %>% tolower, ".csv"),na = "")
     
     ret

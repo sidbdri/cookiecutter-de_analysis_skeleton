@@ -509,7 +509,7 @@ save_results_by_group <- function(results,use_tx=FALSE) {
           columns_included, gene_name, chromosome, description, entrez_id, gene_type, everything(),
           -dplyr::contains("_tpm"), -dplyr::ends_with(".stat"),
           -matches(n_comparisons), -(samples_to_exclude)) %>%
-        write_csv(str_c(OUTPUT_DIR, "/de_gene/", g, "_deseq2_results_count_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv"),na = "")
+        write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g, "_deseq2_results_count_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv")), na="")
       
       tpm_output <- results %>%
         dplyr::select(
@@ -532,10 +532,10 @@ save_results_by_group <- function(results,use_tx=FALSE) {
         tpm_output %<>% dplyr::select(-one_of(avg_to_exclude %>% str_c('_avg_tpm')))
       }
       
-      tpm_output %>% write_csv(str_c(OUTPUT_DIR, "/de_gene/", g ,"_deseq2_results_tpm_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv"),na = "")
+      tpm_output %>% write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g ,"_deseq2_results_tpm_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv")), na="")
       
       SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
-        write_csv(str_c(OUTPUT_DIR, "/de_gene/", g ,"_de_summary_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv"),na = "")
+        write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g ,"_de_summary_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv")), na="")
     }else{
       # non-tx
       results %>%
@@ -544,8 +544,8 @@ save_results_by_group <- function(results,use_tx=FALSE) {
           gene_length, max_transcript_length, everything(),
           -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat"),
           -matches(n_comparisons), -(samples_to_exclude)) %>%
-        write_csv(str_c(OUTPUT_DIR, "/de_gene/", g, "_deseq2_results_count_", SPECIES, ".csv"),na = "")
-      
+        write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g, "_deseq2_results_count_", SPECIES, ".csv")), na="")
+
       fpkm_output <- results %>%
         dplyr::select(
           gene, gene_name, chromosome, description, entrez_id, gene_type,
@@ -568,12 +568,11 @@ save_results_by_group <- function(results,use_tx=FALSE) {
         fpkm_output %<>% dplyr::select(-one_of(avg_to_exclude %>% str_c('_avg_fpkm')))
       }
       
-      fpkm_output %>% write_csv(str_c(OUTPUT_DIR, "/de_gene/", g ,"_deseq2_results_fpkm_", SPECIES, ".csv"),na = "")
+      fpkm_output %>% write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g ,"_deseq2_results_fpkm_", SPECIES, ".csv")), na="")
       
       SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
-        write_csv(str_c(OUTPUT_DIR, "/de_gene/", g ,"_de_summary_", SPECIES, ".csv"),na = "")
+        write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g ,"_de_summary_", SPECIES, ".csv")), na="")
     }
-    
   }
 }
 
@@ -1105,8 +1104,8 @@ perform_go_analyses <- function(significant_genes, expressed_genes, comparison_n
       inner_join(GO_TERMS) %>% 
       dplyr::mutate(Term=FullTerm) %>% 
       dplyr::select(-FullTerm) %>% 
-      write_csv(str_c(top_dir, '/', comparison_name, file_prefix, "_go_", x %>% tolower, ".csv"),na = "")
-    
+      write_csv(file.path(top_dir, str_c(comparison_name, file_prefix, "_go_", x %>% tolower, ".csv")), na="")
+
     ret
   })
 }
@@ -1142,7 +1141,7 @@ perform_pathway_enrichment <- function(significant_genes, expressed_genes,
     if (pathways %>% nrow() > 0) {
       pathways %>%
         dplyr::select(ID, Description, GeneRatio, BgRatio, pvalue, p.adjust, geneID) %>%
-        write_csv(str_c(top_dir, '/', comparison_name, file_prefix, "_reactome.csv"),na = "")
+        write_csv(file.path(top_dir, str_c(comparison_name, file_prefix, "_reactome.csv")), na="")
 
       ret <- pathways %>% dplyr::select(ID, Description, GeneRatio, BgRatio, pvalue, p.adjust, geneID)
     }
@@ -1280,7 +1279,7 @@ write_camera_results <- function(
   }
 
   camera_results %>% tibble::rownames_to_column(var = "GeneSet") %>% filter(FDR < fdr_cutoff) %>%
-      write_csv(str_c(top_dir, "/", comparison_name, "-", gene_set_collection_name, "_sets.csv"),na = "")
+    write_csv(file.path(top_dir, str_c(comparison_name, "-", gene_set_collection_name, "_sets.csv")), na="")
 
   ret <- list(enriched_sets = camera_results %>% 
                 tibble::rownames_to_column(var="GeneSet") %>% 
@@ -1323,7 +1322,7 @@ write_camera_results <- function(
 
   de_results %>%
     cbind(gene_set_results) %>%
-    write_csv(str_c(top_dir, "/", comparison_name, "-", gene_set_collection_name, "_genes_in_sets.csv"),na = "")
+    write_csv(file.path(top_dir, str_c(comparison_name, "-", gene_set_collection_name, "_genes_in_sets.csv")), na="")
 
   ret[['genes_in_sets']]<- de_results %>% cbind(gene_set_results)
 

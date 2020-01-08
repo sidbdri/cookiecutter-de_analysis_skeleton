@@ -189,7 +189,7 @@ results %>%
     gene, gene_name, chromosome, description, entrez_id, gene_type,
     gene_length, max_transcript_length,
     everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(OUTPUT_DIR, "/de_gene/deseq2_results_count_", SPECIES, ".csv"),na = "")
+  write_csv(file.path(OUTPUT_DIR, "de_gene", str_c("deseq2_results_count_", SPECIES, ".csv")), na="")
 
 results %>% 
   dplyr::select(
@@ -203,10 +203,10 @@ results %>%
       as.vector() %>% 
       unique(), 
     -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(OUTPUT_DIR, "/de_gene/deseq2_results_fpkm_", SPECIES, ".csv"),na = "")
+  write_csv(file.path(OUTPUT_DIR, "de_gene", str_c("deseq2_results_fpkm_", SPECIES, ".csv")), na="")
 
 SUMMARY_TB %>%
-  write_csv(str_c(OUTPUT_DIR, "/de_gene/de_summary_", SPECIES, ".csv"),na = "")
+  write_csv(file.path(OUTPUT_DIR, "de_gene", str_c("de_summary_", SPECIES, ".csv")), na="")
 
 #####
 

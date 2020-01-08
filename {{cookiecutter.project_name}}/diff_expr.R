@@ -20,10 +20,10 @@ PLOT_TO_FILE <- TRUE
 MISASSIGNMENT_PERCENTAGE <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% nrow() > 0
 
 OUTPUT_DIR <- 'results/differential_expression/'
-if (!dir.exists(OUTPUT_DIR)) dir.create(OUTPUT_DIR, recursive = TRUE)
+dir.create(file.path(OUTPUT_DIR, "de_gene"), recursive = TRUE)
 
 GRAPHS_DIR <- 'results/differential_expression/graphs/'
-if (!dir.exists(GRAPHS_DIR)) dir.create(GRAPHS_DIR, recursive = TRUE)
+dir.create(GRAPHS_DIR, recursive = TRUE)
 
 #####
 

@@ -1455,7 +1455,7 @@ track_go <- function(target_terms = c('GO:0051492', 'GO:0010811'),
 
 qsva <- function(degradationMatrix, mod = matrix(1, ncol = 1, nrow = ncol(degradationMatrix))) {
   degPca = prcomp(t(log2(degradationMatrix + 1)))
-  k = num.sv(log2(degradationMatrix + 1), mod, {{ range(1, 1000) | random }})
+  k = num.sv(log2(degradationMatrix + 1), mod, seed={{ range(1, 1000) | random }})
   degPca$x[, seq_len(k)]
 }
 

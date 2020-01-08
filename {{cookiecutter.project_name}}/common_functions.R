@@ -590,40 +590,49 @@ read_de_results <- function(filename, num_samples, num_conditions, num_compariso
 
 plot_pca <- function(vst, intgroup=c("condition"), plot_label = TRUE, label_name='name', include_gene = c(),
                      removeBatchEffect = FALSE, batch = NULL){
-
+  
   if (removeBatchEffect) {
-      if (is.null(batch)) {
-        stop('batch cannot be NULL.')
-      }
+    if (is.null(batch)) {
+      stop('batch cannot be NULL.')
+    }
     
-      assay(vst) <- limma::removeBatchEffect(assay(vst), vst %>% extract2(batch))
+    assay(vst) <- limma::removeBatchEffect(assay(vst), vst %>% extract2(batch))
   }
-
+  
   pca_data <- vst %>% plotPCA2(intgroup = intgroup, returnData = TRUE, include_gene = include_gene)
-
+  
   percent_var <- round(100 * attr(pca_data, "percentVar"))
-
+  
   intgroup.df <- as.data.frame(colData(vst)[, intgroup, drop = FALSE])
-  group <- if (length(intgroup) > 1) {
-    factor(apply(intgroup.df, 1, paste, collapse = " : "))
-  } else {
-    colData(vst)[[intgroup]]
+  
+  if (length(intgroup) > 2) {
+    colour_group <- factor(apply(intgroup.df[-ncol(intgroup.df)], 1, paste, collapse = " : "))
+    shape_group <- factor(intgroup.df[[ncol(intgroup.df)]])
+    p <- pca_data %>% ggplot(aes(PC1, PC2, color=colour_group, shape=shape_group)) + 
+      guides(colour=guide_legend(title="group"),
+             shape=guide_legend(title=intgroup[length(intgroup)]))    
   }
-
-  p <- pca_data %>%
-  ggplot(aes(PC1, PC2, color=group)) + geom_point(size=3) +
+  else if (length(intgroup) == 2) {
+    colour_group <- factor(intgroup.df[[1]])
+    shape_group <- factor(intgroup.df[[2]])
+    p <- pca_data %>% ggplot(aes(PC1, PC2, color=colour_group, shape=shape_group)) + 
+      guides(colour=guide_legend(title=intgroup[1]),
+             shape=guide_legend(title=intgroup[2]))
+  } else {
+    group <- colData(vst)[[intgroup]]
+    p <- pca_data %>% ggplot(aes(PC1, PC2, color=group)) +
+      guides(color=guide_legend(title=intgroup))
+  }
+  
+  p <- p + geom_point(size=3) +
     xlab(str_c("PC1: ", percent_var[1], "% variance")) +
     ylab(str_c("PC2: ", percent_var[2], "% variance")) +
     theme(legend.position = "right")
-
+  
   if(plot_label)
     p <- p + geom_text(aes(label = !!parse_expr(label_name)), colour="darkgrey", 
                        position=position_nudge(y = 1), size=3)
-
-  if (length(intgroup) == 1) {
-    p <- p + guides(color=guide_legend(title=intgroup))
-  }
-
+  
   p
 }
 

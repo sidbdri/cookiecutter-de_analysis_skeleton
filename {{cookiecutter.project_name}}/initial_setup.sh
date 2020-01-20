@@ -87,9 +87,14 @@ generate_picard_refFlat ${PICARD_DATA}/{{ s }} {{ s }} {{cookiecutter.ensembl_ve
 
 # Generate species specific de script
 cp diff_expr.R  diff_expr_{{ s }}.R
-sed 's/unknown_species/{{ s }}/' ./diff_expr.R > diff_expr_{{ s }}.R
 sed 's/unknown_species/{{ s }}/' ./meta_data.R > meta_data_{{ s }}.R
+sed 's/unknown_species/{{ s }}/' ./diff_expr.R > diff_expr_{{ s }}.R
+sed 's/unknown_species/{{ s }}/' ./diff_expr_tx.R > diff_expr_tx_{{ s }}.R
+sed 's/unknown_species/{{ s }}/' ./rMATS.R > rMATS_{{ s }}.R
 {% endfor %}
+
+# remove the template
+rm ./diff_expr.R ./meta_data.R ./rMATS.R  ./diff_expr_tx.R
 
 {% if "human" not in cookiecutter.species.split(' ') %}
 HUMAN_ENSEMBL_DIR=${DATA_DIR}/human_ensembl_{{cookiecutter.ensembl_version}}

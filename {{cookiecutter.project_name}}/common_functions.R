@@ -192,7 +192,7 @@ lapply_fork <- function(X, FUN, cores = NA) {
   res
 }
 
-lapply_socket <- function(X, FUN, cores = NA, export_objects=c("expressed_genes", "results", "PARALLEL","META_DATA")) {
+lapply_socket <- function(X, FUN, cores = NA, export_objects=c("expressed_genes", "results", "PARALLEL","META_DATA", "OUTPUT_DIR")) {
   # This is the socket approach of parallel lapply:
   # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#starting-a-cluster
 

@@ -4,31 +4,10 @@ export WORKON_HOME=${HOME}/{{cookiecutter.virtualenv_home}}
 export PROJECT_HOME=${HOME}/{{cookiecutter.projects_base}}
 source /usr/local/bin/virtualenvwrapper.sh
 
+## we do some init setup such as recording versions
+[[ -f "./project_setup.sh" ]] && bash ./project_setup.sh
+
 mkproject -f {{cookiecutter.project_name}}
-
-# If this is the first time the script has been run, We find out the current
-# master hash of transcript-utils and sidbdri-utils and put them in the
-# config.sh, if they are not set. We also set up the directory as a git
-# repository.
-function findHashFromBranchName {
-    org=$1
-    repo_name=$2
-    commit_hash=$3
-    echo $(curl --silent -H "Accept: application/vnd.github.VERSION.sha" \
-    https://api.github.com/repos/${org}/${repo_name}/commits/${commit_hash})
-}
-
-if grep -Fq "unknown_hash" config.sh; then
-    echo "# We replace the unknown hash with the master branch hash"
-    sed -i "s/unknown_hash_transcript-utils/$(findHashFromBranchName "sidbdri" "transcript-utils" "master")/" config.sh
-    sed -i "s/unknown_hash_sidbdri-utils/$(findHashFromBranchName "sidbdri" "sidbdri-utils" "master")/" config.sh
-    {% if cookiecutter.sargasso == "yes" %}
-    sed -i "s/unknown_hash_sargasso/$(findHashFromBranchName "statbio" "Sargasso" "master")/" config.sh
-    {% endif %}
-
-    git init
-    mv gitignore .gitignore
-fi
 
 source config.sh
 
@@ -84,17 +63,8 @@ generate_picard_refFlat ${PICARD_DATA}/{{ s }} {{ s }} {{cookiecutter.ensembl_ve
 # Link gene_length.csv if exist in genome folder
 [[ -f "${GENOME_DATA_DIR}/gene_lengths.csv" ]] && ln -s ${GENOME_DATA_DIR}/gene_lengths.csv ${ENSEMBL_DIR}
 [[ -f "${GENOME_DATA_DIR}/tx2gene.tsv" ]] && ln -s ${GENOME_DATA_DIR}/tx2gene.tsv ${ENSEMBL_DIR}
-
-# Generate species specific de script
-cp diff_expr.R  diff_expr_{{ s }}.R
-sed 's/unknown_species/{{ s }}/' ./meta_data.R > meta_data_{{ s }}.R
-sed 's/unknown_species/{{ s }}/' ./diff_expr.R > diff_expr_{{ s }}.R
-sed 's/unknown_species/{{ s }}/' ./diff_expr_tx.R > diff_expr_tx_{{ s }}.R
-sed 's/unknown_species/{{ s }}/' ./rMATS.R > rMATS_{{ s }}.R
 {% endfor %}
 
-# remove the template
-rm ./diff_expr.R ./meta_data.R ./rMATS.R  ./diff_expr_tx.R
 
 {% if "human" not in cookiecutter.species.split(' ') %}
 HUMAN_ENSEMBL_DIR=${DATA_DIR}/human_ensembl_{{cookiecutter.ensembl_version}}

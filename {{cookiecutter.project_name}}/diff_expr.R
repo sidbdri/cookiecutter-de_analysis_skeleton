@@ -1,5 +1,5 @@
 SPECIES <- "unknown_species"
-META_DATA=str_c('meta_data_',SPECIES,'.R')
+META_DATA=stringr::str_c('meta_data_',SPECIES,'.R')
 source(META_DATA)
 
 # Note that when comparisons are run in parallel in RStudio, the output is silent and the R session 

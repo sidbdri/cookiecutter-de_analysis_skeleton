@@ -306,10 +306,13 @@ multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargas
 
 exit;
 
-Rscript diff_expr.R > de_expr.log 2>&1 &
-#Rscript diff_expr_tx.R &
-#Rscript rMATS.R > rMATS.log  2>&1 &
-#
+{% for s in cookiecutter.species.split(' ') %}
+Rscript diff_expr_{{ s }}.R > de_expr_{{ s }}.log 2>&1
+#Rscript diff_expr_tx_{{ s }}.R > de_expr_tx_{{ s }}.log 2>&1
+#Rscript rMATS_{{ s }}.R > rMATS_{{ s }}.log 2>&1
+{% endfor %}
+
+
 ## when decided which to use, we then only need to run that tx analysis
 #for TX_LEVEL in TRUE FALSE; do
 #    for QUANT_METHOD in salmon kallisto; do

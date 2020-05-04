@@ -14,7 +14,7 @@ function listFiles {
 }
 
 function listFilesNoNewLine {
-    local DELIMITER=$1listFiles
+    local DELIMITER=$1
     shift
     local FILES=$@
 

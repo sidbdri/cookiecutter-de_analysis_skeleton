@@ -1,5 +1,5 @@
 SPECIES <- "unknown_species"
-META_DATA=str_c('meta_data_',SPECIES,'.R')
+META_DATA=stringr::str_c('meta_data_',SPECIES,'.R')
 source(META_DATA)
 
 # Note that when comparisons are run in parallel in RStudio, the output is silent and the R session 
@@ -321,7 +321,7 @@ if (!dir.exists(rws)) {
 }
 
 save(list = ls() %>% grep(x = ., pattern='comparisons_results', value = T,invert = T),
-     file = str_c(rws,"diff_expr.RData"))
+     file = str_c(rws,"diff_expr",SPECIES,".RData"))
   
 # Load the save workspace to get all objects back for analysis
 

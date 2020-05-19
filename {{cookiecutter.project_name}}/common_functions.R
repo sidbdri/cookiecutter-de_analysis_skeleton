@@ -1,6 +1,9 @@
 KALLISTO <- "kallisto"
 SALMON <- "salmon"
 
+GO_TERMS <- Term(GOTERM) %>% as.data.frame() %>% tibble::rownames_to_column(var="GO.ID")
+colnames(GO_TERMS) <- c("GO.ID", "FullTerm")
+
 ##### Utility functions
 
 set_global <- function(value, variable) {
@@ -189,7 +192,7 @@ lapply_fork <- function(X, FUN, cores = NA) {
   res
 }
 
-lapply_socket <- function(X, FUN, cores = NA, export_objects=c("expressed_genes", "results", "PARALLEL","META_DATA")) {
+lapply_socket <- function(X, FUN, cores = NA, export_objects=c("expressed_genes", "results", "PARALLEL","META_DATA", "OUTPUT_DIR")) {
   # This is the socket approach of parallel lapply:
   # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#starting-a-cluster
 
@@ -506,7 +509,7 @@ save_results_by_group <- function(results,use_tx=FALSE) {
           columns_included, gene_name, chromosome, description, entrez_id, gene_type, everything(),
           -dplyr::contains("_tpm"), -dplyr::ends_with(".stat"),
           -matches(n_comparisons), -(samples_to_exclude)) %>%
-        write_csv(str_c(OUTPUT_DIR, "/", g, "_deseq2_results_count_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv"),na = "")
+        write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g, "_deseq2_results_count_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv")), na="")
       
       tpm_output <- results %>%
         dplyr::select(
@@ -529,10 +532,10 @@ save_results_by_group <- function(results,use_tx=FALSE) {
         tpm_output %<>% dplyr::select(-one_of(avg_to_exclude %>% str_c('_avg_tpm')))
       }
       
-      tpm_output %>% write_csv(str_c(OUTPUT_DIR, "/", g ,"_deseq2_results_tpm_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv"),na = "")
+      tpm_output %>% write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g ,"_deseq2_results_tpm_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv")), na="")
       
       SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
-        write_csv(str_c(OUTPUT_DIR, "/", g ,"_de_summary_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv"),na = "")
+        write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g ,"_de_summary_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv")), na="")
     }else{
       # non-tx
       results %>%
@@ -541,8 +544,8 @@ save_results_by_group <- function(results,use_tx=FALSE) {
           gene_length, max_transcript_length, everything(),
           -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat"),
           -matches(n_comparisons), -(samples_to_exclude)) %>%
-        write_csv(str_c(OUTPUT_DIR, "/", g, "_deseq2_results_count_", SPECIES, ".csv"),na = "")
-      
+        write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g, "_deseq2_results_count_", SPECIES, ".csv")), na="")
+
       fpkm_output <- results %>%
         dplyr::select(
           gene, gene_name, chromosome, description, entrez_id, gene_type,
@@ -565,12 +568,11 @@ save_results_by_group <- function(results,use_tx=FALSE) {
         fpkm_output %<>% dplyr::select(-one_of(avg_to_exclude %>% str_c('_avg_fpkm')))
       }
       
-      fpkm_output %>% write_csv(str_c(OUTPUT_DIR, "/", g ,"_deseq2_results_fpkm_", SPECIES, ".csv"),na = "")
+      fpkm_output %>% write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g ,"_deseq2_results_fpkm_", SPECIES, ".csv")), na="")
       
       SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
-        write_csv(str_c(OUTPUT_DIR, "/", g ,"_de_summary_", SPECIES, ".csv"),na = "")
+        write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g ,"_de_summary_", SPECIES, ".csv")), na="")
     }
-    
   }
 }
 
@@ -588,40 +590,49 @@ read_de_results <- function(filename, num_samples, num_conditions, num_compariso
 
 plot_pca <- function(vst, intgroup=c("condition"), plot_label = TRUE, label_name='name', include_gene = c(),
                      removeBatchEffect = FALSE, batch = NULL){
-
+  
   if (removeBatchEffect) {
-      if (is.null(batch)) {
-        stop('batch cannot be NULL.')
-      }
+    if (is.null(batch)) {
+      stop('batch cannot be NULL.')
+    }
     
-      assay(vst) <- limma::removeBatchEffect(assay(vst), vst %>% extract2(batch))
+    assay(vst) <- limma::removeBatchEffect(assay(vst), vst %>% extract2(batch))
   }
-
+  
   pca_data <- vst %>% plotPCA2(intgroup = intgroup, returnData = TRUE, include_gene = include_gene)
-
+  
   percent_var <- round(100 * attr(pca_data, "percentVar"))
-
+  
   intgroup.df <- as.data.frame(colData(vst)[, intgroup, drop = FALSE])
-  group <- if (length(intgroup) > 1) {
-    factor(apply(intgroup.df, 1, paste, collapse = " : "))
-  } else {
-    colData(vst)[[intgroup]]
+  
+  if (length(intgroup) > 2) {
+    colour_group <- factor(apply(intgroup.df[-ncol(intgroup.df)], 1, paste, collapse = " : "))
+    shape_group <- factor(intgroup.df[[ncol(intgroup.df)]])
+    p <- pca_data %>% ggplot(aes(PC1, PC2, color=colour_group, shape=shape_group)) + 
+      guides(colour=guide_legend(title="group"),
+             shape=guide_legend(title=intgroup[length(intgroup)]))    
   }
-
-  p <- pca_data %>%
-  ggplot(aes(PC1, PC2, color=group)) + geom_point(size=3) +
+  else if (length(intgroup) == 2) {
+    colour_group <- factor(intgroup.df[[1]])
+    shape_group <- factor(intgroup.df[[2]])
+    p <- pca_data %>% ggplot(aes(PC1, PC2, color=colour_group, shape=shape_group)) + 
+      guides(colour=guide_legend(title=intgroup[1]),
+             shape=guide_legend(title=intgroup[2]))
+  } else {
+    group <- colData(vst)[[intgroup]]
+    p <- pca_data %>% ggplot(aes(PC1, PC2, color=group)) +
+      guides(color=guide_legend(title=intgroup))
+  }
+  
+  p <- p + geom_point(size=3) +
     xlab(str_c("PC1: ", percent_var[1], "% variance")) +
     ylab(str_c("PC2: ", percent_var[2], "% variance")) +
     theme(legend.position = "right")
-
+  
   if(plot_label)
     p <- p + geom_text(aes(label = !!parse_expr(label_name)), colour="darkgrey", 
                        position=position_nudge(y = 1), size=3)
-
-  if (length(intgroup) == 1) {
-    p <- p + guides(color=guide_legend(title=intgroup))
-  }
-
+  
   p
 }
 
@@ -699,8 +710,8 @@ plot_count_distribution <- function(dds, norm = T) {
 }
 
 plot_pvalue_distribution <- function(results, pvalue_column) {
-  pvals <- results %>% 
-    filter_(str_c("!is.na(", pvalue_column, ")")) %>% 
+  pvals <- results %>%
+    filter_(str_c("!is.na(", pvalue_column, ")")) %>%
     dplyr::select_(pvalue_column)
   
   p <- ggplot(pvals, aes_string(pvalue_column)) + 
@@ -963,7 +974,7 @@ get_salmon_tpms <- function(sample) {
   sample %>% 
     str_c("results/salmon_quant/", ., "/quant.genes.sf") %>% 
     read_tsv %>% 
-    dplyr::select(Name, TPM) %>% 
+    dplyr::select(Name, TPM) %>%
     rename_(.dots = setNames(names(.), c("gene", str_c(sample, "_tpm"))))
 }
 
@@ -1089,7 +1100,7 @@ perform_go_analyses <- function(significant_genes, expressed_genes, comparison_n
     return()
   }
 
-  top_dir <- str_c(out_dir, species, '/', comparison_name, sep = '')
+  top_dir <-  file.path(out_dir,species,comparison_name)
   if (!dir.exists(top_dir)) {
     dir.create(top_dir, recursive = TRUE)
   }
@@ -1099,8 +1110,11 @@ perform_go_analyses <- function(significant_genes, expressed_genes, comparison_n
     
     ret %>% 
       extract2('go_results') %>% 
-      write_csv(str_c(top_dir, '/', comparison_name, file_prefix, "_go_", x %>% tolower, ".csv"),na = "")
-    
+      inner_join(GO_TERMS) %>% 
+      dplyr::mutate(Term=FullTerm) %>% 
+      dplyr::select(-FullTerm) %>% 
+      write_csv(file.path(top_dir, str_c(comparison_name, file_prefix, "_go_", x %>% tolower, ".csv")), na="")
+
     ret
   })
 }
@@ -1126,7 +1140,7 @@ perform_pathway_enrichment <- function(significant_genes, expressed_genes,
     pvalueCutoff = 0.1, readable = T) %>%
     as.data.frame()
 
-    top_dir <- str_c(out_dir,species, '/', comparison_name, sep = '')
+    top_dir <-  file.path(out_dir,species,comparison_name)
     if (!dir.exists(top_dir)) {
       dir.create(top_dir, recursive = TRUE)
     }
@@ -1136,7 +1150,7 @@ perform_pathway_enrichment <- function(significant_genes, expressed_genes,
     if (pathways %>% nrow() > 0) {
       pathways %>%
         dplyr::select(ID, Description, GeneRatio, BgRatio, pvalue, p.adjust, geneID) %>%
-        write_csv(str_c(top_dir, '/', comparison_name, file_prefix, "_reactome.csv"),na = "")
+        write_csv(file.path(top_dir, str_c(comparison_name, file_prefix, "_reactome.csv")), na="")
 
       ret <- pathways %>% dplyr::select(ID, Description, GeneRatio, BgRatio, pvalue, p.adjust, geneID)
     }
@@ -1268,13 +1282,13 @@ write_camera_results <- function(
   gene_set_collection_name, gene_set_collection, comparison_name, species, de_results, camera_results,
   barcodeplots = FALSE, fdr_cutoff = 0.1, out_dir="results/differential_expression/gsa/") {
 
-  top_dir <- str_c(out_dir,species, "/", comparison_name)
+  top_dir <- file.path(out_dir,species,comparison_name)
   if (!dir.exists(top_dir)) {
     dir.create(top_dir, recursive = TRUE)
   }
 
   camera_results %>% tibble::rownames_to_column(var = "GeneSet") %>% filter(FDR < fdr_cutoff) %>%
-      write_csv(str_c(top_dir, "/", comparison_name, "-", gene_set_collection_name, "_sets.csv"),na = "")
+    write_csv(file.path(top_dir, str_c(comparison_name, "-", gene_set_collection_name, "_sets.csv")), na="")
 
   ret <- list(enriched_sets = camera_results %>% 
                 tibble::rownames_to_column(var="GeneSet") %>% 
@@ -1317,7 +1331,7 @@ write_camera_results <- function(
 
   de_results %>%
     cbind(gene_set_results) %>%
-    write_csv(str_c(top_dir, "/", comparison_name, "-", gene_set_collection_name, "_genes_in_sets.csv"),na = "")
+    write_csv(file.path(top_dir, str_c(comparison_name, "-", gene_set_collection_name, "_genes_in_sets.csv")), na="")
 
   ret[['genes_in_sets']]<- de_results %>% cbind(gene_set_results)
 
@@ -1447,6 +1461,12 @@ track_go <- function(target_terms = c('GO:0051492', 'GO:0010811'),
 }
 
 ##### Quality surrogate variable analysis
+
+qsva <- function(degradationMatrix, mod = matrix(1, ncol = 1, nrow = ncol(degradationMatrix))) {
+  degPca = prcomp(t(log2(degradationMatrix + 1)))
+  k = num.sv(log2(degradationMatrix + 1), mod, seed={{ range(1, 1000) | random }})
+  degPca$x[, seq_len(k)]
+}
 
 get_quality_surrogate_variables <- function(dds) {
   design_formula <- dds %>% design()
@@ -1718,6 +1738,16 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
   ret[['condition_base_reference_samples']] = reference_samples
 
   ret
+}
+
+
+# read picard qc matrix for rna degradation
+read_median_5prime_to_3prime_bias <- function(samples=c()){
+  PICARD_ALIGNMENT_MATRIX=file.path('results/','alignment_metrics',SPECIES)
+  MEDIAN_5PRIME_TO_3PRIME_BIAS <- samples %>% lapply(function(sample){
+    read_tsv(file.path(PICARD_ALIGNMENT_MATRIX,str_c(sample,'.txt')),comment = '#',n_max = 1,col_type = cols()) %>%
+    pull(MEDIAN_5PRIME_TO_3PRIME_BIAS)
+  }) %>% unlist() %>% setNames(samples)
 }
 
 ########

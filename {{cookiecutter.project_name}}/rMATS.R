@@ -1,6 +1,6 @@
-source('meta_data.R')
-
-SPECIES="{{cookiecutter.species}}"
+SPECIES <- "unknown_species"
+META_DATA=str_c('meta_data_',SPECIES,'.R')
+source(META_DATA)
 
 RMATS_402 = '/opt/rMATS.4.0.2'
 RMATS_325 = '/opt/rMATS.3.2.5/MATS/rMATS_Paired.sh'

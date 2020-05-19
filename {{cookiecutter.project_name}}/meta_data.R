@@ -1,7 +1,7 @@
 source("load_packages.R")
 source("common_functions.R")
 
-SPECIES <- "{{cookiecutter.species}}"
+SPECIES <- "unknown_species"
 P.ADJ.CUTOFF <- 0.05
 NUM_CORES <- 30
 
@@ -18,6 +18,12 @@ SAMPLE_DATA <- data.frame(
   tibble::rownames_to_column(var = "tmp_row_names") %>%
   filter(species==!!SPECIES) %>%
   tibble::column_to_rownames(var = "tmp_row_names")
+
+
+
+# https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/103
+# read in picard alignment matrix and extract the MEDIAN_5PRIME_TO_3PRIME_BIAS column for PCA plot later
+SAMPLE_DATA$read_bias=read_median_5prime_to_3prime_bias(SAMPLE_DATA$sample_name)
 
 # Specify what average FPKMs are needed in the results table. These usually correspond to column names 
 # in the SAMPLE_DATA table. There is no limit to the number of groups. For example, for a sample table
@@ -115,8 +121,6 @@ GENE_MARKERS <- tribble(
   "ENSG00000167281", "ENSMUSG00000025576", "ENSRNOG00000003386", "Rbfox3", "neuron",
   "ENSG00000171885", "ENSMUSG00000024411", "ENSRNOG00000016043", "Aqp4", "astrocyte",
   "ENSG00000131095", "ENSMUSG00000020932", "ENSRNOG00000002919", "Gfap", "astrocyte",
-  "ENSG00000133636", "ENSMUSG00000019890", "ENSRNOG00000004179", "Nts", "Dorsal",
-  "ENSG00000003137", "ENSMUSG00000063415", "ENSRNOG00000015076", "Cyp26b1", "Dorsal",
-  "ENSG00000185551", "ENSMUSG00000030551", "ENSRNOG00000010308", "Nr2f2", "ventral_hippocampus",
-  "ENSG00000140848", "ENSMUSG00000034361", "ENSRNOG00000043286", "Cpne2", "ventral_hippocampus",
+  "ENSG00000120156", "ENSMUSG00000006386", "ENSRNOG00000008587", "Tek", "endothelial",
+  "ENSG00000184113", "ENSMUSG00000041378", "ENSRNOG00000045811", "Cldn5", "endothelial"
 )

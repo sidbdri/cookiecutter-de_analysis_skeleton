@@ -15,7 +15,7 @@
     "strategy": "conservative",
     "species": "mouse rat human",
     "star_version": "2.7.0f",
-    "bowtie2_version": "2.3.4",
+    "bowtie2_version": "2.3.4.3",
     "salmon_version": "0.12.0",
     "kallisto_version": "0.45.0",
     "featurecounts_version": "1.6.3",

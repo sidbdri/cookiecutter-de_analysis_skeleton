@@ -231,8 +231,8 @@ get_genes_for_module <- function(module, modules_to_genes, gene_eigengene_correl
     as.data.frame %>% 
     tibble::rownames_to_column(var="gene") %>% 
     inner_join(gene_info) %>%
-    dplyr::select_("gene", "gene_name", "description", "chromosome", column) %>% 
-    extract(genes_in_module <- modules_to_genes==module,) %>% 
+    dplyr::select_("gene", "gene_name", "description", "chromosome", column) %>%
+    extract(genes_in_module <- modules_to_genes==module,) %>%
     arrange_(paste0("desc(", column, ")"))
 }
 
@@ -351,7 +351,7 @@ for (module in seq(0, module_eigengenes %>% colnames %>% length - 1)) {
   module_column <- str_c("MM", module)
   
   gecs_for_module <- gene_eigengene_correlations[genes_in_module, ] %>%
-    dplyr::select_(module_column) %>% 
+    dplyr::select_(module_column) %>%
     rename_("eigengene_cor" = module_column)
   
   if (is.null(output)) {

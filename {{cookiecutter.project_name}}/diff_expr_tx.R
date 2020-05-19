@@ -1,8 +1,6 @@
-META_DATA='meta_data.R'
-
+SPECIES <- "unknown_species"
+META_DATA=str_c('meta_data_',SPECIES,'.R')
 source(META_DATA)
-
-SPECIES <- "{{cookiecutter.species}}"
 
 # Note that when comparisons are run in parallel in RStudio, the output is silent and the R session 
 # will be hung until all sub-processes finish or are terminated. When running on the command line, 
@@ -230,7 +228,7 @@ SUMMARY_TB %>%
 
 # For each comparison: 
 #   - for the GO/Reactome analyses, we are using all/up/down regulated genes,
-#   - for GSA, we are using three gene set categories: "CURATED", "MOTIF" and "GO"
+#   - for GSA, we are using four gene set categories: "CURATED", "MOTIF", "GO" and "CELL_TYPE"
 # Thus we need to reduce the number of comparisons we run in parallel to ensure we are not using more cores
 # than specified. The total number of cores used after the following line will be 3 * getOption("mc.cores")
 if(PARALLEL) adjust_parallel_cores()
@@ -264,7 +262,7 @@ if (!USE_TX | !TX_LEVEL) {
   
   ##### Gene set enrichment analysis
   
-  gene_set_categories <- list("CURATED", "MOTIF", "GO")
+  gene_set_categories <- list("CURATED", "MOTIF", "GO", "CELL_TYPE")
   
   list_of_gene_sets <- gene_set_categories %>% lapply_fork(cores=length(gene_set_categories), X=., function(category,...) get_gene_sets(SPECIES, category))
   

@@ -1,6 +1,8 @@
 sp:
     star:
             fn: '*.log.out'
+    bowtie2:
+            fn: '*.log.out'
     picard/rnaseqmetrics:
             contents_re: .*CollectRnaSeqMetrics.*
             shared: true

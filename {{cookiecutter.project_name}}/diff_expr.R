@@ -1,7 +1,6 @@
-META_DATA='meta_data.R'
+SPECIES <- "unknown_species"
+META_DATA=stringr::str_c('meta_data_',SPECIES,'.R')
 source(META_DATA)
-
-SPECIES <- "{{cookiecutter.species}}"
 
 # Note that when comparisons are run in parallel in RStudio, the output is silent and the R session 
 # will be hung until all sub-processes finish or are terminated. When running on the command line, 
@@ -19,11 +18,11 @@ PLOT_TO_FILE <- TRUE
 
 MISASSIGNMENT_PERCENTAGE <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% nrow() > 0
 
-OUTPUT_DIR <- 'results/differential_expression/de_gene/'
-if (!dir.exists(OUTPUT_DIR)) dir.create(OUTPUT_DIR, recursive = TRUE)
+OUTPUT_DIR <- 'results/differential_expression/'
+dir.create(file.path(OUTPUT_DIR, "de_gene"), recursive = TRUE)
 
 GRAPHS_DIR <- 'results/differential_expression/graphs/'
-if (!dir.exists(GRAPHS_DIR)) dir.create(GRAPHS_DIR, recursive = TRUE)
+dir.create(GRAPHS_DIR, recursive = TRUE)
 
 #####
 
@@ -189,7 +188,7 @@ results %>%
     gene, gene_name, chromosome, description, entrez_id, gene_type,
     gene_length, max_transcript_length,
     everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_count_", SPECIES, ".csv"),na = "")
+  write_csv(file.path(OUTPUT_DIR, "de_gene", str_c("deseq2_results_count_", SPECIES, ".csv")), na="")
 
 results %>% 
   dplyr::select(
@@ -203,16 +202,16 @@ results %>%
       as.vector() %>% 
       unique(), 
     -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_fpkm_", SPECIES, ".csv"),na = "")
+  write_csv(file.path(OUTPUT_DIR, "de_gene", str_c("deseq2_results_fpkm_", SPECIES, ".csv")), na="")
 
 SUMMARY_TB %>%
-  write_csv(str_c(OUTPUT_DIR, "/de_summary_", SPECIES, ".csv"),na = "")
+  write_csv(file.path(OUTPUT_DIR, "de_gene", str_c("de_summary_", SPECIES, ".csv")), na="")
 
 #####
 
 # For each comparison: 
 #   - for the GO/Reactome analyses, we are using all/up/down regulated genes,
-#   - for GSA, we are using three gene set categories: "CURATED", "MOTIF" and "GO"
+#   - for GSA, we are using four gene set categories: "CURATED", "MOTIF", "GO" and "CELL_TYPE"
 # Thus we need to reduce the number of comparisons we run in parallel to ensure we are not using more cores
 # than specified. The total number of cores used after the following line will be 3 * getOption("mc.cores")
 if (PARALLEL) {
@@ -242,7 +241,7 @@ GO_results <- COMPARISON_TABLE %>%
           r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF)
         }
         
-        perform_go_analyses(r, expressed_genes, comparison_name, cmp, SPECIES)
+        perform_go_analyses(r, expressed_genes, comparison_name, cmp, SPECIES, out_dir = file.path(OUTPUT_DIR,"go"))
       }
     ) %>% set_names(str_c(comparison_name,c('.all','.up','.down')))
   }
@@ -267,7 +266,7 @@ Reactome_results<- COMPARISON_TABLE %>%
         } else {
           r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF)
         }
-        perform_pathway_enrichment(r, expressed_genes, comparison_name, cmp, SPECIES)
+        perform_pathway_enrichment(r, expressed_genes, comparison_name, cmp, SPECIES, out_dir = file.path(OUTPUT_DIR,"reactome"))
       }
     ) %>% set_names(str_c(comparison_name,c('.all', '.up', '.down')))
   }
@@ -275,7 +274,7 @@ Reactome_results<- COMPARISON_TABLE %>%
 
 ##### Gene set enrichment analysis
 
-gene_set_categories <- list("CURATED", "MOTIF", "GO")
+gene_set_categories <- list("CURATED", "MOTIF", "GO", "CELL_TYPE")
 
 list_of_gene_sets <- gene_set_categories %>% 
   set_names(.) %>% 
@@ -301,7 +300,7 @@ GS_results <- COMPARISON_TABLE %>%
         write_camera_results(
           gene_set_categories[[category]], list_of_gene_sets[[category]], 
           comparison_name, SPECIES,
-          de_res, camera_results[[category]])
+          de_res, camera_results[[category]], out_dir = file.path(OUTPUT_DIR,"gsa"))
       }
     ) 
     
@@ -322,7 +321,7 @@ if (!dir.exists(rws)) {
 }
 
 save(list = ls() %>% grep(x = ., pattern='comparisons_results', value = T,invert = T),
-     file = str_c(rws,"diff_expr.RData"))
+     file = str_c(rws,"diff_expr",SPECIES,".RData"))
   
 # Load the save workspace to get all objects back for analysis
 

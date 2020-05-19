@@ -4,31 +4,10 @@ export WORKON_HOME=${HOME}/{{cookiecutter.virtualenv_home}}
 export PROJECT_HOME=${HOME}/{{cookiecutter.projects_base}}
 source /usr/local/bin/virtualenvwrapper.sh
 
+## we do some init setup such as recording versions
+[[ -f "./project_setup.sh" ]] && bash ./project_setup.sh
+
 mkproject -f {{cookiecutter.project_name}}
-
-# If this is the first time the script has been run, We find out the current
-# master hash of transcript-utils and sidbdri-utils and put them in the
-# config.sh, if they are not set. We also set up the directory as a git
-# repository.
-function findHashFromBranchName {
-    org=$1
-    repo_name=$2
-    commit_hash=$3
-    echo $(curl --silent -H "Accept: application/vnd.github.VERSION.sha" \
-    https://api.github.com/repos/${org}/${repo_name}/commits/${commit_hash})
-}
-
-if grep -Fq "unknown_hash" config.sh; then
-    echo "# We replace the unknown hash with the master branch hash"
-    sed -i "s/unknown_hash_transcript-utils/$(findHashFromBranchName "sidbdri" "transcript-utils" "master")/" config.sh
-    sed -i "s/unknown_hash_sidbdri-utils/$(findHashFromBranchName "sidbdri" "sidbdri-utils" "master")/" config.sh
-    {% if cookiecutter.sargasso == "yes" %}
-    sed -i "s/unknown_hash_sargasso/$(findHashFromBranchName "statbio" "Sargasso" "master")/" config.sh
-    {% endif %}
-
-    git init
-    mv gitignore .gitignore
-fi
 
 source config.sh
 
@@ -48,6 +27,13 @@ DATA_DIR=data
 RNASEQ_DIR=${DATA_DIR}/rnaseq
 PICARD_DATA=${DATA_DIR}/picard
 PICARD=/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar
+
+# we check sample name for special character
+# https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/98
+if [[ `echo {{cookiecutter.rnaseq_samples}} | grep -P '[\t\n.]'` != ''  ]];then
+    echo "Error: Please make sure sample names don't contain specieal characters."
+    exit 1
+fi
 
 mkdir -p ${RNASEQ_DIR}
 for sample in {{cookiecutter.rnaseq_samples}}; do
@@ -73,7 +59,12 @@ download_gene_tb {{ s }} {{cookiecutter.ensembl_version}} > ${ENSEMBL_DIR}/genes
 
 # Generating refFlat file for Picard RNA-seq metrics
 generate_picard_refFlat ${PICARD_DATA}/{{ s }} {{ s }} {{cookiecutter.ensembl_version}} ${GTF_FILE} &
+
+# Link gene_length.csv if exist in genome folder
+[[ -f "${GENOME_DATA_DIR}/gene_lengths.csv" ]] && ln -s ${GENOME_DATA_DIR}/gene_lengths.csv ${ENSEMBL_DIR}
+[[ -f "${GENOME_DATA_DIR}/tx2gene.tsv" ]] && ln -s ${GENOME_DATA_DIR}/tx2gene.tsv ${ENSEMBL_DIR}
 {% endfor %}
+
 
 {% if "human" not in cookiecutter.species.split(' ') %}
 HUMAN_ENSEMBL_DIR=${DATA_DIR}/human_ensembl_{{cookiecutter.ensembl_version}}

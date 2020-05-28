@@ -8,25 +8,38 @@ import os
 
 MAIN_DIR = '~/{{cookiecutter.projects_base}}/{{cookiecutter.project_name}}'
 DATA_DIR = os.path.join(MAIN_DIR, 'data')
+RNASEQ_DIR=${DATA_DIR}/rnaseq
 PICARD_DIR = os.path.join(DATA_DIR, 'picard')
+
+STAR_EXECUTABLE="STAR{{cookiecutter.star_version}}"
+BOWTIE2_EXECUTABLE=bowtie2-{{cookiecutter.bowtie2_version}}
+FASTQC_EXECUTABLE="fastqc{{cookiecutter.fastqc_version}}"
+FEATURECOUNTS_EXECUTABLE="featureCounts{{cookiecutter.featurecounts_version}}"
+PICARD_EXECUTABLE="/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar"
+
 SPECIES=[]
 ENSEMBL_DIR=[]
-STAR_INDEX=[]
+MAPPER_INDEX=[]
+BOWTIE_INDEX=[]
 GTF_FILE=[]
 REF_FLAT=[]
+
+DATA_TYPE = {{cookiecutter.data_type}}
+if DATA_TYPE == "rnaseq":
+     MAPPER_EXECUTABLE=STAR_EXECUTABLE
+else:
+    MAPPER_EXECUTABLE=BOWTIE2_EXECUTABLE
 
 {% for s in cookiecutter.species.split(' ') %}
 SPECIES.append("{{ s }}")
 ENSEMBL_DIR.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}" % DATA_DIR)
-STAR_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/STAR_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.star_version}}" % DATA_DIR)
+if DATA_TYPE == "rnaseq":
+    MAPPER_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/STAR_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.star_version}}" % DATA_DIR)
+else:
+    MAPPER_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/BOWTIE2_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.bowtie2_version}}" % DATA_DIR)
 GTF_FILE.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecutter.gtf_files[s]}}" % DATA_DIR)
 REF_FLAT.append("%s/{{ s }}/{{cookiecutter.rff_files[s]}}" % PICARD_DIR)
 {% endfor %}
-
-STAR_EXECUTABLE="STAR{{cookiecutter.star_version}}"
-FASTQC_EXECUTABLE="fastqc{{cookiecutter.fastqc_version}}"
-FEATURECOUNTS_EXECUTABLE="featureCounts{{cookiecutter.featurecounts_version}}"
-PICARD_EXECUTABLE="/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar"
 
 NUM_THREADS_PER_SAMPLE=8
 IS_PAIRED_END="{{cookiecutter.paired_end_read}}"
@@ -91,6 +104,58 @@ def retrieve_fastqs(sample):
         forward = glob("data/rnaseq/%s/*_1.fastq.gz" % sample)
         fastq = " ".join(forward)
     return fastq
+
+
+def sample_tsv():
+    outfile_name = 'sample.tsv'
+    with open(outfile_name, 'w') as outfile:
+        tsv_lines = []
+        for sample in SAMPLES:
+            fastq_f = glob(os.path.join(RNASEQ_DIR, ''.join([sample, '*', {{ cookiecutter.read1_identifier}}, {{ cookiecutter.fastq_suffix }}])))
+            fastq_r = glob(os.path.join(RNASEQ_DIR, ''.join([sample, '*', {{ cookiecutter.read1_identifier}}, {{ cookiecutter.fastq_suffix }}])))
+            fastq_f = "\t".join(fastq_f)
+            fastq_r = "\t".join(fastq_r)
+            line = "\t".join(sample, fastq_f, fastq_r)
+            tsv_lines.append(line)
+        outfile.write("\n".join(tsv_lines))
+    return outfile_name
+
+def species_index():
+    assert len(SPECIES) == len(MAPPER_INDEX) 
+    species_index_pairs = []
+    for i in range(len(SPECIES)):
+        species_index_pair = " ".join([SPECIES[i], MAPPER_INDEX[i]])
+        species_index_pairs.append(species_index_pair)
+    species_index_pairs = " ".join(species_index_pairs)
+    return species_index_pairs
+
+    
+rule sargasso:
+
+    input:
+        'sample_tsv',
+    params:
+        data_type = DATA_TYPE,
+        mapper = MAPPER_EXECUTABLE,
+        tmp_dir = 'tmp',
+        strategy=STRATEGY,
+        threads = NUM_TOTAL_THREADS,
+        species_index = lambda parameter: species_index(),
+        sargasso_results_dir = lambda parameter: os.path.join(MAIN_DIR, "results/sargasso")
+    output:
+        log = "{params.sargasso_results_dir}/sargasso.log",
+        makefile = "{params.sargasso_results_dir}/sargasso.log"
+    shell:
+        """
+        species_separator {params.data_type} --mapper-executable {params.mapper} --sambamba-sort-tmp-dir={params.tmp} --{params.strategy} --num-threads {params.threads} {input} {params.sargasso_results_dir} {params.species_index}
+        cd {params.sargasso_results_dir} && make > {output.log} 2>&1}
+        """
+
+rule make_sample_tsv:
+    output:
+        'sample.tsv'
+    run:
+        sample_tsv()
 
 rule fastqc:
     input:

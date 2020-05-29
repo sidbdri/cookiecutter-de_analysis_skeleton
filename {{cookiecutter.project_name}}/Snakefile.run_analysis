@@ -8,11 +8,14 @@ import os
 
 MAIN_DIR = '~/{{cookiecutter.projects_base}}/{{cookiecutter.project_name}}'
 DATA_DIR = os.path.join(MAIN_DIR, 'data')
-RNASEQ_DIR=${DATA_DIR}/rnaseq
+RNASEQ_DIR=os.path.join(DATA_DIR, 'rnaseq')
 PICARD_DIR = os.path.join(DATA_DIR, 'picard')
 
+NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}
+NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
+
 STAR_EXECUTABLE="STAR{{cookiecutter.star_version}}"
-BOWTIE2_EXECUTABLE=bowtie2-{{cookiecutter.bowtie2_version}}
+BOWTIE2_EXECUTABLE="bowtie2-{{cookiecutter.bowtie2_version}}"
 FASTQC_EXECUTABLE="fastqc{{cookiecutter.fastqc_version}}"
 FEATURECOUNTS_EXECUTABLE="featureCounts{{cookiecutter.featurecounts_version}}"
 PICARD_EXECUTABLE="/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar"
@@ -24,7 +27,7 @@ BOWTIE_INDEX=[]
 GTF_FILE=[]
 REF_FLAT=[]
 
-DATA_TYPE = {{cookiecutter.data_type}}
+DATA_TYPE = "{{cookiecutter.data_type}}"
 if DATA_TYPE == "rnaseq":
      MAPPER_EXECUTABLE=STAR_EXECUTABLE
 else:
@@ -40,6 +43,12 @@ else:
 GTF_FILE.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecutter.gtf_files[s]}}" % DATA_DIR)
 REF_FLAT.append("%s/{{ s }}/{{cookiecutter.rff_files[s]}}" % PICARD_DIR)
 {% endfor %}
+
+
+{% if cookiecutter.sargasso == "yes" %}
+STRATEGY="{{cookiecutter.strategy}}"
+{% endif %}
+
 
 NUM_THREADS_PER_SAMPLE=8
 IS_PAIRED_END="{{cookiecutter.paired_end_read}}"
@@ -97,7 +106,7 @@ def strand_test(picard=False):
 
 def retrieve_fastqs(sample):
     if IS_PAIRED_END == "yes":
-        foward = glob("data/rnaseq/%s/*_1.fastq.gz" % sample)
+        forward = glob("data/rnaseq/%s/*_1.fastq.gz" % sample)
         reverse = glob("data/rnaseq/%s/*_2.fastq.gz" % sample)
         fastq = " ".join(forward + reverse)
     else:
@@ -111,11 +120,11 @@ def sample_tsv():
     with open(outfile_name, 'w') as outfile:
         tsv_lines = []
         for sample in SAMPLES:
-            fastq_f = glob(os.path.join(RNASEQ_DIR, ''.join([sample, '*', {{ cookiecutter.read1_identifier}}, {{ cookiecutter.fastq_suffix }}])))
-            fastq_r = glob(os.path.join(RNASEQ_DIR, ''.join([sample, '*', {{ cookiecutter.read1_identifier}}, {{ cookiecutter.fastq_suffix }}])))
+            fastq_f = glob(os.path.join(RNASEQ_DIR, ''.join([sample, '*', '{{ cookiecutter.read1_identifier}}', '{{ cookiecutter.fastq_suffix }}'])))
+            fastq_r = glob(os.path.join(RNASEQ_DIR, ''.join([sample, '*', '{{ cookiecutter.read1_identifier}}', '{{ cookiecutter.fastq_suffix }}'])))
             fastq_f = "\t".join(fastq_f)
             fastq_r = "\t".join(fastq_r)
-            line = "\t".join(sample, fastq_f, fastq_r)
+            line = "\t".join([sample, fastq_f, fastq_r])
             tsv_lines.append(line)
         outfile.write("\n".join(tsv_lines))
     return outfile_name
@@ -133,7 +142,7 @@ def species_index():
 rule sargasso:
 
     input:
-        'sample_tsv',
+        'sample.tsv',
     params:
         data_type = DATA_TYPE,
         mapper = MAPPER_EXECUTABLE,
@@ -144,10 +153,10 @@ rule sargasso:
         sargasso_results_dir = lambda parameter: os.path.join(MAIN_DIR, "results/sargasso")
     output:
         log = "{params.sargasso_results_dir}/sargasso.log",
-        makefile = "{params.sargasso_results_dir}/sargasso.log"
+        makefile = "{params.sargasso_results_dir}/Makefile"
     shell:
         """
-        species_separator {params.data_type} --mapper-executable {params.mapper} --sambamba-sort-tmp-dir={params.tmp} --{params.strategy} --num-threads {params.threads} {input} {params.sargasso_results_dir} {params.species_index}
+        species_separator {params.data_type} --mapper-executable {params.mapper} --sambamba-sort-tmp-dir={params.tmp_dir} --{params.strategy} --num-threads {params.threads} {input} {params.sargasso_results_dir} {params.species_index}
         cd {params.sargasso_results_dir} && make > {output.log} 2>&1}
         """
 

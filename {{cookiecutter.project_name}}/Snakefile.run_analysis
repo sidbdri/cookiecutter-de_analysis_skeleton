@@ -138,7 +138,6 @@ def species_index():
 
     
 rule sargasso:
-
     input:
         'sample.tsv',
     params:

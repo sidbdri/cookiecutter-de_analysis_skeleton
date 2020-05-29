@@ -45,9 +45,7 @@ REF_FLAT.append("%s/{{ s }}/{{cookiecutter.rff_files[s]}}" % PICARD_DIR)
 {% endfor %}
 
 
-{% if cookiecutter.sargasso == "yes" %}
 STRATEGY="{{cookiecutter.strategy}}"
-{% endif %}
 
 
 NUM_THREADS_PER_SAMPLE=8
@@ -108,10 +106,10 @@ def retrieve_fastqs(sample):
     if IS_PAIRED_END == "yes":
         forward = glob("data/rnaseq/%s/*_1.fastq.gz" % sample)
         reverse = glob("data/rnaseq/%s/*_2.fastq.gz" % sample)
-        fastq = " ".join(forward + reverse)
+        fastq = forward + reverse
     else:
         forward = glob("data/rnaseq/%s/*_1.fastq.gz" % sample)
-        fastq = " ".join(forward)
+        fastq = forward
     return fastq
 
 

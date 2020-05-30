@@ -6,7 +6,8 @@ import yaml
 import os
 
 
-MAIN_DIR = '~/{{cookiecutter.projects_base}}/{{cookiecutter.project_name}}'
+HOME_DIR = os.path.expanduser("~")
+MAIN_DIR = os.path.join(HOME_DIR, '{{cookiecutter.projects_base}}/{{cookiecutter.project_name}}')
 DATA_DIR = os.path.join(MAIN_DIR, 'data')
 RNASEQ_DIR=os.path.join(DATA_DIR, 'rnaseq')
 PICARD_DIR = os.path.join(DATA_DIR, 'picard')

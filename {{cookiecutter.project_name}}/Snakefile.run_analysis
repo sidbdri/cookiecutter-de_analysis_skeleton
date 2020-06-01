@@ -61,7 +61,6 @@ def pick_first_sample():
     test_species = SPECIES[0]
     test_gtf = GTF_FILE[0]
     test_bam = "%s.%s.bam" % (test_sample, test_species)
-    test_bam = os.path.join('results/final_bams/1467_A', '1467_A.rat.bam')
     return test_bam, test_gtf
 
 

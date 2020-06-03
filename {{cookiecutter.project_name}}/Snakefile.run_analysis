@@ -121,9 +121,9 @@ def sample_tsv():
         for sample in SAMPLES:
             fastq_f = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', '{{ cookiecutter.read1_identifier}}', '.{{ cookiecutter.fastq_suffix }}'])))
             fastq_r = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', '{{ cookiecutter.read1_identifier}}', '.{{ cookiecutter.fastq_suffix }}'])))
-            fastq_f = "\t".join(fastq_f)
-            fastq_r = "\t".join(fastq_r)
-            line = "\t".join([sample, fastq_f, fastq_r])
+            fastq_f = ",".join(fastq_f)
+            fastq_r = ",".join(fastq_r)
+            line = " ".join([sample, fastq_f, fastq_r])
             tsv_lines.append(line)
         outfile.write("\n".join(tsv_lines))
     return outfile_name

@@ -155,7 +155,7 @@ rule sargasso:
     shell:
         """
         species_separator {params.data_type} --mapper-executable {params.mapper} --sambamba-sort-tmp-dir={params.tmp_dir} --{params.strategy} --num-threads {params.threads} {input} {params.sargasso_results_dir} {params.species_index}
-        cd {params.sargasso_results_dir} && make > {output.log} 2>&1}
+        cd {params.sargasso_results_dir} && make > {output.log} 2>&1
         """
 
 rule make_sample_tsv:

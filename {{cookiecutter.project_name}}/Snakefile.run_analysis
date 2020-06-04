@@ -185,8 +185,8 @@ rule star:
         output_dir = lambda wildcards, output: os.path.dirname(output[0]) + "/" + wildcards.sample
     shell:
         """
-        forward_reads = $(ls {input.fastq} | grep *{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }} | paste -d -s - | | tr -d '\n')
-        reverse_reads = $(ls {input.fastq} | grep *{{ cookiecutter.read2_identifier}}.{{ cookiecutter.fastq_suffix }} | paste -d -s - | | tr -d '\n')
+        forward_reads = $(ls {input.fastq} | grep '{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d -s - | tr -d '\\n')
+        reverse_reads = $(ls {input.fastq} | grep '{{ cookiecutter.read2_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d -s - | tr -d '\\n')
         {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads
         """
 

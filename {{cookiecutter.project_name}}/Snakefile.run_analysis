@@ -104,13 +104,7 @@ def strand_test(picard=False):
     return strandedness
 
 def retrieve_fastqs(sample):
-    if IS_PAIRED_END == "yes":
-        forward = glob("data/rnaseq/%s/*_1.fastq.gz" % sample)
-        reverse = glob("data/rnaseq/%s/*_2.fastq.gz" % sample)
-        fastq = forward + reverse
-    else:
-        forward = glob("data/rnaseq/%s/*_1.fastq.gz" % sample)
-        fastq = forward
+    fastq = glob("data/rnaseq/%s/*{{ cookiecutter.fastq_suffix }}" % sample)
     return fastq
 
 
@@ -120,7 +114,7 @@ def sample_tsv():
         tsv_lines = []
         for sample in SAMPLES:
             fastq_f = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', '{{ cookiecutter.read1_identifier}}', '.{{ cookiecutter.fastq_suffix }}'])))
-            fastq_r = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', '{{ cookiecutter.read1_identifier}}', '.{{ cookiecutter.fastq_suffix }}'])))
+            fastq_r = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', '{{ cookiecutter.read2_identifier}}', '.{{ cookiecutter.fastq_suffix }}'])))
             fastq_f = ",".join(fastq_f)
             fastq_r = ",".join(fastq_r)
             line = " ".join([sample, fastq_f, fastq_r])
@@ -137,7 +131,7 @@ def species_index():
     species_index_pairs = " ".join(species_index_pairs)
     return species_index_pairs
 
-    
+
 rule sargasso:
     input:
         'sample.tsv',
@@ -156,6 +150,7 @@ rule sargasso:
         """
         # this line is due to snakemake creating all dirs needed to make outfiles but sargasso doesnt like the outfolder already existing
         rm -rf results/sargasso
+
         species_separator {params.data_type} --mapper-executable {params.mapper} --sambamba-sort-tmp-dir={params.tmp_dir} --{params.strategy} --num-threads {params.threads} {input} results/sargasso {params.species_index}
         cd results/sargasso && make > {params.main_dir}/{output.log} 2>&1
         """
@@ -190,7 +185,9 @@ rule star:
         output_dir = lambda wildcards, output: os.path.dirname(output[0]) + "/" + wildcards.sample
     shell:
         """
-        {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn {input.fastq}
+        forward_reads = $(ls {input.fastq} | grep *{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }} | paste -d -s - | | tr -d '\n')
+        reverse_reads = $(ls {input.fastq} | grep *{{ cookiecutter.read2_identifier}}.{{ cookiecutter.fastq_suffix }} | paste -d -s - | | tr -d '\n')
+        {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads
         """
 
 rule bam_per_species: 

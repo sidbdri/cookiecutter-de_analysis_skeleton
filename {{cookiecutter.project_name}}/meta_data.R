@@ -67,18 +67,29 @@ check_samples()
 # <comparison_name>.percentage_misassignment_condition, and 
 # <comparison_name>.percentage_misassignment_condition_base
 #
-# The ~condition column matches the condition/condition_base column in the COMPARISON_TABLE.
-# The ~misassignment_samples_filter will be used in dplyr::filter to find reference samples for the estimation.
-# ~reference_species are the species in the reference samples.
+# The floowing explaintion take the HMR example from the paper,
+# where we want to estimate the rat reads misassigned from human/mouse
+# the reference samples are the co-cultures(HM), the target samples are the triple co-culture(HMR).
 #
-# For example,
-# "AMCon", "cells=='NA' & treatment=='Con'", "human,mouse",
-#
-# This row specifies that, for the rat samples in condition 'AMCon', we will use the human/mouse samples 
-# specified to estimate the misassignment percentage.
+# Columns: 
+# ~condition: matches the condition/condition_base column in the COMPARISON_TABLE.
+# ~species_of_interest: "rat"
+# ~target_samples: comma separated triple co-culture sample names. "01_HMR,02_HMR"
+# ~target_species: comma separated species of the target_samples. "human,mouse,rat"
+# ~reference_samples: comma separated co-cultures sample names. "01_HM,02_HM"
+# ~reference_species: comma separated species of the reference_samples, one for each refrence sample, separated by ';'.  "human,mouse; human,mouse"
+# ~paired: boolean value indicate whether the reference_samples are paired with the target_samples.
+#          In the case of paried
+#               - the order of the reference sample reflects the pairing.
+#               - In the case of using mono-culture samples, the order of each mono species reflects the pairing.
+#               - per-reference_sample fpkm(fpkm_mm_hs) will be used.
+#          In the case of not paried
+#               - the order of the reference sample does not matter.
+#               - the reference sample fpkm(fpkm_mm_hs) is calculated by mergeing all reference samples.
 MISASSIGNMENT_SAMPLE_REFERENCE_TABLE <- tribble(
-  ~condition, ~misassignment_samples_filter, ~reference_species,
- #"AMCon", "cells=='NA' & treatment=='Con'", "human,mouse",
+  ~condition, ~species_of_interest, ~target_samples, ~target_species, ~reference_samples, ~reference_species, ~paired
+  # "triple",SPECIES,"01_HMR,02_HMR","human,mouse,rat","01_M,02_M,01_H,02_H","mouse;mouse;human;human", T
+  # "triple",SPECIES,"01_HMR,02_HMR","human,mouse,rat","01_HM,02_HM","human,mouse;human,mouse", T
 )
 
 # Set up PCA and heatmap plots

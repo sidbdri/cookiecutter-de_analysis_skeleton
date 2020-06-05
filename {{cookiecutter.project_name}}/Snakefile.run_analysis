@@ -132,6 +132,15 @@ def species_index():
     return species_index_pairs
 
 
+
+
+
+rule make_sample_tsv:
+    output:
+        'sample.tsv'
+    run:
+        sample_tsv()
+
 rule sargasso:
     input:
         'sample.tsv',
@@ -144,6 +153,7 @@ rule sargasso:
         species_index = lambda parameter: species_index(),
         main_dir=MAIN_DIR
     output:
+        # this also needs to include a load of bam files - expand in the all rule, which required the sorted bams, which takes the bams from hewre as output.
         log = "results/sargasso/sargasso.log",
         makefile = "results/sargasso/Makefile"
     shell:
@@ -155,11 +165,43 @@ rule sargasso:
         cd results/sargasso && make > {params.main_dir}/{output.log} 2>&1
         """
 
-rule make_sample_tsv:
+rule sambamba_sort:
+    input:
+        "results/sargasso/filtered_reads/{sample}___{species}___filtered.bam"
     output:
-        'sample.tsv'
-    run:
-        sample_tsv()
+        "results/final_bams/{sample}.{species}.bam"
+    params:
+        tmp_dir = 'tmp',
+        threads = NUM_TOTAL_THREADS,
+
+    shell:
+        """
+        echo "sambamba sort --tmpdir {params.tmp_dir} -t {params.threads} -o {output} {input}"
+        """
+
+rule bams_mixed_species:
+    bams = expand("results/final_bams/{sample}.{species}.bam", species=SPECIES, sample=SAMPLES)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 rule fastqc:
     input:

@@ -162,8 +162,6 @@ rule sargasso:
         species_index = lambda parameter: species_index(),
         main_dir=MAIN_DIR
     output:
-        log = "results/sargasso/sargasso.log",
-        makefile = "results/sargasso/Makefile",
         bam = "results/sargasso/filtered_reads/{sample}___{species}___filtered.bam"
 
     shell:

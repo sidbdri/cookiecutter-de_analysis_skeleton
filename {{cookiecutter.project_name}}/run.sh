@@ -1,8 +1,8 @@
 
 {% if cookiecutter.sargasso == "yes" %}
-snakemake -s Snakefile.run_analysis bams_mixed_species
+snakemake -s Snakefile.multispecies_analysis multiqc
 {% else %}
-snakemake -s Snakefile.run_analysis bams
+snakemake -s Snakefile.singlespecies_analysis  multiqc
 {% endif %}
-snakemake -s Snakefile.run_analysis  multiqc
+
 

@@ -2,7 +2,6 @@
 
 from glob import glob
 from subprocess import call, check_output
-import yaml
 import os
 
 
@@ -61,7 +60,7 @@ def pick_first_sample():
     test_species = SPECIES[0]
     test_gtf = GTF_FILE[0]
     final_bams_dir = os.path.join("results/final_bams", test_sample)
-    test_bam = os.path.join(final_bams_dir, "%s.%s.bam" % (test_sample, test_species)) 
+    test_bam = os.path.join(final_bams_dir, "%s.%s.bam" % (test_sample, test_species))
     return test_bam, test_gtf
 
 
@@ -81,7 +80,6 @@ def calculate_strandedness(strand_dict):
     strand_one = strand_dict["1"]
     strand_two = strand_dict["2"]
     difference = (float(strand_one) - float(strand_two))/(float(strand_one) + float(strand_two))
-    return "2"
     if abs(difference) < 0.75:
         return "0"
     elif difference >= 0.75:
@@ -123,7 +121,7 @@ def sample_tsv():
     return outfile_name
 
 def species_index():
-    assert len(SPECIES) == len(MAPPER_INDEX) 
+    assert len(SPECIES) == len(MAPPER_INDEX)
     species_index_pairs = []
     for i in range(len(SPECIES)):
         species_index_pair = " ".join([SPECIES[i], MAPPER_INDEX[i]])
@@ -132,7 +130,18 @@ def species_index():
     return species_index_pairs
 
 
-
+rule fastqc:
+    input:
+        fastq = lambda wildcards: retrieve_fastqs(wildcards.sample)
+    output:
+        "results/fastqc/{sample}/stdin_fastqc.html"
+    params:
+        output_dir = lambda wildcards, output: os.path.dirname(output[0]),
+        fqc = FASTQC_EXECUTABLE
+    shell:
+        """
+        zcat {input.fastq} | {params.fqc} -o {params.output_dir} stdin
+        """
 
 
 rule make_sample_tsv:
@@ -179,92 +188,6 @@ rule sambamba_sort:
         sambamba sort --tmpdir {params.tmp_dir} -t {params.threads} -o {output} {input}
         """
 
-rule bams_mixed_species:
-    input:
-        bams = expand("results/final_bams/{sample}.{species}.bam", species=SPECIES, sample=SAMPLES)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-rule fastqc:
-    input:
-        fastq = lambda wildcards: retrieve_fastqs(wildcards.sample)
-    output:
-        "results/fastqc/{sample}/stdin_fastqc.html"
-    params:
-        output_dir = lambda wildcards, output: os.path.dirname(output[0]),
-        fqc = FASTQC_EXECUTABLE
-    shell:
-        """
-        zcat {input.fastq} | {params.fqc} -o {params.output_dir} stdin
-        """
-
-rule star:
-    input:
-        fastq = lambda wildcards: retrieve_fastqs(wildcards.sample)
-    output:
-        "results/mapped_reads/{sample}/{sample}Aligned.out.bam"
-    params:
-        index = "/home/kemelianova/projects/test_katie/data/rat_ensembl_96/STAR_indices/toplevel_2.7.0f",
-        star = STAR_EXECUTABLE,
-        output_dir = lambda wildcards, output: os.path.dirname(output[0]) + "/" + wildcards.sample
-    shell:
-        """
-        forward_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
-        reverse_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read2_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
-        {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads
-        """
-
-rule bam_per_species: 
-    input:
-        "results/mapped_reads/{sample}/{sample}Aligned.out.bam"
-    output:
-        "results/final_bams/{sample}/{sample}.{species}.bam"
-
-    shell:
-        """
-        ln -sr {input} {output}
-        """
-
-    
-rule sort_index_bam:
-    input:
-        "results/final_bams/{sample}.{species}.bam"
-    output:
-        "results/final_bams/{sample}.{species}.sorted.bam.bai"
-    params:
-        threads = NUM_THREADS_PER_SAMPLE
-    shell:
-        """
-        sambamba sort -t {params.threads} {input} {output}
-        """
-
-rule bams:
-    input:
-        star = expand("results/mapped_reads/{sample}/{sample}Aligned.out.bam", sample=SAMPLES),
-        fastqc = expand("results/fastqc/{sample}/stdin_fastqc.html", sample=SAMPLES),
-        final_bams = expand("results/final_bams/{sample}/{sample}.{species}.bam", sample=SAMPLES, species=SPECIES),
-        bam_bai = expand("results/final_bams/{sample}/{sample}.{species}.sorted.bam.bai", sample=SAMPLES, species=SPECIES)        
-
-
 rule feature_counts:
     input:
         bam = "results/final_bams/{sample}.{species}.bam"
@@ -284,7 +207,7 @@ rule feature_counts:
 
 rule create_rrna_intervals:
     input:
-        gtf = lambda wildcards: gtf_dict[wildcards.species], 
+        gtf = lambda wildcards: gtf_dict[wildcards.species],
         bam = "results/final_bams/{sample}.{species}.bam"
     output:
         rrna_intervals = "results/alignment_metrics/{species}/{sample}_intervalListBody.txt",
@@ -297,7 +220,7 @@ rule create_rrna_intervals:
         cat {output.rrna_header} {output.rrna_intervals} > {output.sample_rrna} 
         """
 
-rule run_picard:    
+rule run_picard:
     input:
         rrna_intervals = "data/picard/{species}/{sample}.txt",
         bam = "results/final_bams/{sample}.{species}.bam"
@@ -312,11 +235,11 @@ rule run_picard:
         java -jar {params.picard} CollectRnaSeqMetrics I={input.bam} O={output.picard_metrics} REF_FLAT={params.ref} STRAND={params.strandedness_flag} RIBOSOMAL_INTERVALS={input.rrna_intervals}
         """
 
-
 rule multiqc:
     input:
          fc = expand("results/read_counts/{sample}.{species}.counts", sample=SAMPLES, species=SPECIES),
-         picard = expand("results/alignment_metrics/{species}/{sample}.txt", sample=SAMPLES, species=SPECIES)
+         picard = expand("results/alignment_metrics/{species}/{sample}.txt", sample=SAMPLES, species=SPECIES),
+         fastqc = expand("results/fastqc/{sample}/stdin_fastqc.html", sample=SAMPLES)
     output:
         "multiqc_report.html"
     params:
@@ -325,6 +248,7 @@ rule multiqc:
         """
         multiqc -d -f -m star -m fastqc {params.input_dir}
         """
+
 
 
 

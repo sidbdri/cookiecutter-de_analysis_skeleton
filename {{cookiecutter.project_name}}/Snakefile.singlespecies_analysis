@@ -2,7 +2,6 @@
 
 from glob import glob
 from subprocess import call, check_output
-import yaml
 import os
 
 
@@ -61,7 +60,7 @@ def pick_first_sample():
     test_species = SPECIES[0]
     test_gtf = GTF_FILE[0]
     final_bams_dir = os.path.join("results/final_bams", test_sample)
-    test_bam = os.path.join(final_bams_dir, "%s.%s.bam" % (test_sample, test_species)) 
+    test_bam = os.path.join(final_bams_dir, "%s.%s.bam" % (test_sample, test_species))
     return test_bam, test_gtf
 
 
@@ -81,7 +80,6 @@ def calculate_strandedness(strand_dict):
     strand_one = strand_dict["1"]
     strand_two = strand_dict["2"]
     difference = (float(strand_one) - float(strand_two))/(float(strand_one) + float(strand_two))
-    return "2"
     if abs(difference) < 0.75:
         return "0"
     elif difference >= 0.75:
@@ -123,76 +121,13 @@ def sample_tsv():
     return outfile_name
 
 def species_index():
-    assert len(SPECIES) == len(MAPPER_INDEX) 
+    assert len(SPECIES) == len(MAPPER_INDEX)
     species_index_pairs = []
     for i in range(len(SPECIES)):
         species_index_pair = " ".join([SPECIES[i], MAPPER_INDEX[i]])
         species_index_pairs.append(species_index_pair)
     species_index_pairs = " ".join(species_index_pairs)
     return species_index_pairs
-
-
-
-
-
-rule make_sample_tsv:
-    output:
-        'sample.tsv'
-    run:
-        sample_tsv()
-
-rule sargasso:
-    input:
-        'sample.tsv',
-    params:
-        data_type = DATA_TYPE,
-        mapper = MAPPER_EXECUTABLE,
-        tmp_dir = 'tmp',
-        strategy=STRATEGY,
-        threads = NUM_TOTAL_THREADS,
-        species_index = lambda parameter: species_index(),
-        main_dir=MAIN_DIR
-    output:
-        log = "results/sargasso/sargasso.log",
-        makefile = "results/sargasso/Makefile",
-        bam = "results/sargasso/filtered_reads/{sample}___{species}___filtered.bam"
-
-    shell:
-        """
-        # this line is due to snakemake creating all dirs needed to make outfiles but sargasso doesnt like the outfolder already existing
-        rm -rf results/sargasso
-        species_separator {params.data_type} --mapper-executable {params.mapper} --sambamba-sort-tmp-dir={params.tmp_dir} --{params.strategy} --num-threads {params.threads} {input} results/sargasso {params.species_index}
-        cd results/sargasso && make > {params.main_dir}/sargasso.log 2>&1
-        """
-
-rule sambamba_sort:
-    input:
-        "results/sargasso/filtered_reads/{sample}___{species}___filtered.bam"
-    output:
-        "results/final_bams/{sample}.{species}.bam"
-    params:
-        tmp_dir = 'tmp',
-        threads = NUM_TOTAL_THREADS,
-
-    shell:
-        """
-        sambamba sort --tmpdir {params.tmp_dir} -t {params.threads} -o {output} {input}
-        """
-
-rule bams_mixed_species:
-    input:
-        bams = expand("results/final_bams/{sample}.{species}.bam", species=SPECIES, sample=SAMPLES)
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -233,7 +168,7 @@ rule star:
         {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads
         """
 
-rule bam_per_species: 
+rule bam_per_species:
     input:
         "results/mapped_reads/{sample}/{sample}Aligned.out.bam"
     output:
@@ -244,7 +179,6 @@ rule bam_per_species:
         ln -sr {input} {output}
         """
 
-    
 rule sort_index_bam:
     input:
         "results/final_bams/{sample}.{species}.bam"
@@ -262,8 +196,7 @@ rule bams:
         star = expand("results/mapped_reads/{sample}/{sample}Aligned.out.bam", sample=SAMPLES),
         fastqc = expand("results/fastqc/{sample}/stdin_fastqc.html", sample=SAMPLES),
         final_bams = expand("results/final_bams/{sample}/{sample}.{species}.bam", sample=SAMPLES, species=SPECIES),
-        bam_bai = expand("results/final_bams/{sample}/{sample}.{species}.sorted.bam.bai", sample=SAMPLES, species=SPECIES)        
-
+        bam_bai = expand("results/final_bams/{sample}/{sample}.{species}.sorted.bam.bai", sample=SAMPLES, species=SPECIES)
 
 rule feature_counts:
     input:
@@ -284,7 +217,7 @@ rule feature_counts:
 
 rule create_rrna_intervals:
     input:
-        gtf = lambda wildcards: gtf_dict[wildcards.species], 
+        gtf = lambda wildcards: gtf_dict[wildcards.species],
         bam = "results/final_bams/{sample}.{species}.bam"
     output:
         rrna_intervals = "results/alignment_metrics/{species}/{sample}_intervalListBody.txt",
@@ -297,7 +230,7 @@ rule create_rrna_intervals:
         cat {output.rrna_header} {output.rrna_intervals} > {output.sample_rrna} 
         """
 
-rule run_picard:    
+rule run_picard:
     input:
         rrna_intervals = "data/picard/{species}/{sample}.txt",
         bam = "results/final_bams/{sample}.{species}.bam"
@@ -325,6 +258,9 @@ rule multiqc:
         """
         multiqc -d -f -m star -m fastqc {params.input_dir}
         """
+
+
+
 
 
 

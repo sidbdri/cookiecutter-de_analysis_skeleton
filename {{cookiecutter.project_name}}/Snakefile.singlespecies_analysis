@@ -172,14 +172,13 @@ rule bam_per_species:
     input:
         "results/mapped_reads/{sample}/{sample}Aligned.out.bam"
     output:
-        "results/final_bams/{sample}/{sample}.{species}.bam"
-
+        "results/final_bams/{sample}.{species}.bam"
     shell:
         """
         ln -sr {input} {output}
         """
 
-rule sort_index_bam:
+rule index_bam:
     input:
         "results/final_bams/{sample}.{species}.bam"
     output:
@@ -190,13 +189,6 @@ rule sort_index_bam:
         """
         sambamba sort -t {params.threads} {input} {output}
         """
-
-rule bams:
-    input:
-        star = expand("results/mapped_reads/{sample}/{sample}Aligned.out.bam", sample=SAMPLES),
-        fastqc = expand("results/fastqc/{sample}/stdin_fastqc.html", sample=SAMPLES),
-        final_bams = expand("results/final_bams/{sample}/{sample}.{species}.bam", sample=SAMPLES, species=SPECIES),
-        bam_bai = expand("results/final_bams/{sample}/{sample}.{species}.sorted.bam.bai", sample=SAMPLES, species=SPECIES)
 
 rule feature_counts:
     input:
@@ -249,7 +241,10 @@ rule run_picard:
 rule multiqc:
     input:
          fc = expand("results/read_counts/{sample}.{species}.counts", sample=SAMPLES, species=SPECIES),
-         picard = expand("results/alignment_metrics/{species}/{sample}.txt", sample=SAMPLES, species=SPECIES)
+         picard = expand("results/alignment_metrics/{species}/{sample}.txt", sample=SAMPLES, species=SPECIES),
+         indexed_bams = expand("results/final_bams/{sample}.{species}.sorted.bam.bai", sample=SAMPLES, species=SPECIES),
+         fastqc = expand("results/fastqc/{sample}/stdin_fastqc.html", sample=SAMPLES)
+
     output:
         "multiqc_report.html"
     params:

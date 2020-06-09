@@ -237,13 +237,15 @@ rule run_picard:
         """
 
 
+rule bams:
+    input:
+        indexed_bams = expand("results/final_bams/{sample}.{species}.sorted.bam.bai", sample=SAMPLES, species=SPECIES)
+
 rule multiqc:
     input:
-         fc = expand("results/read_counts/{sample}.{species}.counts", sample=SAMPLES, species=SPECIES),
          picard = expand("results/alignment_metrics/{species}/{sample}.txt", sample=SAMPLES, species=SPECIES),
-         indexed_bams = expand("results/final_bams/{sample}.{species}.sorted.bam.bai", sample=SAMPLES, species=SPECIES),
+         fc = expand("results/read_counts/{sample}.{species}.counts", sample=SAMPLES, species=SPECIES),
          fastqc = expand("results/fastqc/{sample}/stdin_fastqc.html", sample=SAMPLES)
-
     output:
         "multiqc_report.html"
     params:

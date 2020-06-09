@@ -233,6 +233,11 @@ rule run_picard:
         java -jar {params.picard} CollectRnaSeqMetrics I={input.bam} O={output.picard_metrics} REF_FLAT={params.ref} STRAND={params.strandedness_flag} RIBOSOMAL_INTERVALS={input.rrna_intervals}
         """
 
+rule bams:
+    input:
+        indexed_bams = expand("results/final_bams/{sample}.{species}.bam", sample=SAMPLES, species=SPECIES)
+
+
 rule multiqc:
     input:
          fc = expand("results/read_counts/{sample}.{species}.counts", sample=SAMPLES, species=SPECIES),

@@ -162,8 +162,7 @@ rule sargasso:
         species_index = lambda parameter: species_index(),
         main_dir=MAIN_DIR
     output:
-        bam = "results/sargasso/filtered_reads/{sample}___{species}___filtered.bam"
-
+        bam = expand("results/sargasso/filtered_reads/{sample}___{species}___filtered.bam", sample=SAMPLES, species=SPECIES)
     shell:
         """
         # this line is due to snakemake creating all dirs needed to make outfiles but sargasso doesnt like the outfolder already existing
@@ -235,8 +234,8 @@ rule run_picard:
 
 rule bams:
     input:
+        sargasso_bams = expand("results/sargasso/filtered_reads/{sample}___{species}___filtered.bam", sample=SAMPLES, species=SPECIES),
         indexed_bams = expand("results/final_bams/{sample}.{species}.bam", sample=SAMPLES, species=SPECIES)
-
 
 rule multiqc:
     input:

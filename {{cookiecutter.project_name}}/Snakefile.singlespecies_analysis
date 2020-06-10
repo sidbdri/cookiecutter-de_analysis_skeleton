@@ -157,7 +157,7 @@ rule star:
     output:
         "results/mapped_reads/{sample}/{sample}Aligned.out.bam"
     params:
-        index = "/home/kemelianova/projects/test_katie/data/rat_ensembl_96/STAR_indices/toplevel_2.7.0f",
+        index = MAPPER_INDEX,
         star = STAR_EXECUTABLE,
         output_dir = lambda wildcards, output: os.path.dirname(output[0]) + "/" + wildcards.sample
     shell:

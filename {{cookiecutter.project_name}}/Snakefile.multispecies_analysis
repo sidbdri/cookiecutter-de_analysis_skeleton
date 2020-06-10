@@ -78,6 +78,8 @@ def calculate_strandedness(strand_dict):
     strand_zero = strand_dict["0"]
     strand_one = strand_dict["1"]
     strand_two = strand_dict["2"]
+    if all(v == 0 for v in list(strand_dict.values())):
+        raise Exception('No mapped reads detected')
     difference = (float(strand_one) - float(strand_two))/(float(strand_one) + float(strand_two))
     if abs(difference) < 0.75:
         return "0"

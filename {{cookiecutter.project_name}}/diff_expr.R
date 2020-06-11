@@ -103,6 +103,7 @@ comparisons_results <- COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>
                     !!str_c(comparison_name, '.pval') := pvalue,
                     !!str_c(comparison_name, '.padj') := padj)
     
+    P=NULL
     if (MISASSIGNMENT_PERCENTAGE) {
       P <- get_misassignment_percentages(comparison_name, gene_lengths)
       
@@ -122,17 +123,11 @@ comparisons_results <- COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>
                                          pull(condition_base)) := p))
       }   
       
-      res$summary_tb_row %<>% 
-        mutate(Misassignment_samples_in_comparison_level_condition = 
-                 ifelse(Comparison == comparison_name, 
-                        P$condition_reference_samples %>% str_c(collapse = ','),
-                        Misassignment_samples_in_comparison_level_condition)) %>% 
-        mutate(Misassignment_samples_in_base_level_condition = 
-                 ifelse(Comparison == comparison_name,
-                        P$condition_base_reference_samples %>% str_c(collapse = ','),
-                        Misassignment_samples_in_base_level_condition))
+      res$summary_tb_row %<>% as.data.frame() %>%
+        mutate(Misassignment_samples_in_comparison_level_condition = P$condition_reference_samples) %>% 
+        mutate(Misassignment_samples_in_base_level_condition = P$condition_base_reference_samples)
       
-    }    
+    }   
     
     p_plot <- plot_pvalue_distribution(results_tb, str_c(comparison_name,'.pval'))
     
@@ -142,7 +137,8 @@ comparisons_results <- COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>
          dds = res$dds,
          results_tb = results_tb,
          summary_tb = res$summary_tb_row,
-         p_plot = p_plot)
+         p_plot = p_plot,
+         misassignment_percentage=P)
   }
 )
 
@@ -169,7 +165,7 @@ lapply(comparisons_results, function(cmp) {
   # see https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/83
   # cmp$res %>% set_global(cmp$comparison %>% str_c('res', sep = '_'))
   cmp$dds %>% set_global(cmp$comparison %>% str_c('dds', sep = '_'))
-
+  cmp$misassignment_percentage %>% set_global(cmp$comparison %>% str_c('misassignment_percentage', sep = '_'))
   'success'
 }) 
 

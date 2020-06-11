@@ -87,10 +87,33 @@ check_samples()
 #               - the order of the reference sample does not matter.
 #               - the reference sample fpkm(fpkm_mm_hs) is calculated by mergeing all reference samples.
 MISASSIGNMENT_SAMPLE_REFERENCE_TABLE <- tribble(
-  ~condition, ~species_of_interest, ~target_samples, ~target_species, ~reference_samples, ~reference_species, ~paired
-  # "triple",SPECIES,"01_HMR,02_HMR","human,mouse,rat","01_M,02_M,01_H,02_H","mouse;mouse;human;human", T
-  # "triple",SPECIES,"01_HMR,02_HMR","human,mouse,rat","01_HM,02_HM","human,mouse;human,mouse", T
+  ~comparison_name, ~condition, ~species_of_interest, ~target_samples, ~target_species, ~reference_samples, ~reference_species, ~paired,
+  #"tri_vs_mono_pericytes", "triple",SPECIES,"01_HMR,02_HMR","human,mouse,rat","01_M,02_M,01_H,02_H","mouse;mouse;human;human", T,
+  #"tri_vs_mono_pericytes", "triple",SPECIES,"01_HMR,02_HMR","human,mouse,rat","01_HM,02_HM","human,mouse;human,mouse", T
 )
+
+## This helps you to create part of the MISASSIGNMENT_SAMPLE_REFERENCE_TABLE
+# COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>%  lapply(
+#   function(comparison_name) {
+#     x=COMPARISON_TABLE %>% filter(comparison==comparison_name)
+#     str_c(x$comparison,
+#           x$condition,
+#           "SPECIES",
+#           SAMPLE_DATA %>% filter(!!parse_expr(x$filter)) %>%
+#             filter(!!parse_expr(x$condition_name) == x$condition) %>%
+#             pull(sample_name) %>%
+#             str_c(collapse = ','),
+#           sep = '\",\"') %>% cat('\n',sep = '')
+#     str_c(x$comparison,
+#           x$condition_base,
+#           "SPECIES",
+#           SAMPLE_DATA %>% filter(!!parse_expr(x$filter)) %>%
+#             filter(!!parse_expr(x$condition_name) == x$condition_base) %>%
+#             pull(sample_name) %>%
+#             str_c(collapse = ','),
+#           sep = '\",\"') %>% cat('\n',sep = '')
+#   })
+
 
 # Set up PCA and heatmap plots
 PCA_FEATURE <- c('condition')

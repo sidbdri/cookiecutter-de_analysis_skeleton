@@ -1516,7 +1516,8 @@ get_gene_counts_and_lengths <- function(samples, species, gene_lengths, sum_coun
     purrr::reduce(inner_join)
   
   if (sum_counts) {
-    res %<>% mutate(counts = rowSums(.[,-1])) %>% dplyr::select(gene, counts)
+    # res %<>% mutate(counts = rowSums(.[,-1])) %>% dplyr::select(gene, counts)
+    res %<>% mutate(counts = rowSums(.[,-1]))
   }
   
   res %>% inner_join(gene_lengths)
@@ -1532,10 +1533,12 @@ calculate_total_reads_for_species <- function(samples, species, sum_counts = FAL
     })   
   
   if (sum_counts) {
-    res %<>% sum() %>% set_names("counts")
+    res %<>% set_names(samples)
+    res['counts']=sum(res)
   } else {
     res %<>% set_names(samples)
   }
+  res
 }
 
 fpkm_formula <- function(read_counts, gene_lengths, total_reads) {
@@ -1572,9 +1575,15 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
   # reference_species="rat;rat;rat;rat;human;human;human;human"
   
   # x <- COMPARISON_TABLE %>% filter(comparison == comparison_name)
-  # y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% filter(condition == x$condition)
-  # species_of_interest=y$species_of_interest
+  # y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>%
+  #   filter(comparison_name == x$comparison) %>%
+  #   filter(condition == x$condition_base)
+  # target_samples <- SAMPLE_DATA %>% filter(!!parse_expr(x$filter)) %>%
+  #   filter(!!parse_expr(x$condition_name) == x$condition) %>%
+  #   pull(sample_name) %>%
+  #   str_c(collapse = ',')
   # target_samples=y$target_samples
+  # species_of_interest=y$species_of_interest
   # target_species=y$target_species
   # reference_samples=y$reference_samples
   # reference_species=y$reference_species
@@ -1882,8 +1891,16 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
   ret <- {}
   
   #for condition
-  y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% filter(condition == x$condition)
+  y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% 
+    filter(comparison_name == x$comparison) %>% 
+    filter(condition == x$condition)
+  
   if (nrow(y) > 0) {
+    # target_samples <- SAMPLE_DATA %>% filter(!!parse_expr(x$filter)) %>%
+    #   filter(!!parse_expr(x$condition_name) == x$condition) %>%
+    #   pull(sample_name) %>%
+    #   str_c(collapse = ',')
+    
     P_condition <- calculate_per_gene_misassignment_percentages(y$species_of_interest,
                                                                 y$target_samples, y$target_species, 
                                                                 y$reference_samples, y$reference_species, 
@@ -1902,13 +1919,20 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
   
   
   #for condition_base
-  y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% filter(condition == x$condition_base)
+  y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% 
+    filter(comparison_name == x$comparison) %>% 
+    filter(condition == x$condition_base)
+  
   if (nrow(y) > 0) {
+    # target_samples <- SAMPLE_DATA %>% filter(!!parse_expr(x$filter)) %>%
+    #   filter(!!parse_expr(x$condition_name) == x$condition_base) %>%
+    #   pull(sample_name) %>%
+    #   str_c(collapse = ',')
     P_condition_base <- calculate_per_gene_misassignment_percentages(y$species_of_interest,
                                                                      y$target_samples, y$target_species, 
                                                                      y$reference_samples, y$reference_species, 
                                                                      y$paired,
-                                                                     gene_lengths,paired)
+                                                                     gene_lengths)
     ret[['P_condition_base']] = P_condition_base$P %>% dplyr::select(gene,p)
     ret[['P_condition_base_debug']] = P_condition_base
     ret[['condition_base_reference_samples']] = y$reference_samples

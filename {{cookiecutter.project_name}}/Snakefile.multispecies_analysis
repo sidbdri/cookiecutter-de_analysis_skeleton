@@ -64,10 +64,14 @@ def pick_first_sample():
 
 
 def run_featurecounts(strand_setting):
+    read_counts_folder = "results/read_counts"
+    if not os.path.exists(read_counts_folder):
+        os.makedirs(read_counts_folder)
     test_bam, test_gtf = pick_first_sample()
-    outfile = os.path.join("results/read_counts", "counts_temp.%s.out" % strand_setting)
+    outfile = os.path.join(read_counts_folder, "counts_temp.%s.out" % strand_setting)
     call("featureCounts -T 4 -p -a %s -o %s -s %s %s" % (test_gtf, outfile, strand_setting, test_bam), shell=True)
-    return outfile
+    outfile_summary = ".".join([outfile, "summary"])
+    return outfile_summary
 
 
 def get_assigned_reads(counts_file):
@@ -92,6 +96,7 @@ def calculate_strandedness(strand_dict):
     else:
         raise Exception('Can not calculate strandedness from values: one=%s, two=%s, three=%s' % (strand_zero, strand_one, strand_two))
 
+
 def strand_test(picard=False):
     strand_assigned_reads = {"0": 0, "1": 0, "2": 0}
     for i in strand_assigned_reads:
@@ -103,6 +108,7 @@ def strand_test(picard=False):
     if picard is True:
         return picard_strand_value[strandedness]
     return strandedness
+
 
 def retrieve_fastqs(sample):
     fastq = glob("data/rnaseq/%s/*{{ cookiecutter.fastq_suffix }}" % sample)

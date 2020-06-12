@@ -65,8 +65,9 @@ def pick_first_sample():
 
 def run_featurecounts(strand_setting):
     test_bam, test_gtf = pick_first_sample()
-    call("featureCounts -T 4 -p -a %s -o counts_temp.%s.out -s %s %s" % (test_gtf, strand_setting, strand_setting, test_bam), shell=True)
-
+    outfile = os.path.join("results/read_counts", "counts_temp.%s.out" % strand_setting)
+    call("featureCounts -T 4 -p -a %s -o %s -s %s %s" % (test_gtf, outfile, strand_setting, test_bam), shell=True)
+    return outfile
 
 def get_assigned_reads(counts_file):
     counts = check_output("grep Assigned %s | awk '{print $2}'" % counts_file, universal_newlines=True, shell=True)
@@ -91,8 +92,8 @@ def calculate_strandedness(strand_dict):
 def strand_test(picard=False):
     strand_assigned_reads = {"0": 0, "1": 0, "2": 0}
     for i in strand_assigned_reads:
-        run_featurecounts(i)
-        assigned = get_assigned_reads('counts_temp.%s.out.summary' % i)
+        counts_file = run_featurecounts(i)
+        assigned = get_assigned_reads(counts_file)
         strand_assigned_reads[i] = assigned
     strandedness = calculate_strandedness(strand_assigned_reads)
     picard_strand_value = {"0": "NONE", "1": "FIRST_READ_TRANSCRIPTION_STRAND", "2": "SECOND_READ_TRANSCRIPTION_STRAND"}

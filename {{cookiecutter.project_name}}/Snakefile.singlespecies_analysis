@@ -55,6 +55,7 @@ SAMPLES="{{cookiecutter.rnaseq_samples}}"
 SAMPLES=SAMPLES.split()
 
 
+
 def pick_first_sample():
     test_sample = SAMPLES[0]
     test_species = SPECIES[0]
@@ -64,10 +65,15 @@ def pick_first_sample():
 
 
 def run_featurecounts(strand_setting):
+    read_counts_folder = "results/read_counts"
+    if not os.path.exists(read_counts_folder):
+        os.makedirs(read_counts_folder)
     test_bam, test_gtf = pick_first_sample()
-    outfile = os.path.join("results/read_counts", "counts_temp.%s.out" % strand_setting)
+    outfile = os.path.join(read_counts_folder, "counts_temp.%s.out" % strand_setting)
     call("featureCounts -T 4 -p -a %s -o %s -s %s %s" % (test_gtf, outfile, strand_setting, test_bam), shell=True)
-    return outfile
+    outfile_summary = ".".join([outfile, "summary"])
+    return outfile_summary
+
 
 def get_assigned_reads(counts_file):
     counts = check_output("grep Assigned %s | awk '{print $2}'" % counts_file, universal_newlines=True, shell=True)
@@ -79,6 +85,8 @@ def calculate_strandedness(strand_dict):
     strand_zero = strand_dict["0"]
     strand_one = strand_dict["1"]
     strand_two = strand_dict["2"]
+    if all(v == 0 for v in list(strand_dict.values())):
+        raise Exception('No mapped reads detected')
     difference = (float(strand_one) - float(strand_two))/(float(strand_one) + float(strand_two))
     if abs(difference) < 0.75:
         return "0"
@@ -88,6 +96,7 @@ def calculate_strandedness(strand_dict):
         return "2"
     else:
         raise Exception('Can not calculate strandedness from values: one=%s, two=%s, three=%s' % (strand_zero, strand_one, strand_two))
+
 
 def strand_test(picard=False):
     strand_assigned_reads = {"0": 0, "1": 0, "2": 0}
@@ -100,6 +109,7 @@ def strand_test(picard=False):
     if picard is True:
         return picard_strand_value[strandedness]
     return strandedness
+
 
 def retrieve_fastqs(sample):
     fastq = glob("data/rnaseq/%s/*{{ cookiecutter.fastq_suffix }}" % sample)

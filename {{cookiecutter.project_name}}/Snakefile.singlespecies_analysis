@@ -166,11 +166,16 @@ rule star:
     input:
         fastq = lambda wildcards: retrieve_fastqs(wildcards.sample)
     output:
-        "results/mapped_reads/{sample}/{sample}Aligned.out.bam"
+        bam = "results/mapped_reads/{sample}Aligned.out.bam",
+        sorted_bam = "results/mapped_reads/{sample}Aligned.sortedByCoord.out.bam",
+        final_log = "results/mapped_reads/{sample}Log.final.out",
+        log = temp("results/mapped_reads/{sample}Log.out"),
+        progress = temp("results/mapped_reads/{sample}Log.progress.out"),
+        SJ = temp("results/mapped_reads/{sample}SJ.out.tab")
     params:
         index = MAPPER_INDEX,
         star = STAR_EXECUTABLE,
-        output_dir = lambda wildcards, output: os.path.dirname(output[0]) + "/" + wildcards.sample
+        output_dir = lambda wildcards, output: os.path.join(os.path.dirname(output.bam),  wildcards.sample)
     shell:
         """
         forward_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
@@ -178,9 +183,25 @@ rule star:
         {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads
         """
 
+rule rename_star_output:
+    input:
+        bam = "results/mapped_reads/{sample}/{sample}Aligned.out.bam",
+        sorted_bam = "results/mapped_reads/{sample}/{sample}Aligned.sortedByCoord.out.bam",
+        final_log = "results/mapped_reads/{sample}/{sample}Log.final.out"
+    output:
+        bam = "results/mapped_reads/{sample}.bam",
+        sorted_bam = "results/mapped_reads/{sample}.sorted.bam",
+        final_log = "results/mapped_reads/{sample}.log.out"
+    shell:
+        """
+        mv {input.bam} {output.bam}
+        mv {input.sorted} {output.sorted}
+        mv {input.final_log} {output.final_log}
+        """
+
 rule bam_per_species:
     input:
-        "results/mapped_reads/{sample}/{sample}Aligned.out.bam"
+        "results/mapped_reads/{sample}.bam"
     output:
         "results/final_bams/{sample}.{species}.bam"
     shell:
@@ -263,7 +284,7 @@ rule multiqc:
         input_dir = "results"
     shell:
         """
-        multiqc -d -f -m star -m fastqc {params.input_dir}
+        multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargasso -m picard -m bowtie2 {params.input_dir}
         """
 
 

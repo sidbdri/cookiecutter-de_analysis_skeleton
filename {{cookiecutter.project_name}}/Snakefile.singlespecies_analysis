@@ -181,22 +181,10 @@ rule star:
         forward_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
         reverse_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read2_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
         {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads
-        """
-
-rule rename_star_output:
-    input:
-        bam = "results/mapped_reads/{sample}/{sample}Aligned.out.bam",
-        sorted_bam = "results/mapped_reads/{sample}/{sample}Aligned.sortedByCoord.out.bam",
-        final_log = "results/mapped_reads/{sample}/{sample}Log.final.out"
-    output:
-        bam = "results/mapped_reads/{sample}.bam",
-        sorted_bam = "results/mapped_reads/{sample}.sorted.bam",
-        final_log = "results/mapped_reads/{sample}.log.out"
-    shell:
-        """
-        mv {input.bam} {output.bam}
-        mv {input.sorted} {output.sorted}
-        mv {input.final_log} {output.final_log}
+        
+        mv {output.bam} results/mapped_reads/{wildcards.sample}.bam
+        mv {output.sorted_bam} results/mapped_reads/{wildcards.sample}.sorted.bam
+        mv {output.final_log} results/mapped_reads/{wildcards.sample}.log.out
         """
 
 rule bam_per_species:

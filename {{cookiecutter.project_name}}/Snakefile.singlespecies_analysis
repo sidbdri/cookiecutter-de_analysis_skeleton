@@ -166,9 +166,9 @@ rule star:
     input:
         fastq = lambda wildcards: retrieve_fastqs(wildcards.sample)
     output:
-        bam = "results/mapped_reads/{sample}Aligned.out.bam",
-        sorted_bam = "results/mapped_reads/{sample}Aligned.sortedByCoord.out.bam",
-        final_log = "results/mapped_reads/{sample}Log.final.out",
+        bam = "results/mapped_reads/{sample}.bam",
+        sorted_bam = "results/mapped_reads/{sample}.sorted.bam",
+        final_log = "results/mapped_reads/{sample}.log.out",
         log = temp("results/mapped_reads/{sample}Log.out"),
         progress = temp("results/mapped_reads/{sample}Log.progress.out"),
         SJ = temp("results/mapped_reads/{sample}SJ.out.tab")

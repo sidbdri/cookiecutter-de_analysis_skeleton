@@ -182,9 +182,9 @@ rule star:
         reverse_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read2_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
         {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads
         
-        mv {output.bam} results/mapped_reads/{wildcards.sample}.bam
-        mv {output.sorted_bam} results/mapped_reads/{wildcards.sample}.sorted.bam
-        mv {output.final_log} results/mapped_reads/{wildcards.sample}.log.out
+        mv  "results/mapped_reads/{sample}Aligned.out.bam" {output.bam}
+        mv results/mapped_reads/{sample}Aligned.sortedByCoord.out.bam {output.sorted_bam}
+        mv results/mapped_reads/{sample}Log.final.out {output.final_log}
         """
 
 rule bam_per_species:

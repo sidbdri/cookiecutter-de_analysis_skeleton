@@ -304,6 +304,16 @@ done | xargs -t -n 1 -P ${NUM_PARALLEL_JOBS} -I % bash -c "%"
 ##### Gather all QC data
 multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargasso -m picard -m bowtie2 ${RESULTS_DIR}
 
+#### we check if all the sample are the same strandness settings
+#### https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/127
+strandness_qc=`cat ${MAIN_DIR}/multiqc_data/multiqc_picard_RnaSeqMetrics.txt | tail -n +2 | awk -F '\t' '$19<99.5 {print $1"\t"$19}'`
+if [ ! `echo -n "${strandness_qc}" | wc -l` = 0 ]; then
+    echo "Error: The following sample may have the wrong strandness setting:"
+    echo "${strandness_qc}"
+    exit
+fi
+
+
 exit;
 
 {% for s in cookiecutter.species.split(' ') %}

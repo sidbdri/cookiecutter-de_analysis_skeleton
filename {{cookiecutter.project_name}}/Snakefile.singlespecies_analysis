@@ -176,15 +176,16 @@ rule star:
         index = MAPPER_INDEX,
         star = STAR_EXECUTABLE,
         output_dir = lambda wildcards, output: os.path.join(os.path.dirname(output.bam),  wildcards.sample)
+    log: "results/logs/star/{sample}.log"
     shell:
         """
         forward_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
         reverse_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read2_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
         {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads
         
-        mv  "results/mapped_reads/{sample}Aligned.out.bam" {output.bam}
-        mv results/mapped_reads/{sample}Aligned.sortedByCoord.out.bam {output.sorted_bam}
-        mv results/mapped_reads/{sample}Log.final.out {output.final_log}
+        mv  "results/mapped_reads/{wildcards.sample}Aligned.out.bam" {output.bam}
+        mv results/mapped_reads/{wildcards.sample}Aligned.sortedByCoord.out.bam {output.sorted_bam}
+        mv results/mapped_reads/{wildcards.sample}Log.final.out {output.final_log}
         """
 
 rule bam_per_species:
@@ -220,6 +221,8 @@ rule feature_counts:
         featurecount = FEATURECOUNTS_EXECUTABLE,
         num_threads = 4,
         gtf = lambda wildcards: gtf_dict[wildcards.species]
+    log: "results/logs/featureCount/{sample}.{species}.log"
+        """
     shell:
         """
         {params.featurecount} -T {params.num_threads} -p -a {params.gtf} -o {output.counts_temp} -s {params.strandedness_flag} {input.bam}
@@ -251,6 +254,7 @@ rule run_picard:
         picard = PICARD_EXECUTABLE,
         ref = lambda wildcards: glob("data/picard/%s/*rff" % wildcards.species ),
         strandedness_flag = lambda parameter: strand_test(picard=True)
+    log: "results/logs/picard/{species}.log"
     shell:
         """
         java -jar {params.picard} CollectRnaSeqMetrics I={input.bam} O={output.picard_metrics} REF_FLAT={params.ref} STRAND={params.strandedness_flag} RIBOSOMAL_INTERVALS={input.rrna_intervals}

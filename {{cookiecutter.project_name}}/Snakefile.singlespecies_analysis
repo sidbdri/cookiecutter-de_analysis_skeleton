@@ -181,7 +181,7 @@ rule star:
         """
         forward_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
         reverse_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read2_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
-        {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads
+        {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads 2> {log
         
         mv  "results/mapped_reads/{wildcards.sample}Aligned.out.bam" {output.bam}
         mv results/mapped_reads/{wildcards.sample}Aligned.sortedByCoord.out.bam {output.sorted_bam}
@@ -222,10 +222,9 @@ rule feature_counts:
         num_threads = 4,
         gtf = lambda wildcards: gtf_dict[wildcards.species]
     log: "results/logs/featureCount/{sample}.{species}.log"
-        """
     shell:
         """
-        {params.featurecount} -T {params.num_threads} -p -a {params.gtf} -o {output.counts_temp} -s {params.strandedness_flag} {input.bam}
+        {params.featurecount} -T {params.num_threads} -p -a {params.gtf} -o {output.counts_temp} -s {params.strandedness_flag} {input.bam} 2> {log
         tail -n +3 {output.counts_temp} | cut -f 1,7 > {output.counts_out}
         """
 
@@ -254,10 +253,10 @@ rule run_picard:
         picard = PICARD_EXECUTABLE,
         ref = lambda wildcards: glob("data/picard/%s/*rff" % wildcards.species ),
         strandedness_flag = lambda parameter: strand_test(picard=True)
-    log: "results/logs/picard/{species}.log"
+    log: "results/logs/picard/{sample}.{species}.log"
     shell:
         """
-        java -jar {params.picard} CollectRnaSeqMetrics I={input.bam} O={output.picard_metrics} REF_FLAT={params.ref} STRAND={params.strandedness_flag} RIBOSOMAL_INTERVALS={input.rrna_intervals}
+        java -jar {params.picard} CollectRnaSeqMetrics I={input.bam} O={output.picard_metrics} REF_FLAT={params.ref} STRAND={params.strandedness_flag} RIBOSOMAL_INTERVALS={input.rrna_intervals} 2> {log
         """
 
 

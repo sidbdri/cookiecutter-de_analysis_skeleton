@@ -157,9 +157,10 @@ rule fastqc:
     params:
         output_dir = lambda wildcards, output: os.path.dirname(output[0]),
         fqc = FASTQC_EXECUTABLE
+    log: "results/logs/fastqc/{}"
     shell:
         """
-        zcat {input.fastq} | {params.fqc} -o {params.output_dir} stdin
+        zcat {input.fastq} | {params.fqc} -o {params.output_dir} stdin > {log} 2>&1
         """
 
 rule star:
@@ -181,7 +182,7 @@ rule star:
         """
         forward_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
         reverse_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read2_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
-        {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads 2> {log}
+        {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads  > {log} 2>&1
         
         mv  "results/mapped_reads/{wildcards.sample}Aligned.out.bam" {output.bam}
         mv results/mapped_reads/{wildcards.sample}Aligned.sortedByCoord.out.bam {output.sorted_bam}

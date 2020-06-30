@@ -142,13 +142,6 @@ def species_index():
 
 
 
-
-
-
-
-
-
-
 rule fastqc:
     input:
         fastq = lambda wildcards: retrieve_fastqs(wildcards.sample)
@@ -157,7 +150,7 @@ rule fastqc:
     params:
         output_dir = lambda wildcards, output: os.path.dirname(output[0]),
         fqc = FASTQC_EXECUTABLE
-    log: "results/logs/fastqc/{}"
+    log: "results/logs/fastqc/{sample}.log"
     shell:
         """
         zcat {input.fastq} | {params.fqc} -o {params.output_dir} stdin > {log} 2>&1

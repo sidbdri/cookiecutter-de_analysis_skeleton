@@ -167,7 +167,6 @@ rule sargasso:
         mapper = MAPPER_EXECUTABLE,
         tmp_dir = 'tmp',
         strategy=STRATEGY,
-        threads = NUM_TOTAL_THREADS,
         species_index = lambda parameter: species_index(),
         main_dir=MAIN_DIR
     log: "results/logs/sargasso/sargasso.log"

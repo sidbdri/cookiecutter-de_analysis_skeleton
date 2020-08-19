@@ -234,8 +234,8 @@ rule run_picard:
         rrna_intervals = "data/picard/{species}/{sample}.txt",
         bam = "results/final_bams/{sample}.{species}.bam"
     output:
-    threads: NUM_THREADS_PER_SAMPLE
         picard_metrics = "results/alignment_metrics/{species}/{sample}.txt"
+    threads: NUM_THREADS_PER_SAMPLE
     params:
         picard = PICARD_EXECUTABLE,
         ref = lambda wildcards: glob("data/picard/%s/*rff" % wildcards.species ),

@@ -12,7 +12,6 @@ RNASEQ_DIR=os.path.join(DATA_DIR, 'rnaseq')
 PICARD_DIR = os.path.join(DATA_DIR, 'picard')
 
 NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}
-NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
 
 STAR_EXECUTABLE="STAR{{cookiecutter.star_version}}"
 BOWTIE2_EXECUTABLE="bowtie2-{{cookiecutter.bowtie2_version}}"
@@ -187,6 +186,7 @@ rule bam_per_species:
         "results/mapped_reads/{sample}.bam"
     output:
         "results/final_bams/{sample}.{species}.bam"
+    threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
         ln -sr {input} {output}
@@ -197,11 +197,10 @@ rule index_bam:
         "results/final_bams/{sample}.{species}.bam"
     output:
         "results/final_bams/{sample}.{species}.sorted.bam.bai"
-    params:
-        threads = NUM_THREADS_PER_SAMPLE
+    threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
-        sambamba sort -t {params.threads} {input} {output}
+        sambamba sort {input} {output}
         """
 
 rule feature_counts:
@@ -210,6 +209,7 @@ rule feature_counts:
     output:
         counts_temp = "results/read_counts/{sample}.{species}.counts.tmp",
         counts_out = "results/read_counts/{sample}.{species}.counts"
+    threads: NUM_THREADS_PER_SAMPLE
     params:
         strandedness_flag = lambda parameter: strand_test(),
         featurecount = FEATURECOUNTS_EXECUTABLE,
@@ -230,6 +230,7 @@ rule create_rrna_intervals:
         rrna_intervals = "results/alignment_metrics/{species}/{sample}_intervalListBody.txt",
         rrna_header = "data/picard/{species}/{sample}_header.txt",
         sample_rrna = "data/picard/{species}/{sample}.txt"
+    threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
         grep rRNA {input.gtf} | cut -s -f 1,4,5,7,9 > {output.rrna_intervals}
@@ -243,6 +244,7 @@ rule run_picard:
         bam = "results/final_bams/{sample}.{species}.bam"
     output:
         picard_metrics = "results/alignment_metrics/{species}/{sample}.txt"
+    threads: NUM_THREADS_PER_SAMPLE
     params:
         picard = PICARD_EXECUTABLE,
         ref = lambda wildcards: glob("data/picard/%s/*rff" % wildcards.species ),
@@ -265,6 +267,7 @@ rule multiqc:
          fastqc = expand("results/fastqc/{sample}/stdin_fastqc.html", sample=SAMPLES)
     output:
         "multiqc_report.html"
+    threads: NUM_THREADS_PER_SAMPLE
     params:
         input_dir = "results"
     shell:

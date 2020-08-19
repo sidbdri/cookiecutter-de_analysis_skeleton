@@ -12,7 +12,6 @@ RNASEQ_DIR=os.path.join(DATA_DIR, 'rnaseq')
 PICARD_DIR = os.path.join(DATA_DIR, 'picard')
 
 NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}
-NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
 
 STAR_EXECUTABLE="STAR{{cookiecutter.star_version}}"
 BOWTIE2_EXECUTABLE="bowtie2-{{cookiecutter.bowtie2_version}}"
@@ -148,6 +147,7 @@ rule fastqc:
         output_dir = lambda wildcards, output: os.path.dirname(output[0]),
         fqc = FASTQC_EXECUTABLE
     log: "results/logs/fastqc/{sample}.log"
+    threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
         zcat {input.fastq} | {params.fqc} -o {params.output_dir} stdin > {log} 2>&1
@@ -171,6 +171,7 @@ rule sargasso:
         species_index = lambda parameter: species_index(),
         main_dir=MAIN_DIR
     log: "results/logs/sargasso/sargasso.log"
+    threads: NUM_THREADS_PER_SAMPLE
     output:
         bam = expand("results/sargasso/filtered_reads/{sample}___{species}___filtered.bam", sample=SAMPLES, species=SPECIES)
     shell:
@@ -188,10 +189,10 @@ rule sambamba_sort:
         "results/final_bams/{sample}.{species}.bam"
     params:
         tmp_dir = 'tmp',
-        threads = NUM_TOTAL_THREADS,
+    threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
-        sambamba sort --tmpdir {params.tmp_dir} -t {params.threads} -o {output} {input}
+        sambamba sort --tmpdir {params.tmp_dir} -o {output} {input}
         """
 
 rule feature_counts:
@@ -203,12 +204,12 @@ rule feature_counts:
     params:
         strandedness_flag = lambda parameter: strand_test(),
         featurecount = FEATURECOUNTS_EXECUTABLE,
-        num_threads = 4,
         gtf = lambda wildcards: gtf_dict[wildcards.species]
     log: "results/logs/featureCount/{sample}.{species}.log"
+    threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
-        {params.featurecount} -T {params.num_threads} -p -a {params.gtf} -o {output.counts_temp} -s {params.strandedness_flag} {input.bam} 2> {log}
+        {params.featurecount} -p -a {params.gtf} -o {output.counts_temp} -s {params.strandedness_flag} {input.bam} 2> {log}
         tail -n +3 {output.counts_temp} | cut -f 1,7 > {output.counts_out}
         """
 
@@ -220,6 +221,7 @@ rule create_rrna_intervals:
         rrna_intervals = "results/alignment_metrics/{species}/{sample}_intervalListBody.txt",
         rrna_header = "data/picard/{species}/{sample}_header.txt",
         sample_rrna = "data/picard/{species}/{sample}.txt"
+    threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
         grep rRNA {input.gtf} | cut -s -f 1,4,5,7,9 > {output.rrna_intervals}
@@ -232,6 +234,7 @@ rule run_picard:
         rrna_intervals = "data/picard/{species}/{sample}.txt",
         bam = "results/final_bams/{sample}.{species}.bam"
     output:
+    threads: NUM_THREADS_PER_SAMPLE
         picard_metrics = "results/alignment_metrics/{species}/{sample}.txt"
     params:
         picard = PICARD_EXECUTABLE,
@@ -257,6 +260,7 @@ rule multiqc:
         "multiqc_report.html"
     params:
         input_dir = "results"
+    threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
         multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargasso -m picard -m bowtie2 {params.input_dir}

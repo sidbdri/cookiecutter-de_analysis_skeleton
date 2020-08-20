@@ -150,9 +150,10 @@ rule fastqc:
         output_dir = lambda wildcards, output: os.path.dirname(output[0]),
         fqc = FASTQC_EXECUTABLE
     log: "results/logs/fastqc/{sample}.log"
+    threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
-        zcat {input.fastq} | {params.fqc} -o {params.output_dir} stdin > {log} 2>&1
+        zcat {input.fastq} | {params.fqc} -t {threads} -o {params.output_dir} stdin > {log} 2>&1
         """
 
 rule star:
@@ -170,11 +171,12 @@ rule star:
         star = STAR_EXECUTABLE,
         output_dir = lambda wildcards, output: os.path.join(os.path.dirname(output.bam),  wildcards.sample)
     log: "results/logs/star/{sample}.log"
+    threads: NUM_THREADS_PER_SAMPLE 
     shell:
         """
         forward_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
         reverse_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read2_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
-        {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads  > {log} 2>&1
+        {params.star} --runThreadN {threads} --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads  > {log} 2>&1
         
         mv  "results/mapped_reads/{wildcards.sample}Aligned.out.bam" {output.bam}
         mv results/mapped_reads/{wildcards.sample}Aligned.sortedByCoord.out.bam {output.sorted_bam}
@@ -200,7 +202,7 @@ rule index_bam:
     threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
-        sambamba sort {input} {output}
+        sambamba sort -t {threads} {input} {output}
         """
 
 rule feature_counts:
@@ -218,7 +220,7 @@ rule feature_counts:
     log: "results/logs/featureCount/{sample}.{species}.log"
     shell:
         """
-        {params.featurecount} -T {params.num_threads} -p -a {params.gtf} -o {output.counts_temp} -s {params.strandedness_flag} {input.bam} 2> {log}
+        {params.featurecount} -T {threads} -p -a {params.gtf} -o {output.counts_temp} -s {params.strandedness_flag} {input.bam} 2> {log}
         tail -n +3 {output.counts_temp} | cut -f 1,7 > {output.counts_out}
         """
 
@@ -234,7 +236,7 @@ rule create_rrna_intervals:
     shell:
         """
         grep rRNA {input.gtf} | cut -s -f 1,4,5,7,9 > {output.rrna_intervals}
-        sambamba view -H {input.bam} > {output.rrna_header}
+        sambamba view -t {threads} -H {input.bam} > {output.rrna_header}
         cat {output.rrna_header} {output.rrna_intervals} > {output.sample_rrna} 
         """
 
@@ -244,7 +246,6 @@ rule run_picard:
         bam = "results/final_bams/{sample}.{species}.bam"
     output:
         picard_metrics = "results/alignment_metrics/{species}/{sample}.txt"
-    threads: NUM_THREADS_PER_SAMPLE
     params:
         picard = PICARD_EXECUTABLE,
         ref = lambda wildcards: glob("data/picard/%s/*rff" % wildcards.species ),

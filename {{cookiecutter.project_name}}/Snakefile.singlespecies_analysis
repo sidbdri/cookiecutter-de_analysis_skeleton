@@ -199,10 +199,12 @@ rule index_bam:
         "results/final_bams/{sample}.{species}.bam"
     output:
         "results/final_bams/{sample}.{species}.sorted.bam.bai"
+    params:
+        tmp_dir = 'tmp'
     threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
-        sambamba sort -t {threads} {input} {output}
+        sambamba sort -t {threads} --tmpdir {params.tmp_dir} {input} {output}
         """
 
 rule feature_counts:

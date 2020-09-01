@@ -12,7 +12,6 @@ RNASEQ_DIR=os.path.join(DATA_DIR, 'rnaseq')
 PICARD_DIR = os.path.join(DATA_DIR, 'picard')
 
 NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}
-NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
 
 STAR_EXECUTABLE="STAR{{cookiecutter.star_version}}"
 BOWTIE2_EXECUTABLE="bowtie2-{{cookiecutter.bowtie2_version}}"
@@ -142,13 +141,6 @@ def species_index():
 
 
 
-
-
-
-
-
-
-
 rule fastqc:
     input:
         fastq = lambda wildcards: retrieve_fastqs(wildcards.sample)
@@ -157,32 +149,46 @@ rule fastqc:
     params:
         output_dir = lambda wildcards, output: os.path.dirname(output[0]),
         fqc = FASTQC_EXECUTABLE
+    log: "results/logs/fastqc/{sample}.log"
+    threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
-        zcat {input.fastq} | {params.fqc} -o {params.output_dir} stdin
+        zcat {input.fastq} | {params.fqc} -t {threads} -o {params.output_dir} stdin > {log} 2>&1
         """
 
 rule star:
     input:
         fastq = lambda wildcards: retrieve_fastqs(wildcards.sample)
     output:
-        "results/mapped_reads/{sample}/{sample}Aligned.out.bam"
+        bam = "results/mapped_reads/{sample}.bam",
+        sorted_bam = "results/mapped_reads/{sample}.sorted.bam",
+        final_log = "results/mapped_reads/{sample}.log.out",
+        log = temp("results/mapped_reads/{sample}Log.out"),
+        progress = temp("results/mapped_reads/{sample}Log.progress.out"),
+        SJ = temp("results/mapped_reads/{sample}SJ.out.tab")
     params:
         index = MAPPER_INDEX,
         star = STAR_EXECUTABLE,
-        output_dir = lambda wildcards, output: os.path.dirname(output[0]) + "/" + wildcards.sample
+        output_dir = lambda wildcards, output: os.path.join(os.path.dirname(output.bam),  wildcards.sample)
+    log: "results/logs/star/{sample}.log"
+    threads: NUM_THREADS_PER_SAMPLE 
     shell:
         """
         forward_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
         reverse_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read2_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
-        {params.star} --runThreadN 8 --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads
+        {params.star} --runThreadN {threads} --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads  > {log} 2>&1
+        
+        mv  "results/mapped_reads/{wildcards.sample}Aligned.out.bam" {output.bam}
+        mv results/mapped_reads/{wildcards.sample}Aligned.sortedByCoord.out.bam {output.sorted_bam}
+        mv results/mapped_reads/{wildcards.sample}Log.final.out {output.final_log}
         """
 
 rule bam_per_species:
     input:
-        "results/mapped_reads/{sample}/{sample}Aligned.out.bam"
+        "results/mapped_reads/{sample}.bam"
     output:
         "results/final_bams/{sample}.{species}.bam"
+    threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
         ln -sr {input} {output}
@@ -194,10 +200,11 @@ rule index_bam:
     output:
         "results/final_bams/{sample}.{species}.sorted.bam.bai"
     params:
-        threads = NUM_THREADS_PER_SAMPLE
+        tmp_dir = 'tmp'
+    threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
-        sambamba sort -t {params.threads} {input} {output}
+        sambamba sort -t {threads} --tmpdir {params.tmp_dir} {input} {output}
         """
 
 rule feature_counts:
@@ -206,14 +213,16 @@ rule feature_counts:
     output:
         counts_temp = "results/read_counts/{sample}.{species}.counts.tmp",
         counts_out = "results/read_counts/{sample}.{species}.counts"
+    threads: NUM_THREADS_PER_SAMPLE
     params:
         strandedness_flag = lambda parameter: strand_test(),
         featurecount = FEATURECOUNTS_EXECUTABLE,
         num_threads = 4,
         gtf = lambda wildcards: gtf_dict[wildcards.species]
+    log: "results/logs/featureCount/{sample}.{species}.log"
     shell:
         """
-        {params.featurecount} -T {params.num_threads} -p -a {params.gtf} -o {output.counts_temp} -s {params.strandedness_flag} {input.bam}
+        {params.featurecount} -T {threads} -p -a {params.gtf} -o {output.counts_temp} -s {params.strandedness_flag} {input.bam} 2> {log}
         tail -n +3 {output.counts_temp} | cut -f 1,7 > {output.counts_out}
         """
 
@@ -225,10 +234,11 @@ rule create_rrna_intervals:
         rrna_intervals = "results/alignment_metrics/{species}/{sample}_intervalListBody.txt",
         rrna_header = "data/picard/{species}/{sample}_header.txt",
         sample_rrna = "data/picard/{species}/{sample}.txt"
+    threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
         grep rRNA {input.gtf} | cut -s -f 1,4,5,7,9 > {output.rrna_intervals}
-        sambamba view -H {input.bam} > {output.rrna_header}
+        sambamba view -t {threads} -H {input.bam} > {output.rrna_header}
         cat {output.rrna_header} {output.rrna_intervals} > {output.sample_rrna} 
         """
 
@@ -242,9 +252,10 @@ rule run_picard:
         picard = PICARD_EXECUTABLE,
         ref = lambda wildcards: glob("data/picard/%s/*rff" % wildcards.species ),
         strandedness_flag = lambda parameter: strand_test(picard=True)
+    log: "results/logs/picard/{sample}.{species}.log"
     shell:
         """
-        java -jar {params.picard} CollectRnaSeqMetrics I={input.bam} O={output.picard_metrics} REF_FLAT={params.ref} STRAND={params.strandedness_flag} RIBOSOMAL_INTERVALS={input.rrna_intervals}
+        java -jar {params.picard} CollectRnaSeqMetrics I={input.bam} O={output.picard_metrics} REF_FLAT={params.ref} STRAND={params.strandedness_flag} RIBOSOMAL_INTERVALS={input.rrna_intervals} 2> {log}
         """
 
 
@@ -259,11 +270,12 @@ rule multiqc:
          fastqc = expand("results/fastqc/{sample}/stdin_fastqc.html", sample=SAMPLES)
     output:
         "multiqc_report.html"
+    threads: NUM_THREADS_PER_SAMPLE
     params:
         input_dir = "results"
     shell:
         """
-        multiqc -d -f -m star -m fastqc {params.input_dir}
+        multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargasso -m picard -m bowtie2 {params.input_dir}
         """
 
 

@@ -48,6 +48,7 @@ AVG_FPKM_GROUP <- list(c(), c())
 # An example can be found here:
 # https://github.com/sidbdri/cookiecutter-sargasso-de_analysis_skeleton
 # If the group column contains more than one group, the results will be saved into different CSVs by group.
+# ** N.B. No group name should be a substring of another group name. **
 COMPARISON_TABLE <- tribble(
   ~comparison, ~formula, ~condition_name, ~condition, ~condition_base, ~filter, ~group,
   #"P10_Ctx_KO_vs_WT", "~genotype", "genotype", "KO", "WT", "age=='P10' & region=='Ctx'",group_1

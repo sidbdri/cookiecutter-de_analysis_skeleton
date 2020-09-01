@@ -465,7 +465,9 @@ get_avg_tpm <- function(tpms, tx_level) {
 
 save_results_by_group <- function(results,use_tx=FALSE) {
   # This function will, for each group defined in the COMPARISON_TABLE, save the comparisons into
-  # a CSV file, prefixed with the group name.
+  # a CSV file, prefixed with the group name. 
+  # ** N.B. No group name should be a substring of another group name; otherwise this code
+  # will NOT work. **
   for (g in COMPARISON_TABLE %>% pull(group) %>% unique()) {
     
     comparisons <- COMPARISON_TABLE %>% 
@@ -475,7 +477,7 @@ save_results_by_group <- function(results,use_tx=FALSE) {
     n_comparisons <- COMPARISON_TABLE %>% 
       filter(group != g) %>% 
       pull(comparison) %>% 
-      str_c("^", ., '$' ,collapse = '|')
+      str_c("^", ., collapse = '|')
     
     samples_to_include <- SAMPLE_DATA %>%
       filter(!!parse_expr(COMPARISON_TABLE %>% filter(group==g) %>% pull(filter) %>% str_c(collapse = '|'))) %>%
@@ -486,6 +488,7 @@ save_results_by_group <- function(results,use_tx=FALSE) {
       pull(sample_name) %>% as.vector()
     
     samples_to_exclude_pattern <- samples_to_exclude %>% str_c('^',.,sep='',collapse = '|')
+    samples_fpkm_to_exclude_pattern <- samples_to_exclude %>% str_c('^',. , '_fpkm$', sep='',collapse = '|')
     
     ## work out what avg column to be exclude for group
     avg_tb<-.get_avg_fpkm_table(use_tx)
@@ -550,7 +553,7 @@ save_results_by_group <- function(results,use_tx=FALSE) {
         dplyr::select(
           gene, gene_name, chromosome, description, entrez_id, gene_type,
           gene_length, max_transcript_length,
-          dplyr::contains("_fpkm"),
+          dplyr::contains("_fpkm"), -matches(samples_fpkm_to_exclude_pattern),
           COMPARISON_TABLE %>%
             pull(comparison) %>%
             sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>% 

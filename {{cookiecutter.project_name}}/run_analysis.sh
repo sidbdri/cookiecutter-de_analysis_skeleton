@@ -39,4 +39,6 @@ snakemake -s Snakefile.singlespecies_analysis  bams -j $NUM_TOTAL_THREADS
 snakemake -s Snakefile.singlespecies_analysis  multiqc -j $NUM_TOTAL_THREADS
 {% endif %}
 
-
+{% for s in cookiecutter.species.split(' ') %}
+Rscript diff_expr_{{ s }}.R
+{% endfor %}

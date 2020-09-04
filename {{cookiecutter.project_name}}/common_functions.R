@@ -465,40 +465,37 @@ get_avg_tpm <- function(tpms, tx_level) {
 
 save_results_by_group <- function(results,use_tx=FALSE) {
   # This function will, for each group defined in the COMPARISON_TABLE, save the comparisons into
-  # a CSV file, prefixed with the group name. 
-  # ** N.B. No group name should be a substring of another group name; otherwise this code
-  # will NOT work. **
+  # a CSV file, prefixed with the group name.
   for (g in COMPARISON_TABLE %>% pull(group) %>% unique()) {
-    
-    comparisons <- COMPARISON_TABLE %>% 
-      filter(group == g) %>% 
+
+    comparisons <- COMPARISON_TABLE %>%
+      filter(group == g) %>%
       pull(comparison)
-    
-    n_comparisons <- COMPARISON_TABLE %>% 
-      filter(group != g) %>% 
-      pull(comparison) %>% 
-      str_c("^", ., collapse = '|')
-    
+
+    n_comparisons <- COMPARISON_TABLE %>%
+      filter(group != g) %>%
+      pull(comparison) %>%
+      str_c("^", ., '$' ,collapse = '|')
+
     samples_to_include <- SAMPLE_DATA %>%
       filter(!!parse_expr(COMPARISON_TABLE %>% filter(group==g) %>% pull(filter) %>% str_c(collapse = '|'))) %>%
       pull(sample_name) %>% as.vector()
-    
+
     samples_to_exclude <- SAMPLE_DATA %>%
       filter(! sample_name %in% samples_to_include) %>%
       pull(sample_name) %>% as.vector()
-    
+
     samples_to_exclude_pattern <- samples_to_exclude %>% str_c('^',.,sep='',collapse = '|')
-    samples_fpkm_to_exclude_pattern <- samples_to_exclude %>% str_c('^',. , '_fpkm$', sep='',collapse = '|')
-    
+
     ## work out what avg column to be exclude for group
     avg_tb<-.get_avg_fpkm_table(use_tx)
     avg_to_exclude<- lapply(avg_tb$avg_name,function(x){
       samples_in_avg <- avg_tb %>% filter(avg_name==x) %>% pull(samples) %>% strsplit(',') %>% extract2(1) %>% gsub('_fpkm|_tpm','',x=.)
       (samples_in_avg %in% samples_to_include) %>% all
     }) %>% unlist() %>% `!` %>% filter(.data=avg_tb) %>% pull(avg_name)
-    
+
     if(use_tx){
-      
+
       if ('transcript' %in% colnames(results)) {
         columns_included <- c('transcript', 'transcript_length', 'gene', 'number_of_transcript')
         tx_level_str <- "transcript"
@@ -506,37 +503,37 @@ save_results_by_group <- function(results,use_tx=FALSE) {
         columns_included <- c('gene','gene_length', 'max_transcript_length')
         tx_level_str <- "gene"
       }
-      
+
       results %>%
         dplyr::select(
           columns_included, gene_name, chromosome, description, entrez_id, gene_type, everything(),
           -dplyr::contains("_tpm"), -dplyr::ends_with(".stat"),
           -matches(n_comparisons), -(samples_to_exclude)) %>%
         write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g, "_deseq2_results_count_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv")), na="")
-      
+
       tpm_output <- results %>%
         dplyr::select(
           columns_included, gene_name, chromosome, description, entrez_id, gene_type,
           dplyr::contains("_tpm"),
           COMPARISON_TABLE %>%
             pull(comparison) %>%
-            sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>% 
+            sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>%
             unlist() %>%
             as.vector() %>%
             unique(),
           -dplyr::ends_with(".stat"), -matches(n_comparisons)
         )
-      
+
       if (length(samples_to_exclude) > 0) {
         tpm_output %<>% dplyr::select(-matches(samples_to_exclude_pattern))
       }
-      
+
       if (length(avg_to_exclude) > 0) {
         tpm_output %<>% dplyr::select(-one_of(avg_to_exclude %>% str_c('_avg_tpm')))
       }
-      
+
       tpm_output %>% write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g ,"_deseq2_results_tpm_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv")), na="")
-      
+
       SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
         write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g ,"_de_summary_", SPECIES, "_tx_",tx_level_str,'_',QUANT_METHOD,".csv")), na="")
     }else{
@@ -553,26 +550,26 @@ save_results_by_group <- function(results,use_tx=FALSE) {
         dplyr::select(
           gene, gene_name, chromosome, description, entrez_id, gene_type,
           gene_length, max_transcript_length,
-          dplyr::contains("_fpkm"), -matches(samples_fpkm_to_exclude_pattern),
+          dplyr::contains("_fpkm"),
           COMPARISON_TABLE %>%
             pull(comparison) %>%
-            sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>% 
+            sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>%
             unlist() %>%
             as.vector() %>%
             unique(),
           -dplyr::ends_with(".stat"), -matches(n_comparisons)
-        ) 
-      
+        )
+
       if (length(samples_to_exclude) > 0) {
         fpkm_output %<>% dplyr::select(-matches(samples_to_exclude_pattern))
       }
-      
+
       if (length(avg_to_exclude) > 0) {
         fpkm_output %<>% dplyr::select(-one_of(avg_to_exclude %>% str_c('_avg_fpkm')))
       }
-      
+
       fpkm_output %>% write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g ,"_deseq2_results_fpkm_", SPECIES, ".csv")), na="")
-      
+
       SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
         write_csv(file.path(OUTPUT_DIR, "de_gene", str_c(g ,"_de_summary_", SPECIES, ".csv")), na="")
     }
@@ -585,7 +582,7 @@ read_de_results <- function(filename, num_samples, num_conditions, num_compariso
     strrep("d", num_samples + num_conditions + num_comparisons * 4),
     extra_columns)
   print(nchar(col_types_string))
-  
+
   read_csv(filename, col_types = col_types_string)
 }
 
@@ -593,32 +590,32 @@ read_de_results <- function(filename, num_samples, num_conditions, num_compariso
 
 plot_pca <- function(vst, intgroup=c("condition"), plot_label = TRUE, label_name='name', include_gene = c(),
                      removeBatchEffect = FALSE, batch = NULL){
-  
+
   if (removeBatchEffect) {
     if (is.null(batch)) {
       stop('batch cannot be NULL.')
     }
-    
+
     assay(vst) <- limma::removeBatchEffect(assay(vst), vst %>% extract2(batch))
   }
-  
+
   pca_data <- vst %>% plotPCA2(intgroup = intgroup, returnData = TRUE, include_gene = include_gene)
-  
+
   percent_var <- round(100 * attr(pca_data, "percentVar"))
-  
+
   intgroup.df <- as.data.frame(colData(vst)[, intgroup, drop = FALSE])
-  
+
   if (length(intgroup) > 2) {
     colour_group <- factor(apply(intgroup.df[-ncol(intgroup.df)], 1, paste, collapse = " : "))
     shape_group <- factor(intgroup.df[[ncol(intgroup.df)]])
-    p <- pca_data %>% ggplot(aes(PC1, PC2, color=colour_group, shape=shape_group)) + 
+    p <- pca_data %>% ggplot(aes(PC1, PC2, color=colour_group, shape=shape_group)) +
       guides(colour=guide_legend(title="group"),
-             shape=guide_legend(title=intgroup[length(intgroup)]))    
+             shape=guide_legend(title=intgroup[length(intgroup)]))
   }
   else if (length(intgroup) == 2) {
     colour_group <- factor(intgroup.df[[1]])
     shape_group <- factor(intgroup.df[[2]])
-    p <- pca_data %>% ggplot(aes(PC1, PC2, color=colour_group, shape=shape_group)) + 
+    p <- pca_data %>% ggplot(aes(PC1, PC2, color=colour_group, shape=shape_group)) +
       guides(colour=guide_legend(title=intgroup[1]),
              shape=guide_legend(title=intgroup[2]))
   } else {
@@ -626,26 +623,26 @@ plot_pca <- function(vst, intgroup=c("condition"), plot_label = TRUE, label_name
     p <- pca_data %>% ggplot(aes(PC1, PC2, color=group)) +
       guides(color=guide_legend(title=intgroup))
   }
-  
+
   p <- p + geom_point(size=3) +
     xlab(str_c("PC1: ", percent_var[1], "% variance")) +
     ylab(str_c("PC2: ", percent_var[2], "% variance")) +
     theme(legend.position = "right")
-  
+
   if(plot_label)
-    p <- p + geom_text(aes(label = !!parse_expr(label_name)), colour="darkgrey", 
+    p <- p + geom_text(aes(label = !!parse_expr(label_name)), colour="darkgrey",
                        position=position_nudge(y = 1), size=3)
-  
+
   p
 }
 
 plotPCA2 <- function(object, ...) {
-    # This function is a hack of the plotPCA function from DESeq2 package. Instead of using all the genes 
+    # This function is a hack of the plotPCA function from DESeq2 package. Instead of using all the genes
     # for the PCA plot, this function accepts a parameter include_gene=c() which filters the genes in the
     # expression array. This can be use to make a PCA plot for only a subset of gene of interests.
     .local <- function(object, intgroup = "condition", ntop = 500,
                        returnData = FALSE, include_gene=c()) {
-      
+
         count_data <- assay(object)
 
         if (length(include_gene) > 0) {
@@ -657,25 +654,25 @@ plotPCA2 <- function(object, ...) {
         select <- order(rv, decreasing = TRUE)[seq_len(min(ntop, length(rv)))]
         pca <- prcomp(t(count_data[select, ]))
         percentVar <- pca$sdev^2/sum(pca$sdev^2)
-        
+
         if (!all(intgroup %in% names(colData(object)))) {
             stop("the argument 'intgroup' should specify columns of colData(dds)")
         }
-        
+
         intgroup.df <- as.data.frame(colData(object)[, intgroup, drop = FALSE])
         group <- if (length(intgroup) > 1) {
             factor(apply(intgroup.df, 1, paste, collapse = ":"))
         }else {
             colData(object)[[intgroup]]
         }
-        
+
         d <- data.frame(PC1 = pca$x[, 1], PC2 = pca$x[, 2], group = group, intgroup.df, name = colnames(object))
-        
+
         if (returnData) {
             attr(d, "percentVar") <- percentVar[1:2]
             return(d)
         }
-        
+
         ggplot(data = d, aes_string(x = "PC1", y = "PC2", color = "group")) +
             geom_point(size = 3) + xlab(paste0("PC1: ", round(percentVar[1] * 100), "% variance")) +
             ylab(paste0("PC2: ", round(percentVar[2] *  100), "% variance")) + coord_fixed()
@@ -685,30 +682,30 @@ plotPCA2 <- function(object, ...) {
 
 plot_heat_map <- function(vst, sample_names) {
   distsRL <- vst %>% assay %>% t %>% dist
-  
+
   mat <- distsRL %>% as.matrix()
   rownames(mat) <- colnames(mat) <- sample_names
-  
+
   hc <- distsRL %>% hclust
   hmcol <- colorRampPalette(brewer.pal(9, "GnBu"))(100)
-  heatmap.2(mat, Rowv = hc %>% as.dendrogram, 
+  heatmap.2(mat, Rowv = hc %>% as.dendrogram,
             symm = TRUE, trace = "none",
             col = hmcol %>% rev, margin = c(10, 10))
 }
 
 plot_count_distribution <- function(dds, norm = T) {
-  counts <- dds %>% 
-    get_count_data(norm = norm) %>% 
-    melt(id.vars=c("gene"), variable.name = "sample", value.name = "count") 
-  
-  p <- ggplot(counts, aes(sample, 1 + count)) + 
-    geom_violin(aes(fill = sample), scale="width") + 
-    geom_boxplot(width=.1, outlier.shape=NA) + 
-    coord_trans(y = "log10") + 
+  counts <- dds %>%
+    get_count_data(norm = norm) %>%
+    melt(id.vars=c("gene"), variable.name = "sample", value.name = "count")
+
+  p <- ggplot(counts, aes(sample, 1 + count)) +
+    geom_violin(aes(fill = sample), scale="width") +
+    geom_boxplot(width=.1, outlier.shape=NA) +
+    coord_trans(y = "log10") +
     scale_y_continuous(breaks=c(1, 10, 100, 1000, 10000, 100000, 1000000)) +
     guides(fill=FALSE) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
-  
+
   print(p)
 }
 
@@ -716,10 +713,10 @@ plot_pvalue_distribution <- function(results, pvalue_column) {
   pvals <- results %>%
     filter_(str_c("!is.na(", pvalue_column, ")")) %>%
     dplyr::select_(pvalue_column)
-  
-  p <- ggplot(pvals, aes_string(pvalue_column)) + 
-    geom_histogram(binwidth = 0.025) 
-  
+
+  p <- ggplot(pvals, aes_string(pvalue_column)) +
+    geom_histogram(binwidth = 0.025)
+
   print(p)
   p
 }
@@ -727,18 +724,18 @@ plot_pvalue_distribution <- function(results, pvalue_column) {
 #' Plot the per-sample FPKMs for a gene.
 #'
 #' @param gene_identifier A string denoting either the gene entrez_id, ensembl_id or gene_symbol.
-#' @param result_table A string of the path to the "deseq2_results_fpkm.csv" file, which contains the gene 
-#'   FPKM info, or a results table object generated by a diff_expr.R script. If left empty, will read 
-#'   "./results/differential_expression/de_gene/deseq2_results_fpkm_{SPECIES}.csv" by default.              
+#' @param result_table A string of the path to the "deseq2_results_fpkm.csv" file, which contains the gene
+#'   FPKM info, or a results table object generated by a diff_expr.R script. If left empty, will read
+#'   "./results/differential_expression/de_gene/deseq2_results_fpkm_{SPECIES}.csv" by default.
 #' @param debug A boolean, whether to print a markdown table of the the gene FPKMs.
 #' @param print_graph A boolean, whether to plot the graph before returning the ggplot object.
-#' @param feature_group A string vector. The result table should contains FPKM columns which have all the 
-#'   features separated by '_', for example "101_WT_Hip_Ctrl_fpkm". This will be split into columns listed in 
+#' @param feature_group A string vector. The result table should contains FPKM columns which have all the
+#'   features separated by '_', for example "101_WT_Hip_Ctrl_fpkm". This will be split into columns listed in
 #'   feature_group, which in this case can be c('sample_id', 'condition', 'region', 'treatment'),
 #' @param filter_string A string, a filter which will be applied when selecting the samples from the results
-#'   table. For example: filter="condition=='5xFAD'" or filter="str_detect(sample_meta, 'SC[0-9]')". 
+#'   table. For example: filter="condition=='5xFAD'" or filter="str_detect(sample_meta, 'SC[0-9]')".
 #'   If left NULL, all samples will be used.
-#' @param plot_feature A string vector, indicating the usage of aes on the features in feature_group. The 
+#' @param plot_feature A string vector, indicating the usage of aes on the features in feature_group. The
 #'   length of the vector should be the same as the feature_group.
 #' @param plot_label A string from feature_group. Which feature to be used as label for the points in the plot.
 #' @param plot_x A string from feature_group. Which feature to be used as the x-axis.
@@ -769,58 +766,58 @@ plot_pvalue_distribution <- function(results, pvalue_column) {
 #'   p=''
 #' }
 plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE, print_graph = FALSE,
-                            feature_group = c(), filter_string = '', plot_feature = c(), 
+                            feature_group = c(), filter_string = '', plot_feature = c(),
                             plot_label = "", plot_x = "") {
-  
+
   # devtools::install_github("thomasp85/patchwork",force = TRUE)
   # devtools::install_github("slowkow/ggrepel")
   require(patchwork)
   require(ggrepel)
   require(knitr)
-  
+
   if (is.null(result_table)) {
     result_table <- str_c('./results/differential_expression/de_gene/deseq2_results_fpkm_', SPECIES, '.csv')
   }
-  
+
   if (is_string(result_table)) {
     if (!file.exists(result_table)) {
       stop(str_c("result_table [", result_table, "] does not exist."))
     }
-    
+
     result_table <- read.csv(result_table)
   }
-  
-  fpkm_debug <- result_table %>% 
+
+  fpkm_debug <- result_table %>%
     dplyr::select(gene, gene_name, chromosome, entrez_id,
-                  dplyr::ends_with("_fpkm"), 
+                  dplyr::ends_with("_fpkm"),
                   -dplyr::ends_with("avg_fpkm"),
                   -dplyr::ends_with(".stat")) %>%
     dplyr::filter(gene_name==gene_identifier | gene==gene_identifier | entrez_id==gene_identifier)
-  
+
   gene_name <- fpkm_debug$gene_name %>% as.vector()
-  
-  fpkm_debug_long <- fpkm_debug %>% 
+
+  fpkm_debug_long <- fpkm_debug %>%
     as_tibble() %>%
     melt(id.var=c("gene", "gene_name", "chromosome", "entrez_id"),
          variable.name = 'sample_meta', value.name = 'fpkm')
-  
+
   if (feature_group %>% length() == 0) {
     ## No feature group provided, we are going to plot the FPKM using the sample name and color.
     plot_x <- 'sample_meta'
     plot_label <- 'sample_meta'
-    
+
     if (filter_string!='') {
       fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
     }
-    
-    p <- fpkm_debug_long %>% 
-      ggplot(mapping=aes_string(y="fpkm", x = plot_x)) + 
-      aes_string(color = plot_x) + 
+
+    p <- fpkm_debug_long %>%
+      ggplot(mapping=aes_string(y="fpkm", x = plot_x)) +
+      aes_string(color = plot_x) +
       geom_point(size = 3) +
       geom_text_repel(aes(label = !!parse_expr(plot_label)),
-                      nudge_x = -0.35, direction = "y", hjust = 0.5, 
+                      nudge_x = -0.35, direction = "y", hjust = 0.5,
                       segment.size = 0.1, size = 3) +
-      ggtitle(gene_identifier %>% str_c(gene_name, sep = ':')) + 
+      ggtitle(gene_identifier %>% str_c(gene_name, sep = ':')) +
       theme(legend.position = 'none') +
       theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
   } else {
@@ -829,14 +826,14 @@ plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE,
       tidyr::separate(meta,sep='_', into = c(feature_group, "tmp"), remove=TRUE) %>%
       tidyr::unite(col = "sample_meta", feature_group, remove = FALSE) %>%
       dplyr::select(-tmp)
-    
+
     ## We want to plot only these samples
     if (filter_string != '') {
       fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
     }
-    
+
     p <- fpkm_debug_long %>% ggplot(mapping = aes_string(y = "fpkm", x = plot_x))
-    
+
     ## add features
     for (i in which(plot_feature!='')) {
       switch(plot_feature[i],
@@ -845,70 +842,70 @@ plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE,
              'size' = p <- p + aes_string(size=feature_group[i])
       )
     }
-    
+
     p <- p + geom_point(size = 3) +
       geom_text_repel(aes(label = !!parse_expr(plot_label)),
-                      nudge_x = -0.35, direction = "y", hjust= 0.5, 
+                      nudge_x = -0.35, direction = "y", hjust= 0.5,
                       segment.size = 0.1, size = 3) +
-      ggtitle(gene_identifier %>% str_c(gene_name, sep = ':')) + 
+      ggtitle(gene_identifier %>% str_c(gene_name, sep = ':')) +
       theme(legend.position = "top")
   }
-  
+
   if (print_graph) {
     p %>% print()
   }
-  
+
   if(debug) {
     fpkm_debug %>% kable(format = 'markdown', digits = 99) %>% print()
   }
-  
+
   list("info" = fpkm_debug, 'graph' = p)
 }
 
-#' This function calls the plot_gene_fpkms function and plots FPKMs for the genes defined in the 
+#' This function calls the plot_gene_fpkms function and plots FPKMs for the genes defined in the
 #' MARKER_GENES table.
 #' @param result_table Passed directly to the plot_gene_fpkms function; this can either be:
 #'   - a string, the path to the "deseq2_results_fpkm.csv", which contains the gene FPKM info, or
 #'   - a result table object generated by diff_expr.R script.
-#'  If left empty, will by default read: 
+#'  If left empty, will by default read:
 #'    "./results/differential_expression/de_gene/deseq2_results_fpkm_{SPECIES}.csv"
 check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
                             print_check_log = TRUE, print_fpkm_table = FALSE) {
-  
+
   gene_markers <- GENE_MARKERS %>% pull(SPECIES) %>% split(f = GENE_MARKERS$cell_type)
   fpkm_info <- data.frame()
   p <- ''
   message("Cell type check results are saved in [", GRAPHS_DIR,"]")
-  
+
   # for(g in split(genes_markers, ceiling(seq_along(genes)/4)) ){
   for (cell_type in gene_markers %>% names()) {
     genes <- gene_markers %>% extract2(cell_type)
-    
+
     for (i in genes) {
       plot_name <- str_c(cell_type, '_', i)
       l <- plot_gene_fpkms(i, result_table = result_table, debug = FALSE, print = FALSE)
       l$graph <- l$graph + geom_hline(yintercept = fpkm_check_cutoff, linetype = "dashed", color = "black")
       assign(plot_name, l$graph)
       fpkm_info <- l$info %>% mutate(gene_marker_cell_type = cell_type) %>% rbind(fpkm_info)
-      
+
       ifelse(nchar(p) == 0,
              p <- plot_name,
              p <- str_c(p, plot_name, sep = '+')
       )
     }
-    
+
     start_plot(str_c("cell_type_check_", cell_type))
-    
+
     if (length(genes) < 2) {
       p %>% parse_expr() %>% eval() %>% print()
     } else {
       str_c(p, " plot_layout(ncol = 2)", sep = '+') %>% parse_expr() %>% eval() %>% print()
     }
-    
+
     end_plot()
     p <- ''
   }
-  
+
   ## check fpkms
   if (print_check_log) {
     # gene_marker_cell_type       sample         fpkm    is
@@ -925,7 +922,7 @@ check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
       dplyr::select(contains('fpkm'), gene_marker_cell_type) %>%
       reshape2::melt(id.vars = c('gene_marker_cell_type'), variable.name = 'sample', value.name = 'fpkm') %>%
       mutate(is = fpkm > fpkm_check_cutoff)
-    
+
     # sample       is
     # <fct>        <chr>
     #   1 IN_AS1_fpkm  astrocyte
@@ -938,12 +935,12 @@ check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
     # 8 IN_AE62_fpkm astrocyte
     # 9 IN_AE63_fpkm astrocyte
     ## For each sample, amount all the cell types, which cell type has the most gene markers passed the cutoff?
-    check_result %<>% 
+    check_result %<>%
       group_by(sample, gene_marker_cell_type) %>%
       summarise(like = sum(is)/n()) %>%
       # summarise(is=gene_marker_cell_type[which(like == max(like) )] %>% paste(collapse = ' / '))
       summarise(is = gene_marker_cell_type[which(like >=0.5)] %>% paste(collapse = ' / '))
-    
+
     cat("Cell type check result:\n")
     for (i in check_result %>% pull(sample) %>% levels()) {
       str_c(i %>% strsplit('_fpkm') %>% extract2(1),
@@ -952,7 +949,7 @@ check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
             "**\n") %>% cat()
     }
   }
-  
+
   if (print_fpkm_table) {
     fpkm_info %>% print()
   }
@@ -969,28 +966,28 @@ get_transcript_quant_file <- function(quant_method) {
   if (quant_method == SALMON) {
     "quant.sf"
   } else if (quant_method == KALLISTO) {
-    "abundance.tsv" 
-  } 
+    "abundance.tsv"
+  }
 }
 
 get_salmon_tpms <- function(sample) {
-  sample %>% 
-    str_c("results/salmon_quant/", ., "/quant.genes.sf") %>% 
-    read_tsv %>% 
+  sample %>%
+    str_c("results/salmon_quant/", ., "/quant.genes.sf") %>%
+    read_tsv %>%
     dplyr::select(Name, TPM) %>%
     rename_(.dots = setNames(names(.), c("gene", str_c(sample, "_tpm"))))
 }
 
 get_kallisto_tpms <- function(sample) {
-  transcript_tpms <- sample %>% 
-    str_c("results/kallisto_quant/", ., "/abundance.tsv") %>% 
-    read_tsv %>% 
+  transcript_tpms <- sample %>%
+    str_c("results/kallisto_quant/", ., "/abundance.tsv") %>%
+    read_tsv %>%
     dplyr::select(target_id, tpm)
-  
+
   transcript_tpms %<>% inner_join(get_transcripts_to_genes(SPECIES), by = c("target_id"="transcript"))
-  
-  transcript_tpms %>% 
-    group_by(gene) %>% 
+
+  transcript_tpms %>%
+    group_by(gene) %>%
     summarise(tpm = sum(tpm)) %>%
     rename_(.dots = setNames(names(.), c("gene", str_c(sample, "_tpm"))))
 }
@@ -1000,54 +997,54 @@ get_tximport <- function(sample_data, quant_method='salmon', tx_level = TRUE) {
   quant_dirs <- sample_data %>%
     tibble::rownames_to_column(var = "tmp") %>%
     pull("tmp")
-  
+
   quant_files <- str_c("results/",quant_method,"_quant/", SPECIES, "/",  quant_dirs, "/", quant_file)
   names(quant_files) <- quant_dirs
-  
-  txi <- tximport(quant_files, type=quant_method, txOut = tx_level, 
+
+  txi <- tximport(quant_files, type=quant_method, txOut = tx_level,
                   tx2gene=get_transcripts_to_genes(SPECIES), dropInfReps = TRUE)
 
     txi$Length <- read.csv(quant_files[1],sep = '\t',stringsAsFactors = FALSE) %>%
     dplyr::select(id = 1, length = 2) %>%
     tibble::remove_rownames() %>%
     tibble::column_to_rownames(var = 'id')
-  
+
   txi
 }
 
 get_total_dds_tximport <- function(sample_data, quant_method = 'salmon', tx_level = TRUE) {
   txi <- get_tximport(sample_data, quant_method, tx_level)
-  
+
   total_dds <- DESeqDataSetFromTximport(txi, sample_data, ~1)
   total_dds <- DESeq(total_dds)
-  
+
   total_dds
 }
 
 
 get_avg_tpm <- function(tpms, tx_level) {
   sample_data <- SAMPLE_DATA
-  sample_data %<>% tibble::rownames_to_column(var = "tmp_row_names") %>% 
+  sample_data %<>% tibble::rownames_to_column(var = "tmp_row_names") %>%
     group_by(.dots = AVG_FPKM_GROUP) %>%
     summarise(samples = str_c(tmp_row_names, '_tpm', sep = '', collapse = ',')) %>%
     tidyr::unite('avg_name', AVG_FPKM_GROUP, sep = '_')
-  
+
   for (avg in sample_data %>% pull(avg_name)) {
     samples <- sample_data %>%
       filter(avg_name == avg) %>%
       pull(samples) %>%
-      str_split(',') %>% 
+      str_split(',') %>%
       unlist()
-    
+
     avg_tpm <- tpms %>% dplyr::select(one_of(samples)) %>%
       mutate(avg_tpm = rowMeans(.)) %>%
       dplyr::pull(avg_tpm)
-    
+
     tpms %<>% mutate(!!str_c(avg, '_avg_tpm', sep='') := avg_tpm)
   }
-  
+
   id_column <- ifelse(tx_level, 'transcript', 'gene')
-  
+
   tpms %>% dplyr::select(!!id_column, contains('avg'))
 }
 
@@ -1057,17 +1054,17 @@ get_significant_genes <- function(term, GOdata, gene_info) {
   genes_for_term <- GOdata %>% genesInTerm(term) %>% extract2(1)
   significant_genes <- GOdata %>% sigGenes
   significant_genes_for_term <- genes_for_term %>% intersect(significant_genes)
-  
-  gene_info %>% 
-    filter(gene %in% significant_genes_for_term) %>% 
-    dplyr::select(gene_name) %>% 
-    extract2(1) %>% 
+
+  gene_info %>%
+    filter(gene %in% significant_genes_for_term) %>%
+    dplyr::select(gene_name) %>%
+    extract2(1) %>%
     paste(collapse=", ")
 }
 
-perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP", 
+perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP",
                                 species, top_dir, comparison_name) {
-  
+
   gene_list <- (gene_universe$gene %in% significant_genes$gene) %>% as.integer %>% factor
   names(gene_list) <- gene_universe$gene
 
@@ -1110,12 +1107,12 @@ perform_go_analyses <- function(significant_genes, expressed_genes, comparison_n
 
   sapply(c("BP", "MF", "CC"), simplify = FALSE, USE.NAMES = TRUE, function(x) {
     ret <- perform_go_analysis(expressed_genes, significant_genes, x, species, top_dir ,comparison_name)
-    
-    ret %>% 
-      extract2('go_results') %>% 
-      inner_join(GO_TERMS) %>% 
-      dplyr::mutate(Term=FullTerm) %>% 
-      dplyr::select(-FullTerm) %>% 
+
+    ret %>%
+      extract2('go_results') %>%
+      inner_join(GO_TERMS) %>%
+      dplyr::mutate(Term=FullTerm) %>%
+      dplyr::select(-FullTerm) %>%
       write_csv(file.path(top_dir, str_c(comparison_name, file_prefix, "_go_", x %>% tolower, ".csv")), na="")
 
     ret
@@ -1124,22 +1121,22 @@ perform_go_analyses <- function(significant_genes, expressed_genes, comparison_n
 
 ##### Reactome pathway analysis
 
-perform_pathway_enrichment <- function(significant_genes, expressed_genes, 
+perform_pathway_enrichment <- function(significant_genes, expressed_genes,
                                        comparison_name, file_prefix, species, out_dir="results/differential_expression/reactome/") {
-    
+
   gene_info <- get_gene_info(species)
-  
-  universe <- expressed_genes %>% 
+
+  universe <- expressed_genes %>%
     inner_join(gene_info) %>%
     filter(!is.na(entrez_id)) %>%
     pull("entrez_id")
-  
-  gene_list <- significant_genes %>% 
+
+  gene_list <- significant_genes %>%
     filter(!is.na(entrez_id)) %>%
     pull("entrez_id")
-  
+
   pathways <- enrichPathway(
-    gene = gene_list, organism = species, universe = as.character(universe), 
+    gene = gene_list, organism = species, universe = as.character(universe),
     pvalueCutoff = 0.1, readable = T) %>%
     as.data.frame()
 
@@ -1157,75 +1154,75 @@ perform_pathway_enrichment <- function(significant_genes, expressed_genes,
 
       ret <- pathways %>% dplyr::select(ID, Description, GeneRatio, BgRatio, pvalue, p.adjust, geneID)
     }
-    
+
     ret
 }
 
 ##### Camera gene set enrichment analysis
 
 get_human_vs_species_ortholog_info <- function(species) {
-  orthologs <- species %>% 
-    str_c("data/", ., "_ensembl_{{cookiecutter.ensembl_version}}/human_orthologs.tsv") %>% 
+  orthologs <- species %>%
+    str_c("data/", ., "_ensembl_{{cookiecutter.ensembl_version}}/human_orthologs.tsv") %>%
     read_tsv(col_names = c("species_gene", "human_gene", "type"))
-  
+
   species_genes <- get_gene_info(species)
   human_genes <- get_gene_info("human")
-  
-  orthologs_entrez <- orthologs %>% 
-    left_join(species_genes %>% 
-                dplyr::select(gene, entrez_id) %>% 
+
+  orthologs_entrez <- orthologs %>%
+    left_join(species_genes %>%
+                dplyr::select(gene, entrez_id) %>%
                 dplyr::rename(species_gene = gene, species_entrez_id = entrez_id)) %>%
-    left_join(human_genes %>% 
-                dplyr::select(gene, entrez_id) %>% 
+    left_join(human_genes %>%
+                dplyr::select(gene, entrez_id) %>%
                 dplyr::rename(human_gene = gene, human_entrez_id = entrez_id)) %>%
-    dplyr::select(species_entrez_id, human_entrez_id) %>% 
-    filter(!is.na(species_entrez_id) & !is.na(human_entrez_id)) %>% 
+    dplyr::select(species_entrez_id, human_entrez_id) %>%
+    filter(!is.na(species_entrez_id) & !is.na(human_entrez_id)) %>%
     distinct()
-  
-  same_name_entrez <- (species_genes %>% 
-                         mutate(gene_name = tolower(gene_name)) %>% 
-                         dplyr::select(gene_name, entrez_id) %>% 
-                         filter(!is.na(entrez_id)) %>% 
+
+  same_name_entrez <- (species_genes %>%
+                         mutate(gene_name = tolower(gene_name)) %>%
+                         dplyr::select(gene_name, entrez_id) %>%
+                         filter(!is.na(entrez_id)) %>%
                          dplyr::rename(species_entrez_id = entrez_id)) %>%
-    inner_join(human_genes %>% 
-                 mutate(gene_name = tolower(gene_name)) %>% 
-                 dplyr::select(gene_name, entrez_id) %>% 
-                 filter(!is.na(entrez_id)) %>% 
+    inner_join(human_genes %>%
+                 mutate(gene_name = tolower(gene_name)) %>%
+                 dplyr::select(gene_name, entrez_id) %>%
+                 filter(!is.na(entrez_id)) %>%
                  dplyr::rename(human_entrez_id = entrez_id)) %>%
-    dplyr::select(-gene_name) %>% 
+    dplyr::select(-gene_name) %>%
     distinct()
-  
-  human_species_entrez_mappings <- orthologs_entrez %>% 
-    rbind(same_name_entrez) %>% 
+
+  human_species_entrez_mappings <- orthologs_entrez %>%
+    rbind(same_name_entrez) %>%
     distinct
 }
 
 get_gene_sets <- function(species, gene_set_name) {
   msigdb_data <- str_c("data/msigdb/v7.0/", gene_set_name, ".all.v7.0.entrez.gmt") %>%
     read_lines()
-  
+
   gene_set_names <- map_chr(msigdb_data, function(x) {str_split(x, "\t")[[1]][1]})
   gene_sets <- map(msigdb_data, function(x) {str_split(str_split(x, "\t", n=3)[[1]][3], "\t")[[1]]})
-  
+
   names(gene_sets) <- gene_set_names
-  
+
   if (species == "human") {
     return(gene_sets)
   }
-  
+
   pb <- txtProgressBar(max = length(gene_sets), style = 3)
   count <- 0
-  
+
   ortholog_info <- get_human_vs_species_ortholog_info(species)
-  
+
   ret <- gene_sets %>% map(function(y) {
     count <<- count + 1
     setTxtProgressBar(pb, count)
     ortholog_info[which(ortholog_info$human_entrez_id %in% y),]$species_entrez_id %>% unique
-  }) 
-  
+  })
+
   close(pb)
-  
+
   ret
 }
 
@@ -1233,30 +1230,30 @@ get_camera_results <- function(dds, gene_sets, gene_info) {
   vst <- dds %>% varianceStabilizingTransformation
   design_formula <- dds %>% design()
   expression_data <- vst %>% assay
-  
-  ids <- expression_data %>% 
-    as.data.frame %>% 
-    tibble::rownames_to_column(var = "gene") %>% 
-    inner_join(gene_info) 
-  
+
+  ids <- expression_data %>%
+    as.data.frame %>%
+    tibble::rownames_to_column(var = "gene") %>%
+    inner_join(gene_info)
+
   idx <- gene_sets %>% ids2indices(id = ids$entrez_id)
-  
+
   design_matrix <- model.matrix(design_formula, vst %>% colData)
-  
+
   expression_data %>% camera(idx, design_matrix)
 }
 
 plot_gene_set <- function(results, gene_sets, gene_set_name, prefix) {
-  idx <- gene_sets %>% 
+  idx <- gene_sets %>%
     ids2indices(id = results$entrez_id) %>%
     extract2(gene_set_name)
-  
+
   pval <- prefix %>% str_c(".pval") %>% rlang::sym()
   l2fc <- prefix %>% str_c(".l2fc") %>% rlang::sym()
-  
-  results %>% 
+
+  results %>%
     mutate(signed_p = -log10(!!pval) * sign(!!l2fc)) %>%
-    pull(signed_p) %>% 
+    pull(signed_p) %>%
     barcodeplot(index = idx, quantiles = c(-1,1)*(-log10(0.05)))
 }
 
@@ -1293,8 +1290,8 @@ write_camera_results <- function(
   camera_results %>% tibble::rownames_to_column(var = "GeneSet") %>% filter(FDR < fdr_cutoff) %>%
     write_csv(file.path(top_dir, str_c(comparison_name, "-", gene_set_collection_name, "_sets.csv")), na="")
 
-  ret <- list(enriched_sets = camera_results %>% 
-                tibble::rownames_to_column(var="GeneSet") %>% 
+  ret <- list(enriched_sets = camera_results %>%
+                tibble::rownames_to_column(var="GeneSet") %>%
                 filter(FDR < fdr_cutoff))
 
   # Save only the significant gene sets
@@ -1344,63 +1341,63 @@ write_camera_results <- function(
 #' This function reads in all the GSA results and tracks the given gene sets
 #' @example:
 #' track_gene_sets(target_terms=c('GO_RIBOSOME','GO_PROTEASOME_COMPLEX','GO_TRANSLATIONAL_INITIATION'), category='GO',comparison_table=COMPARISON_TABLE)
-track_gene_sets <- function(target_terms = c('GO_RIBOSOME', 'GO_PROTEASOME_COMPLEX', 'GO_TRANSLATIONAL_INITIATION'), 
+track_gene_sets <- function(target_terms = c('GO_RIBOSOME', 'GO_PROTEASOME_COMPLEX', 'GO_TRANSLATIONAL_INITIATION'),
                             category = 'GO',
                             gs_results = get_global('GS_results'),
                             comparison_table = COMPARISON_TABLE,
-                            print_table = TRUE, 
+                            print_table = TRUE,
                             output_table_file = NA,
                             left_out_comparison = c(),
                             heat_map.fdr.midpoint = 0.05){
-  
+
   ## create a master table for all comparisons and the gene sets results
-  gsa_res_tb <- COMPARISON_TABLE %>% 
-    pull(comparison) %>% 
-    extract(which(!. %in% left_out_comparison)) %>% 
+  gsa_res_tb <- COMPARISON_TABLE %>%
+    pull(comparison) %>%
+    extract(which(!. %in% left_out_comparison)) %>%
     set_names(.) %>%
     sapply(simplify = FALSE, USE.NAMES = TRUE, function(x) {
-      gs_results %>% 
-        extract2(x) %>% 
+      gs_results %>%
+        extract2(x) %>%
         extract2(category) %>%
-        tibble::rownames_to_column('GeneSet') %>% 
+        tibble::rownames_to_column('GeneSet') %>%
         dplyr::mutate(comparison = x)
-    }) %>% 
+    }) %>%
     reduce(rbind)
-  
+
   ## we only keep gene sets of interests
-  gsa_res_tb <- gsa_res_tb %>% 
+  gsa_res_tb <- gsa_res_tb %>%
     filter(GeneSet %in% target_terms) %>%
     mutate(log10fdr=log10(FDR)) # for plotting
-  
+
   gsa_res_tb$comparison %<>% factor(levels = COMPARISON_TABLE %>% pull(comparison) %>% rev)
   gsa_res_tb$GeneSet %<>% factor(levels = target_terms)
-  
+
   if (print_table) {
     print(gsa_res_tb %>% arrange(GeneSet, FDR))
   }
-  
+
   # we output the FDR table to csv
   if (!is.na(output_table_file)) {
-    gsa_res_tb %>% 
-      arrange(GeneSet, FDR) %>% 
+    gsa_res_tb %>%
+      arrange(GeneSet, FDR) %>%
       dplyr::select(GeneSet, FDR, comparison) %>%
     reshape(idvar = "comparison", timevar = "GeneSet", direction = "wide") %>%
     write.csv(file = output_table_file)
   }
-  
-  gsa_res_tb %>% 
+
+  gsa_res_tb %>%
     ggplot(aes(GeneSet, comparison)) +
-    geom_tile(aes(fill = log10fdr)) + 
+    geom_tile(aes(fill = log10fdr)) +
     scale_fill_gradient2(low = "red", high = "white", mid = "white",
                          midpoint = log10(heat_map.fdr.midpoint)) +
-    geom_text(aes(label = if_else(FDR < heat_map.fdr.midpoint, 
+    geom_text(aes(label = if_else(FDR < heat_map.fdr.midpoint,
                                   ifelse(Direction=='Up', "UP", "DOWN"),
                                   "")), alpha = 0.75, size=3) +
     labs(fill ="log10(FDR)") +
     labs(title=str_c('FDR cutoff = ',heat_map.fdr.midpoint),
-         xlab="Gene Set", ylab="Comparison") + 
-    theme_minimal() + 
-    theme(axis.text.x = element_text(angle = -90, size=7), 
+         xlab="Gene Set", ylab="Comparison") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = -90, size=7),
           panel.border = element_blank(),panel.background = element_blank())
 }
 
@@ -1503,37 +1500,37 @@ get_qsva_dds <- function(dds) {
   colData(dds) %<>% cbind(quality_surrogate_variables)
 
   design(dds) <- design_formula %>%
-    terms() %>% 
+    terms() %>%
     attr("term.labels") %>%
-    c(quality_surrogate_variables %>% colnames, .) %>% 
+    c(quality_surrogate_variables %>% colnames, .) %>%
     reformulate
-  
+
   dds
 }
 
 ##### Calculate per-gene FPKM misassignment percentages
 
 get_gene_counts_and_lengths <- function(samples, species, gene_lengths, sum_counts = FALSE) {
-  res <- samples %>%  
+  res <- samples %>%
     map(read_counts, species) %>%
     purrr::reduce(inner_join)
-  
+
   if (sum_counts) {
     res %<>% mutate(counts = rowSums(.[,-1])) %>% dplyr::select(gene, counts)
   }
-  
+
   res %>% inner_join(gene_lengths)
 }
 
 calculate_total_reads_for_species <- function(samples, species, sum_counts = FALSE) {
-  res <- samples %>%  
+  res <- samples %>%
     map_dbl(function(sample) {
       species %>% map(~read_counts(sample, .) %>%
-                        dplyr::pull(2) %>%  
+                        dplyr::pull(2) %>%
                         sum()) %>%
-        purrr::reduce(sum) 
-    })   
-  
+        purrr::reduce(sum)
+    })
+
   if (sum_counts) {
     res %<>% sum() %>% set_names("counts")
   } else {
@@ -1546,7 +1543,7 @@ fpkm_formula <- function(read_counts, gene_lengths, total_reads) {
 }
 
 calculate_fpkm <- function(samples, gene_counts_and_lengths, total_reads){
-  samples %>%  
+  samples %>%
     map(function(sa) {
       read_counts <- gene_counts_and_lengths %>% pull(sa)
       gene_lengths <- gene_counts_and_lengths %>% pull(max_transcript_length)
@@ -1671,7 +1668,7 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
       filter(!!parse_expr(x$filter)) %>%
       mutate(sample_name_tmp=tmp_row_names) %>%
       filter(!!parse_expr(x$condition_name) == x$condition) %>%
-      tibble::column_to_rownames(var = "tmp_row_names") %>% 
+      tibble::column_to_rownames(var = "tmp_row_names") %>%
       rownames()
 
     target_species = SPECIES
@@ -1711,7 +1708,7 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
       filter(!!parse_expr(x$filter)) %>%
       mutate(sample_name_tmp=tmp_row_names) %>%
       filter(!!parse_expr(x$condition_name) == x$condition_base) %>%
-      tibble::column_to_rownames(var = "tmp_row_names") %>% 
+      tibble::column_to_rownames(var = "tmp_row_names") %>%
       rownames()
 
     target_species <- SPECIES
@@ -1817,7 +1814,7 @@ read_median_5prime_to_3prime_bias <- function(samples=c()){
 # }
 
 #######
-# comment out for now, needs project information to fill 
+# comment out for now, needs project information to fill
 # this function in order to source the function.
 # get_condition_res_tximport <- function(quant_method) {
 #   sample_data <- data.frame(
@@ -1826,24 +1823,24 @@ read_median_5prime_to_3prime_bias <- function(samples=c()){
 #     filename=c(),
 #     row.names=c("<SAMPLE1>", "<SAMPLE2>", etc)
 #   )
-# 
+#
 #   quant_file <- get_transcript_quant_file(quant_method)
 #   quant_files <- str_c("results/", quant_method, "_quant/", sample_data$filename, "/", quant_file)
 #   names(quant_files) <- sample_data$filename
-# 
+#
 #   txi <- tximport(quant_files, type=quant_method, tx2gene=get_transcripts_to_genes(), reader=read_tsv)
-# 
+#
 #   dds <- DESeqDataSetFromTximport(txi, sample_data, ~condition)
 #   dds <- dds[rowSums(counts(dds)) > 1, ]
 #   dds <- DESeq(dds)
-# 
+#
 #   results <- dds %>% get_deseq2_results("condition", "<cond2>", "<cond1>")
-# 
+#
 #   l2fc <- get_count_data(dds) %>%
 #     mutate(l2fc=log2(() / ()) %>%
 #              dplyr::select(gene, l2fc)
-# 
+#
 #            results %<>% left_join(l2fc)
-# 
+#
 #            return(results)
 # }

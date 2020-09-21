@@ -10,6 +10,8 @@ SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
   t %>%
   as.vector
 
+# Remember to order the samples sensibly for output in results spreadsheets (i.e. appropriately
+# grouped by some combination of conditions).
 SAMPLE_DATA <- data.frame(
   condition=...,
   species=SPECIES,
@@ -17,6 +19,7 @@ SAMPLE_DATA <- data.frame(
 ) %>% 
   tibble::rownames_to_column(var = "tmp_row_names") %>%
   filter(species==!!SPECIES) %>%
+  arrange(TODO) %>% 
   tibble::column_to_rownames(var = "tmp_row_names")
 
 

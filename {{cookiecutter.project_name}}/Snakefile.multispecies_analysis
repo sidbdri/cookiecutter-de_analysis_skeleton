@@ -54,6 +54,13 @@ gtf_dict = dict(zip(SPECIES, GTF_FILE))
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
 SAMPLES=SAMPLES.split()
 
+read_identifiers =  ["{{ cookiecutter.read1_identifier }}", "{{ cookiecutter.read2_identifier }}"]
+if list((set([i == '*' for i in read_identifiers]))):
+    READ1_SUFFIX=''
+    READ2_SUFFIX=''
+else:
+    READ1_SUFFIX = '{{ cookiecutter.read1_identifier }}'
+    READ2_SUFFIX = '{{ cookiecutter.read2_identifier }}'
 
 def pick_first_sample():
     test_sample = SAMPLES[0]
@@ -120,11 +127,16 @@ def sample_tsv():
     with open(outfile_name, 'w') as outfile:
         tsv_lines = []
         for sample in SAMPLES:
-            fastq_f = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', '{{ cookiecutter.read1_identifier}}', '.{{ cookiecutter.fastq_suffix }}'])))
-            fastq_r = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', '{{ cookiecutter.read2_identifier}}', '.{{ cookiecutter.fastq_suffix }}'])))
+            fastqs = []
+            fastq_f = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', READ1_SUFFIX, '.{{ cookiecutter.fastq_suffix }}'])))
             fastq_f = ",".join(fastq_f)
-            fastq_r = ",".join(fastq_r)
-            line = " ".join([sample, fastq_f, fastq_r])
+            fastqs.append(fastq_f)
+            if IS_PAIRED_END:
+                fastq_r = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', READ2_SUFFIX, '.{{ cookiecutter.fastq_suffix }}'])))
+                fastq_r = ",".join(fastq_r)
+                fastqs.append(fastq_r)
+            fastqs = " ".join(fastqs)
+            line = " ".join([sample, fastqs])
             tsv_lines.append(line)
         outfile.write("\n".join(tsv_lines))
     return outfile_name

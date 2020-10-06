@@ -54,8 +54,8 @@ SAMPLES="{{cookiecutter.rnaseq_samples}}"
 SAMPLES=SAMPLES.split()
 
 READFILE_SUFFIX=''
-read_identidfiers =  ["{{ cookiecutter.read1_identifier }}", "{{ cookiecutter.read2_identifier }}"]
-if list((set([i == '*' for i in read_identidfiers]))):
+read_identifiers =  ["{{ cookiecutter.read1_identifier }}", "{{ cookiecutter.read2_identifier }}"]
+if list((set([i == '*' for i in read_identifiers]))):
     READFILE_SUFFIX='{{ cookiecutter.fastq_suffix }}'
 else:
     READFILE_SUFFIX='{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }}'
@@ -119,20 +119,6 @@ def retrieve_fastqs(sample):
     fastq = glob("data/rnaseq/%s/*{{ cookiecutter.fastq_suffix }}" % sample)
     return fastq
 
-
-def sample_tsv():
-    outfile_name = 'sample.tsv'
-    with open(outfile_name, 'w') as outfile:
-        tsv_lines = []
-        for sample in SAMPLES:
-            fastq_f = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', '{{ cookiecutter.read1_identifier}}', '.{{ cookiecutter.fastq_suffix }}'])))
-            fastq_r = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', '{{ cookiecutter.read2_identifier}}', '.{{ cookiecutter.fastq_suffix }}'])))
-            fastq_f = ",".join(fastq_f)
-            fastq_r = ",".join(fastq_r)
-            line = " ".join([sample, fastq_f, fastq_r])
-            tsv_lines.append(line)
-        outfile.write("\n".join(tsv_lines))
-    return outfile_name
 
 def species_index():
     assert len(SPECIES) == len(MAPPER_INDEX)

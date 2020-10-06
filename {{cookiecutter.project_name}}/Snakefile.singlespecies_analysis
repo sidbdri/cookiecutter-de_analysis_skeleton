@@ -53,7 +53,12 @@ gtf_dict = dict(zip(SPECIES, GTF_FILE))
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
 SAMPLES=SAMPLES.split()
 
-
+READFILE_SUFFIX=''
+read_identidfiers =  ["{{ cookiecutter.read1_identifier }}", "{{ cookiecutter.read2_identifier }}"]
+if list((set([i == '*' for i in read_identidfiers]))):
+    READFILE_SUFFIX='{{ cookiecutter.fastq_suffix }}'
+else:
+    READFILE_SUFFIX='{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }}'
 
 def pick_first_sample():
     test_sample = SAMPLES[0]
@@ -169,13 +174,14 @@ rule star:
     params:
         index = MAPPER_INDEX,
         star = STAR_EXECUTABLE,
-        output_dir = lambda wildcards, output: os.path.join(os.path.dirname(output.bam),  wildcards.sample)
+        output_dir = lambda wildcards, output: os.path.join(os.path.dirname(output.bam),  wildcards.sample),
+        readfile_suffix=READFILE_SUFFIX
     log: "results/logs/star/{sample}.log"
     threads: NUM_THREADS_PER_SAMPLE 
     shell:
         """
-        forward_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
-        reverse_reads=$(ls {input.fastq} | grep '{{ cookiecutter.read2_identifier}}.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
+        forward_reads=$(ls {input.fastq} | grep {params.readfile_suffix} | paste -d "," -s - | tr -d '\\n')
+        reverse_reads=$(ls {input.fastq} | grep {params.readfile_suffix} | paste -d "," -s - | tr -d '\\n')
         {params.star} --runThreadN {threads} --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads  > {log} 2>&1
         
         mv  "results/mapped_reads/{wildcards.sample}Aligned.out.bam" {output.bam}

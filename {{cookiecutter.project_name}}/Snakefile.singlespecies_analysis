@@ -56,9 +56,11 @@ SAMPLES=SAMPLES.split()
 READFILE_SUFFIX=''
 read_identifiers =  ["{{ cookiecutter.read1_identifier }}", "{{ cookiecutter.read2_identifier }}"]
 if list((set([i == '*' for i in read_identifiers]))):
-    READFILE_SUFFIX='{{ cookiecutter.fastq_suffix }}'
+    READ1_SUFFIX=''
+    READ2_SUFFIX=''
 else:
-    READFILE_SUFFIX='{{ cookiecutter.read1_identifier}}.{{ cookiecutter.fastq_suffix }}'
+    READ1_SUFFIX = '{{ cookiecutter.read1_identifier }}'
+    READ2_SUFFIX = '{{ cookiecutter.read2_identifier }}'
 
 def pick_first_sample():
     test_sample = SAMPLES[0]
@@ -161,13 +163,14 @@ rule star:
         index = MAPPER_INDEX,
         star = STAR_EXECUTABLE,
         output_dir = lambda wildcards, output: os.path.join(os.path.dirname(output.bam),  wildcards.sample),
-        readfile_suffix=READFILE_SUFFIX
+        read1_suffix=READ1_SUFFIX,
+        read2_suffix=READ2_SUFFIX
     log: "results/logs/star/{sample}.log"
     threads: NUM_THREADS_PER_SAMPLE 
     shell:
         """
-        forward_reads=$(ls {input.fastq} | grep {params.readfile_suffix} | paste -d "," -s - | tr -d '\\n')
-        reverse_reads=$(ls {input.fastq} | grep {params.readfile_suffix} | paste -d "," -s - | tr -d '\\n')
+        forward_reads=$(ls {input.fastq} | grep {params.read1_suffix}'.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
+        reverse_reads=$(ls {input.fastq} | grep {params.read2_suffix}'.{{ cookiecutter.fastq_suffix }}' | paste -d "," -s - | tr -d '\\n')
         {params.star} --runThreadN {threads} --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads  > {log} 2>&1
         
         mv  "results/mapped_reads/{wildcards.sample}Aligned.out.bam" {output.bam}

@@ -77,7 +77,7 @@ def run_featurecounts(strand_setting):
     test_bam, test_gtf = pick_first_sample()
     outfile = os.path.join(read_counts_folder, "counts_temp.%s.out" % strand_setting)
     call("featureCounts -T 4 -p -a %s -o %s -s %s %s" % (test_gtf, outfile, strand_setting, test_bam), shell=True)
-    outfile_summary = ".".join([outfile, "summary"])
+    outfile_summary = ".".join([outfile, "testsummary"])
     return outfile_summary
 
 

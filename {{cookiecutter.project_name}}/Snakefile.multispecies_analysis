@@ -131,7 +131,7 @@ def sample_tsv():
             fastq_f = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', READ1_SUFFIX, '.{{ cookiecutter.fastq_suffix }}'])))
             fastq_f = ",".join(fastq_f)
             fastqs.append(fastq_f)
-            if IS_PAIRED_END:
+            if IS_PAIRED_END == 'yes':
                 fastq_r = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', READ2_SUFFIX, '.{{ cookiecutter.fastq_suffix }}'])))
                 fastq_r = ",".join(fastq_r)
                 fastqs.append(fastq_r)

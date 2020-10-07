@@ -207,7 +207,8 @@ rule feature_counts:
     input:
         bam = "results/final_bams/{sample}.{species}.bam"
     output:
-        counts_temp = "results/read_counts/{sample}.{species}.counts.tmp",
+        counts_temp = temp("results/read_counts/{sample}.{species}.counts.tmp"),
+        counts_temp_summary = temp("results/read_counts/{sample}.{species}.counts.tmp.summary"),
         counts_out = "results/read_counts/{sample}.{species}.counts"
     threads: NUM_THREADS_PER_SAMPLE
     params:

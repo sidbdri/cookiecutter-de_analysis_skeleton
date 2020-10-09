@@ -54,13 +54,17 @@ gtf_dict = dict(zip(SPECIES, GTF_FILE))
 SAMPLES="{{cookiecutter.rnaseq_samples}}"
 SAMPLES=SAMPLES.split()
 
+READ1_SUFFIX = ''
+READ2_SUFFIX = ''
 read_identifiers =  ["{{ cookiecutter.read1_identifier }}", "{{ cookiecutter.read2_identifier }}"]
-if list((set([i == '*' for i in read_identifiers]))):
+no_identity=[i == '*' for i in read_identifiers]
+if all(no_identity):
     READ1_SUFFIX=''
     READ2_SUFFIX=''
 else:
-    READ1_SUFFIX = '{{ cookiecutter.read1_identifier }}'
-    READ2_SUFFIX = '{{ cookiecutter.read2_identifier }}'
+    READ1_SUFFIX = read_identifiers[0]
+    READ2_SUFFIX = read_identifiers[1]
+
 
 def pick_first_sample():
     test_sample = SAMPLES[0]

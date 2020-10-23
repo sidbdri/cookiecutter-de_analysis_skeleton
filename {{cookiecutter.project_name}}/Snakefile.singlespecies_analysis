@@ -177,7 +177,7 @@ rule star:
         forward_reads=`ls {input.fastq} | grep {params.read1_suffix}'.{{ cookiecutter.fastq_suffix }}' || printf ' '`
         forward_reads=`echo $forward_reads | paste -d "," -s -`
         reverse_reads=`ls {input.fastq} | grep {params.read2_suffix}'.{{ cookiecutter.fastq_suffix }}' || printf ' '`
-        reverse_reads=echo $reverse_reads | paste -d "," -s -)
+        reverse_reads=`echo $reverse_reads | paste -d "," -s -`
         {params.star} --runThreadN {threads} --genomeDir {params.index} --outFileNamePrefix {params.output_dir} --outSAMstrandField intronMotif --outSAMtype BAM SortedByCoordinate Unsorted --readFilesCommand zcat --readFilesIn $forward_reads $reverse_reads  > {log} 2>&1
         
         mv  "results/mapped_reads/{wildcards.sample}Aligned.out.bam" {output.bam}

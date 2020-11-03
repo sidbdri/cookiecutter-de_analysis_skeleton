@@ -10,6 +10,8 @@ SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
   t %>%
   as.vector
 
+# Remember to order the samples sensibly for output in results spreadsheets (i.e. appropriately
+# grouped by some combination of conditions).
 SAMPLE_DATA <- data.frame(
   condition=...,
   species=SPECIES,
@@ -17,6 +19,7 @@ SAMPLE_DATA <- data.frame(
 ) %>% 
   tibble::rownames_to_column(var = "tmp_row_names") %>%
   filter(species==!!SPECIES) %>%
+  arrange(TODO) %>% 
   tibble::column_to_rownames(var = "tmp_row_names")
 
 
@@ -48,6 +51,7 @@ AVG_FPKM_GROUP <- list(c(), c())
 # An example can be found here:
 # https://github.com/sidbdri/cookiecutter-sargasso-de_analysis_skeleton
 # If the group column contains more than one group, the results will be saved into different CSVs by group.
+# ** N.B. No group name should be a substring of another group name. **
 COMPARISON_TABLE <- tribble(
   ~comparison, ~formula, ~condition_name, ~condition, ~condition_base, ~filter, ~group,
   #"P10_Ctx_KO_vs_WT", "~genotype", "genotype", "KO", "WT", "age=='P10' & region=='Ctx'",group_1

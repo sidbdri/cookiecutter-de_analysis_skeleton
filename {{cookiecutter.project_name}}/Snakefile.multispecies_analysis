@@ -1,0 +1,285 @@
+
+
+from glob import glob
+from subprocess import call, check_output
+import os
+
+
+HOME_DIR = os.path.expanduser("~")
+MAIN_DIR = os.path.join(HOME_DIR, '{{cookiecutter.projects_base}}/{{cookiecutter.project_name}}')
+DATA_DIR = os.path.join(MAIN_DIR, 'data')
+RNASEQ_DIR=os.path.join(DATA_DIR, 'rnaseq')
+PICARD_DIR = os.path.join(DATA_DIR, 'picard')
+
+NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
+NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}
+
+STAR_EXECUTABLE="STAR{{cookiecutter.star_version}}"
+BOWTIE2_EXECUTABLE="bowtie2-{{cookiecutter.bowtie2_version}}"
+FASTQC_EXECUTABLE="fastqc{{cookiecutter.fastqc_version}}"
+FEATURECOUNTS_EXECUTABLE="featureCounts{{cookiecutter.featurecounts_version}}"
+PICARD_EXECUTABLE="/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar"
+
+SPECIES=[]
+ENSEMBL_DIR=[]
+MAPPER_INDEX=[]
+BOWTIE_INDEX=[]
+GTF_FILE=[]
+REF_FLAT=[]
+
+DATA_TYPE = "{{cookiecutter.data_type}}"
+if DATA_TYPE == "rnaseq":
+     MAPPER_EXECUTABLE=STAR_EXECUTABLE
+else:
+    MAPPER_EXECUTABLE=BOWTIE2_EXECUTABLE
+
+{% for s in cookiecutter.species.split(' ') %}
+SPECIES.append("{{ s }}")
+ENSEMBL_DIR.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}" % DATA_DIR)
+if DATA_TYPE == "rnaseq":
+    MAPPER_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/STAR_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.star_version}}" % DATA_DIR)
+else:
+    MAPPER_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/BOWTIE2_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.bowtie2_version}}" % DATA_DIR)
+GTF_FILE.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecutter.gtf_files[s]}}" % DATA_DIR)
+REF_FLAT.append("%s/{{ s }}/{{cookiecutter.rff_files[s]}}" % PICARD_DIR)
+{% endfor %}
+
+
+STRATEGY="{{cookiecutter.strategy}}"
+
+
+NUM_THREADS_PER_SAMPLE=8
+IS_PAIRED_END="{{cookiecutter.paired_end_read}}"
+gtf_dict = dict(zip(SPECIES, GTF_FILE))
+SAMPLES="{{cookiecutter.rnaseq_samples}}"
+SAMPLES=SAMPLES.split()
+
+READ1_SUFFIX = ''
+READ2_SUFFIX = ''
+read_identifiers =  ["{{ cookiecutter.read1_identifier }}", "{{ cookiecutter.read2_identifier }}"]
+no_identity=[i == '*' for i in read_identifiers]
+if all(no_identity):
+    READ1_SUFFIX=''
+    READ2_SUFFIX=''
+else:
+    READ1_SUFFIX = read_identifiers[0]
+    READ2_SUFFIX = read_identifiers[1]
+
+
+def pick_first_sample():
+    test_sample = SAMPLES[0]
+    test_species = SPECIES[0]
+    test_gtf = GTF_FILE[0]
+    test_bam = os.path.join("results/final_bams", "%s.%s.bam" % (test_sample, test_species))
+    return test_bam, test_gtf
+
+
+def run_featurecounts(strand_setting):
+    read_counts_folder = "results/read_counts"
+    if not os.path.exists(read_counts_folder):
+        os.makedirs(read_counts_folder)
+    test_bam, test_gtf = pick_first_sample()
+    outfile = os.path.join(read_counts_folder, "counts_temp.%s.out" % strand_setting)
+    call("featureCounts -T 4 -p -a %s -o %s -s %s %s" % (test_gtf, outfile, strand_setting, test_bam), shell=True)
+    outfile_summary = ".".join([outfile, "testsummary"])
+    return outfile_summary
+
+
+def get_assigned_reads(counts_file):
+    counts = check_output("grep Assigned %s | awk '{print $2}'" % counts_file, universal_newlines=True, shell=True)
+    counts = [int(i) for i in counts.split('\n') if i][0]
+    return counts
+
+
+def calculate_strandedness(strand_dict):
+    strand_zero = strand_dict["0"]
+    strand_one = strand_dict["1"]
+    strand_two = strand_dict["2"]
+    if all(v == 0 for v in list(strand_dict.values())):
+        raise Exception('No mapped reads detected')
+    difference = (float(strand_one) - float(strand_two))/(float(strand_one) + float(strand_two))
+    if abs(difference) < 0.75:
+        return "0"
+    elif difference >= 0.75:
+        return "1"
+    elif difference <= -0.75:
+        return "2"
+    else:
+        raise Exception('Can not calculate strandedness from values: one=%s, two=%s, three=%s' % (strand_zero, strand_one, strand_two))
+
+
+def strand_test(picard=False):
+    strand_assigned_reads = {"0": 0, "1": 0, "2": 0}
+    for i in strand_assigned_reads:
+        counts_file = run_featurecounts(i)
+        assigned = get_assigned_reads(counts_file)
+        strand_assigned_reads[i] = assigned
+    strandedness = calculate_strandedness(strand_assigned_reads)
+    picard_strand_value = {"0": "NONE", "1": "FIRST_READ_TRANSCRIPTION_STRAND", "2": "SECOND_READ_TRANSCRIPTION_STRAND"}
+    if picard is True:
+        return picard_strand_value[strandedness]
+    return strandedness
+
+
+def retrieve_fastqs(sample):
+    fastq = glob("data/rnaseq/%s/*{{ cookiecutter.fastq_suffix }}" % sample)
+    return fastq
+
+
+def sample_tsv():
+    outfile_name = 'sample.tsv'
+    with open(outfile_name, 'w') as outfile:
+        tsv_lines = []
+        for sample in SAMPLES:
+            fastqs = []
+            fastq_f = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', READ1_SUFFIX, '.{{ cookiecutter.fastq_suffix }}'])))
+            fastq_f = ",".join(fastq_f)
+            fastqs.append(fastq_f)
+            if IS_PAIRED_END == 'yes':
+                fastq_r = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', READ2_SUFFIX, '.{{ cookiecutter.fastq_suffix }}'])))
+                fastq_r = ",".join(fastq_r)
+                fastqs.append(fastq_r)
+            fastqs = " ".join(fastqs)
+            line = " ".join([sample, fastqs])
+            tsv_lines.append(line)
+        outfile.write("\n".join(tsv_lines))
+    return outfile_name
+
+def species_index():
+    assert len(SPECIES) == len(MAPPER_INDEX)
+    species_index_pairs = []
+    for i in range(len(SPECIES)):
+        species_index_pair = " ".join([SPECIES[i], MAPPER_INDEX[i]])
+        species_index_pairs.append(species_index_pair)
+    species_index_pairs = " ".join(species_index_pairs)
+    return species_index_pairs
+
+
+rule fastqc:
+    input:
+        fastq = lambda wildcards: retrieve_fastqs(wildcards.sample)
+    output:
+        "results/fastqc/{sample}/stdin_fastqc.html"
+    params:
+        output_dir = lambda wildcards, output: os.path.dirname(output[0]),
+        fqc = FASTQC_EXECUTABLE
+    log: "results/logs/fastqc/{sample}.log"
+    threads: NUM_THREADS_PER_SAMPLE
+    shell:
+        """
+        zcat {input.fastq} | {params.fqc} -t {threads} -o {params.output_dir} stdin > {log} 2>&1
+        """
+
+rule make_sample_tsv:
+    output:
+        'sample.tsv'
+    run:
+        sample_tsv()
+
+rule sargasso:
+    input:
+        'sample.tsv',
+    params:
+        data_type = DATA_TYPE,
+        mapper = MAPPER_EXECUTABLE,
+        tmp_dir = 'tmp',
+        strategy=STRATEGY,
+        species_index = lambda parameter: species_index(),
+        main_dir=MAIN_DIR
+    log: "results/logs/sargasso/sargasso.log"
+    threads: NUM_TOTAL_THREADS
+    output:
+        bam = expand("results/sargasso/filtered_reads/{sample}___{species}___filtered.bam", sample=SAMPLES, species=SPECIES)
+    shell:
+        """
+        # this line is due to snakemake creating all dirs needed to make outfiles but sargasso doesnt like the outfolder already existing
+        rm -rf results/sargasso
+        species_separator {params.data_type} --mapper-executable {params.mapper} --sambamba-sort-tmp-dir={params.tmp_dir} --{params.strategy} --num-threads {threads} {input} results/sargasso {params.species_index}
+        cd results/sargasso && make > {params.main_dir}/{log} 2>&1
+        """
+
+rule sambamba_sort:
+    input:
+        "results/sargasso/filtered_reads/{sample}___{species}___filtered.bam"
+    output:
+        "results/final_bams/{sample}.{species}.bam"
+    params:
+        tmp_dir = 'tmp',
+    threads: NUM_THREADS_PER_SAMPLE
+    shell:
+        """
+        sambamba sort -t {threads} --tmpdir {params.tmp_dir} -o {output} {input}
+        """
+
+rule feature_counts:
+    input:
+        bam = "results/final_bams/{sample}.{species}.bam"
+    output:
+        counts_temp = "results/read_counts/{sample}.{species}.counts.tmp",
+        counts_out = "results/read_counts/{sample}.{species}.counts"
+    params:
+        strandedness_flag = lambda parameter: strand_test(),
+        featurecount = FEATURECOUNTS_EXECUTABLE,
+        gtf = lambda wildcards: gtf_dict[wildcards.species]
+    log: "results/logs/featureCount/{sample}.{species}.log"
+    threads: NUM_THREADS_PER_SAMPLE
+    shell:
+        """
+        {params.featurecount} -T {threads} -p -a {params.gtf} -o {output.counts_temp} -s {params.strandedness_flag} {input.bam} 2> {log}
+        tail -n +3 {output.counts_temp} | cut -f 1,7 > {output.counts_out}
+        """
+
+rule create_rrna_intervals:
+    input:
+        gtf = lambda wildcards: gtf_dict[wildcards.species],
+        bam = "results/final_bams/{sample}.{species}.bam"
+    output:
+        rrna_intervals = "results/alignment_metrics/{species}/{sample}_intervalListBody.txt",
+        rrna_header = "data/picard/{species}/{sample}_header.txt",
+        sample_rrna = "data/picard/{species}/{sample}.txt"
+    threads: NUM_THREADS_PER_SAMPLE
+    shell:
+        """
+        grep rRNA {input.gtf} | cut -s -f 1,4,5,7,9 > {output.rrna_intervals}
+        sambamba view -H {input.bam} > {output.rrna_header}
+        cat {output.rrna_header} {output.rrna_intervals} > {output.sample_rrna} 
+        """
+
+rule run_picard:
+    input:
+        rrna_intervals = "data/picard/{species}/{sample}.txt",
+        bam = "results/final_bams/{sample}.{species}.bam"
+    output:
+        picard_metrics = "results/alignment_metrics/{species}/{sample}.txt"
+    params:
+        picard = PICARD_EXECUTABLE,
+        ref = lambda wildcards: glob("data/picard/%s/*rff" % wildcards.species ),
+        strandedness_flag = lambda parameter: strand_test(picard=True)
+    log: "results/logs/picard/{sample}.{species}.log"
+    shell:
+        """
+        java -jar {params.picard} CollectRnaSeqMetrics I={input.bam} O={output.picard_metrics} REF_FLAT={params.ref} STRAND={params.strandedness_flag} RIBOSOMAL_INTERVALS={input.rrna_intervals} 2> {log}
+        """
+
+rule bams:
+    input:
+        sargasso_bams = expand("results/sargasso/filtered_reads/{sample}___{species}___filtered.bam", sample=SAMPLES, species=SPECIES),
+        indexed_bams = expand("results/final_bams/{sample}.{species}.bam", sample=SAMPLES, species=SPECIES)
+
+rule multiqc:
+    input:
+         fc = expand("results/read_counts/{sample}.{species}.counts", sample=SAMPLES, species=SPECIES),
+         picard = expand("results/alignment_metrics/{species}/{sample}.txt", sample=SAMPLES, species=SPECIES),
+         fastqc = expand("results/fastqc/{sample}/stdin_fastqc.html", sample=SAMPLES)
+    output:
+        "multiqc_report.html"
+    params:
+        input_dir = "results"
+    shell:
+        """
+        multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargasso -m picard -m bowtie2 {params.input_dir}
+        """
+
+
+
+

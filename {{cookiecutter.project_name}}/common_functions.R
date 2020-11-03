@@ -1564,7 +1564,7 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
                                                          reference_samples,reference_species,
                                                          paired=FALSE,
                                                          gene_lengths){
-  
+
   # In a mix-species sample, for example samples contains human/mouse/rat(HMR) cells,
   # we want to eastimate, for a 'species_of_interest', the amounnt of reads due to misassignment.
   # This is done by using 'reference samepls' does not contains cells from 'species_of_interest'
@@ -1573,7 +1573,7 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
   # target_species="human,mouse,rat"
   # reference_samples="09_Pc,10_Pc,11_Pc,12_Pc,05_EC,06_EC,07_EC,08_EC"
   # reference_species="rat;rat;rat;rat;human;human;human;human"
-  
+
   # x <- COMPARISON_TABLE %>% filter(comparison == comparison_name)
   # y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>%
   #   filter(comparison_name == x$comparison) %>%
@@ -1587,18 +1587,18 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
   # target_species=y$target_species
   # reference_samples=y$reference_samples
   # reference_species=y$reference_species
-  
+
   target_samples %<>% strsplit(.,',') %>% unlist()
   target_species %<>% strsplit(.,',') %>% unlist()
   reference_samples  %<>% strsplit(.,',') %>% unlist()
   reference_species  %<>% strsplit(.,';') %>% unlist()
-  
+
   # we workout all species involved
   all_species=c(target_species,
                 species_of_interest,
                 strsplit(reference_species,',') %>% unlist()
   ) %>% unique
-  
+
   # For each 'species_of_interest' gene, calculate an approximate gene “expression” in 'reference_samples'(rat)
   # containing only mouse and human material, measured in fragments per kilobase
   # per million mapped reads: FPKM_mm_hs(i)= 10^9*c(i) / (l(i)*R)
@@ -1606,33 +1606,33 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
   # samples, l(i) is the length of the longest transcript of the gene, and R is the
   # total number of reads assigned to all genes of all species in the mouse plus
   # human samples.
-  
+
   ## step 30 in paper
   # we group the reference sample by reference species
   # $human
   # [1] "05_EC" "06_EC" "07_EC" "08_EC"
-  # 
+  #
   # $mouse
-  # [1] "13_As"  "14_As" "15_As_replacement" "16_As"  
+  # [1] "13_As"  "14_As" "15_As_replacement" "16_As"
   refs <- split(reference_samples,reference_species)
-  
+
   ## If the reference samples are paired with the target samples,
   ## we check if they have the same number of sample.
   if(paired){
     sample_all_paired = lapply(refs,function(x){
       length(x)==length(target_samples)}
-    ) %>% 
+    ) %>%
       unlist() %>% all
-    
+
     if(!sample_all_paired)
       stop('Difference number of reference samples / target samples, cannot match pair.')
-    
-    ## We print out the pairing 
+
+    ## We print out the pairing
     lapply(1:length(target_samples),function(i){
-      c(setNames(c(target_samples[i]),str_c(target_species,collapse = ',')),sapply(refs,extract2,i)) %>% t() %>% as.data.frame() 
+      c(setNames(c(target_samples[i]),str_c(target_species,collapse = ',')),sapply(refs,extract2,i)) %>% t() %>% as.data.frame()
     })%>%reduce(rbind) %>% print()
   }
-  
+
   # for each group of reference samples, we work out the species_of_interest fpkm (misassignment)
   species_of_interest_in_reference_sample_fpkm <- refs %>% lapply(function(rsa){ # rsa: reference_sample
     # gene               `05_EC` `06_EC` `07_EC` `08_EC` counts gene_length max_transcript_length
@@ -1641,29 +1641,29 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
     # 2 ENSRNOG00000054139     189     197     210     294    890        2325                  2325
     # 3 ENSRNOG00000054846      75      91     143     114    423        1527                  1527
     ref_gene_counts_and_lengths <- get_gene_counts_and_lengths(
-      rsa, species_of_interest, gene_lengths, sum_counts = TRUE) 
-    
-    # 05_EC     06_EC     07_EC     08_EC    counts 
-    # 36191427  31824279  41255399  46717964 155989069 
+      rsa, species_of_interest, gene_lengths, sum_counts = TRUE)
+
+    # 05_EC     06_EC     07_EC     08_EC    counts
+    # 36191427  31824279  41255399  46717964 155989069
     ref_total_reads <- calculate_total_reads_for_species(
       rsa, all_species, sum_counts = TRUE)
-    
-    # This is using the total number of reads(counts) to workout the fpkm. 
+
+    # This is using the total number of reads(counts) to workout the fpkm.
     # The per-sample fpkm is just for debugging purpose
     # gene               `05_EC` `06_EC` `07_EC` `08_EC`  counts
     # <chr>                <dbl>   <dbl>   <dbl>   <dbl>   <dbl>
-    # 1 ENSRNOG00000049070  8.49   16.0    14.9    13.8    13.3   
-    # 2 ENSRNOG00000055837  3.55    3.36    3.71    3.01    3.39  
-    # 3 ENSRNOG00000054139  2.25    2.66    2.19    2.71    2.45  
-    # 4 ENSRNOG00000054846  1.36    1.87    2.27    1.60    1.78  
-    # 5 ENSRNOG00000046657  1.69    1.69    1.52    0.984   1.43  
-    # 6 ENSRNOG00000011175  0.130   0.148   0.0916  0.222   0.151 
-    # 7 ENSRNOG00000030807  0.0285  0.162   0.125   0.199   0.132 
-    c('counts',rsa) %>% 
-      calculate_fpkm( ref_gene_counts_and_lengths, ref_total_reads) %>% 
-      dplyr::arrange(gene) 
-  }) 
-  
+    # 1 ENSRNOG00000049070  8.49   16.0    14.9    13.8    13.3
+    # 2 ENSRNOG00000055837  3.55    3.36    3.71    3.01    3.39
+    # 3 ENSRNOG00000054139  2.25    2.66    2.19    2.71    2.45
+    # 4 ENSRNOG00000054846  1.36    1.87    2.27    1.60    1.78
+    # 5 ENSRNOG00000046657  1.69    1.69    1.52    0.984   1.43
+    # 6 ENSRNOG00000011175  0.130   0.148   0.0916  0.222   0.151
+    # 7 ENSRNOG00000030807  0.0285  0.162   0.125   0.199   0.132
+    c('counts',rsa) %>%
+      calculate_fpkm( ref_gene_counts_and_lengths, ref_total_reads) %>%
+      dplyr::arrange(gene)
+  })
+
   ## step 31 on paper
   # work out the species_of_interest fpkm in the target samples
   # gene               `01_HMR` `02_HMR` `03_HMR` `04_HMR` counts gene_length max_transcript_length
@@ -1674,51 +1674,51 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
   # 4 ENSRNOG00000000009        1        4        2        0      7        1361                  1361
   # 5 ENSRNOG00000000010        4        0        0        0      4        2444                  2444
   target_gene_counts_and_lengths <- get_gene_counts_and_lengths(
-    target_samples, species_of_interest, gene_lengths, sum_counts = TRUE) %>% 
+    target_samples, species_of_interest, gene_lengths, sum_counts = TRUE) %>%
     dplyr::arrange(gene)
-  
-  # 01_HMR    02_HMR    03_HMR    04_HMR 
-  # 149055415 122723195  77948579 115554113 
+
+  # 01_HMR    02_HMR    03_HMR    04_HMR
+  # 149055415 122723195  77948579 115554113
   target_total_reads <- calculate_total_reads_for_species(
     target_samples,species_of_interest, sum_counts = FALSE)
-  
+
   # gene               `01_HMR` `02_HMR` `03_HMR` `04_HMR`
   # <chr>                 <dbl>    <dbl>    <dbl>    <dbl>
   # 1 ENSRNOG00000000001   1.63      1.48   0.948      0.881
-  # 2 ENSRNOG00000000007   0         0      0.00902    0    
-  # 3 ENSRNOG00000000008  15.0      21.2   14.1       20.5  
-  # 4 ENSRNOG00000000009   0.0325    0.150  0.0448     0    
-  # 5 ENSRNOG00000000010   0.0725    0      0          0    
-  # 6 ENSRNOG00000000012   0.178     0      0.215      0    
-  # 7 ENSRNOG00000000017  16.5      12.1   15.9       10.3 
+  # 2 ENSRNOG00000000007   0         0      0.00902    0
+  # 3 ENSRNOG00000000008  15.0      21.2   14.1       20.5
+  # 4 ENSRNOG00000000009   0.0325    0.150  0.0448     0
+  # 5 ENSRNOG00000000010   0.0725    0      0          0
+  # 6 ENSRNOG00000000012   0.178     0      0.215      0
+  # 7 ENSRNOG00000000017  16.5      12.1   15.9       10.3
   species_of_interest_in_target_sample_fpkm <- target_samples %>%
-    calculate_fpkm(target_gene_counts_and_lengths, target_total_reads) %>% 
+    calculate_fpkm(target_gene_counts_and_lengths, target_total_reads) %>%
     arrange(gene)
-  
-  
+
+
   ## step 32 on paper
-  ## For each target sample, calculate the approximate ratio of 
+  ## For each target sample, calculate the approximate ratio of
   ## the reference_species ('mouse plus human’) to the species_of_interest (rat) RNA in the sample.
   sargasso_filtering_summary <- read_overall_filtering_summary()
-  
-  
+
+
   ## for each reference species, we workout a P(% of misassignment)
   P<-names(species_of_interest_in_reference_sample_fpkm) %>% set_names(.) %>% lapply(function(s){
     # refrence species, this will hopefully handle the mono/co reference samples
-    rsps <- strsplit(s,',') %>% unlist() 
+    rsps <- strsplit(s,',') %>% unlist()
     rsa <- refs[[s]] # reference samlple
-    
+
     #FPKM_mm_hsi, depend on 'paired' parameter, avg OR the per-sample fpkm will be used
     # gene                 avg `05_EC` `06_EC` `07_EC` `08_EC`
     # <chr>              <dbl>   <dbl>   <dbl>   <dbl>   <dbl>
     # 1 ENSRNOG00000000001     0       0       0       0       0
     # 2 ENSRNOG00000000007     0       0       0       0       0
-    # 3 ENSRNOG00000000008     0       0       0       0       0   
+    # 3 ENSRNOG00000000008     0       0       0       0       0
     f1 <- species_of_interest_in_reference_sample_fpkm[[s]] %>%
       dplyr::rename(avg=counts)
-    
+
     # d
-    # 04_HMR    02_HMR    03_HMR    01_HMR 
+    # 04_HMR    02_HMR    03_HMR    01_HMR
     # 0.4278663 0.2358971 0.8291291 0.2187826
     d <- sargasso_filtering_summary %>%
       dplyr::select(str_c('Assigned-Reads-',species_of_interest),str_c('Assigned-Reads-',rsps)) %>%
@@ -1728,22 +1728,22 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
       dplyr::select(Sample, toTargetRatio) %>%
       filter(Sample %in% target_samples) %>%
       tibble::deframe() %>% extract(target_samples)
-    
-    
+
+
     # FPKM_rni
     # gene               `01_HMR` `02_HMR` `03_HMR` `04_HMR`
     # <chr>                 <dbl>    <dbl>    <dbl>    <dbl>
     # 1 ENSRNOG00000000001   1.63      1.48   0.948      0.881
-    # 2 ENSRNOG00000000007   0         0      0.00902    0    
-    # 3 ENSRNOG00000000008  15.0      21.2   14.1       20.5  
-    # 4 ENSRNOG00000000009   0.0325    0.150  0.0448     0    
-    # 5 ENSRNOG00000000010   0.0725    0      0          0    
-    f2 <- species_of_interest_in_target_sample_fpkm 
-    
+    # 2 ENSRNOG00000000007   0         0      0.00902    0
+    # 3 ENSRNOG00000000008  15.0      21.2   14.1       20.5
+    # 4 ENSRNOG00000000009   0.0325    0.150  0.0448     0
+    # 5 ENSRNOG00000000010   0.0725    0      0          0
+    f2 <- species_of_interest_in_target_sample_fpkm
+
     if (!all(f1$gene == f2$gene)) {
       stop('gene in reference are not the same as gene in target.')
     }
-    
+
     if(paired){
       ## for each refernce, we have 1 fpkm
       #                       05_EC 06_EC 07_EC 08_EC
@@ -1753,8 +1753,8 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
       # ENSRNOG00000000009     0     0     0     0
       # ENSRNOG00000000010     0     0     0     0
       # ENSRNOG00000000012     0     0     0     0
-      fpkm1 = f1 %>% dplyr::select(-avg) %>% 
-        tibble::column_to_rownames(var = 'gene') %>% 
+      fpkm1 = f1 %>% dplyr::select(-avg) %>%
+        tibble::column_to_rownames(var = 'gene') %>%
         as.matrix()
       numerator <- (( fpkm1 %>% as.matrix() %>% t()) * d )  %>% t()
     }else{
@@ -1766,12 +1766,12 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
       # ENSRNOG00000000009   0
       # ENSRNOG00000000010   0
       # ENSRNOG00000000012   0
-      fpkm1 = f1 %>% dplyr::select(gene,avg) %>% 
+      fpkm1 = f1 %>% dplyr::select(gene,avg) %>%
         tibble::column_to_rownames(var = 'gene')
       numerator <- (fpkm1 %>% as.matrix()) %*% (d %>% as.matrix() %>% t())
     }
-    
-    
+
+
     #                         01_HMR     02_HMR       03_HMR     04_HMR
     # ENSRNOG00000000001  1.62657851  1.4761767  0.947681184  0.8813083
     # ENSRNOG00000000007  0.00000000  0.0000000  0.009020439  0.0000000
@@ -1783,7 +1783,7 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
       tibble::column_to_rownames(var = 'gene') %>%
       dplyr::select(names(d)) %>%
       as.matrix()
-    
+
     # gene               `01_HMR` `02_HMR` `03_HMR` `04_HMR`     p
     # <chr>                 <dbl>    <dbl>    <dbl>    <dbl> <dbl>
     # 1 ENSRNOG00000000001        0        0        0        0     0
@@ -1796,11 +1796,11 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
       tibble::rownames_to_column('gene') %>%
       mutate_at(.vars = target_samples, list(~replace(., is.infinite(.), NaN))) %>%
       mutate(p = rowMeans(.[,target_samples], na.rm=TRUE)) %>%
-      as_tibble() 
-    
+      as_tibble()
+
     list(p=per_sample_p,d=d)
   })
-  
+
   # $human
   # $human$p
   # # A tibble: 32,883 x 6
@@ -1812,11 +1812,11 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
   # 4 ENSRNOG00000000009        0        0        0      NaN     0
   # 5 ENSRNOG00000000010        0      NaN      NaN      NaN     0
   # # … with 32,873 more rows
-  # 
+  #
   # $human$d
-  # 01_HMR     02_HMR     03_HMR     04_HMR 
-  # 0.45306509 0.45660661 0.06097529 0.13513955 
-  # 
+  # 01_HMR     02_HMR     03_HMR     04_HMR
+  # 0.45306509 0.45660661 0.06097529 0.13513955
+  #
   # $mouse
   # $mouse$p
   # # A tibble: 32,883 x 6
@@ -1828,11 +1828,11 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
   # 4 ENSRNOG00000000009        0        0        0      NaN     0
   # 5 ENSRNOG00000000010        0      NaN      NaN      NaN     0
   # # … with 32,873 more rows
-  # 
+  #
   # $mouse$d
-  # 01_HMR   02_HMR   03_HMR   04_HMR 
-  # 4.570748 4.239137 1.206085 2.337179 
-  
+  # 01_HMR   02_HMR   03_HMR   04_HMR
+  # 4.570748 4.239137 1.206085 2.337179
+
   # gene               p.human p.mouse     p
   # <chr>                <dbl>   <dbl> <dbl>
   # 1 ENSRNOG00000000001       0       0     0
@@ -1840,43 +1840,43 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
   # 3 ENSRNOG00000000008       0       0     0
   # 4 ENSRNOG00000000009       0       0     0
   # 5 ENSRNOG00000000010       0       0     0
-  P_df<-P %>% lapply(extract2,'p') %>% 
+  P_df<-P %>% lapply(extract2,'p') %>%
     purrr::reduce(left_join,by='gene',suffix=c(str_c('.',names(.)))) %>%
-    dplyr::select(gene,starts_with('p')) %>%  
+    dplyr::select(gene,starts_with('p')) %>%
     mutate(p=rowSums(.[2:ncol(.)]))
-  
+
   # gene               human_counts `05_EC` `06_EC` `07_EC` `08_EC` mouse_counts `13_As` `14_As` `15_As_replacement` `16_As` `01_HMR` `02_HMR` `03_HMR` `04_HMR`
   # <chr>                     <dbl>   <dbl>   <dbl>   <dbl>   <dbl>        <dbl>   <dbl>   <dbl>               <dbl>   <dbl>    <dbl>    <dbl>    <dbl>    <dbl>
   # 1 ENSRNOG00000000001            0       0       0       0       0            0       0       0                   0       0   1.63      1.48   0.948      0.881
-  # 2 ENSRNOG00000000007            0       0       0       0       0            0       0       0                   0       0   0         0      0.00902    0    
+  # 2 ENSRNOG00000000007            0       0       0       0       0            0       0       0                   0       0   0         0      0.00902    0
   # 3 ENSRNOG00000000008            0       0       0       0       0            0       0       0                   0       0  15.0      21.2   14.1       20.5
   debug_df<-species_of_interest_in_reference_sample_fpkm %>% map2(names(.),.,function(s,df){
     df %>% dplyr::rename_at(vars(counts),funs(str_c(s,'_',.)))
   }) %>% purrr::reduce(left_join) %>% left_join(species_of_interest_in_target_sample_fpkm)
-  
+
   # $human
-  # 04_HMR     02_HMR     03_HMR     01_HMR 
-  # 0.13513955 0.45660661 0.06097529 0.45306509 
-  # 
+  # 04_HMR     02_HMR     03_HMR     01_HMR
+  # 0.13513955 0.45660661 0.06097529 0.45306509
+  #
   # $mouse
-  # 04_HMR   02_HMR   03_HMR   01_HMR 
+  # 04_HMR   02_HMR   03_HMR   01_HMR
   # 2.337179 4.239137 1.206085 4.570748
   D_df <- P %>% lapply(extract2,'d')
-  
+
   ## we work out the composition of the reference sample
   # refs_composition <- lapply(refs,function(ss){
-  refs_composition <- sargasso_filtering_summary %>% 
-    # dplyr::filter(Sample %in% ss) %>% 
+  refs_composition <- sargasso_filtering_summary %>%
+    # dplyr::filter(Sample %in% ss) %>%
     dplyr::select(Sample,starts_with('Assigned-Reads')) %>%
-    tidyr::pivot_longer(-Sample,names_to='type') %>% 
-    group_by(Sample) %>% 
+    tidyr::pivot_longer(-Sample,names_to='type') %>%
+    group_by(Sample) %>%
     mutate(prec=round(100*value/sum(value),digits=1)) %>%
     tidyr::pivot_wider(Sample,names_from = type,values_from = prec ) %>%
-    dplyr::rename_at(vars(-Sample),gsub,pattern='Assigned-Reads-',replacement='',fixed=TRUE) %>% 
+    dplyr::rename_at(vars(-Sample),gsub,pattern='Assigned-Reads-',replacement='',fixed=TRUE) %>%
     ungroup()
   # })
-  
-  
+
+
   list(
     P=P_df %>% left_join(debug_df),
     D=D_df,
@@ -1885,52 +1885,52 @@ calculate_per_gene_misassignment_percentages <- function(species_of_interest,
 }
 
 get_misassignment_percentages <- function(comparison_name, gene_lengths) {
-  
+
   x <- COMPARISON_TABLE %>% filter(comparison == comparison_name)
-  
+
   ret <- {}
-  
+
   #for condition
-  y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% 
-    filter(comparison_name == x$comparison) %>% 
+  y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>%
+    filter(comparison_name == x$comparison) %>%
     filter(condition == x$condition)
-  
+
   if (nrow(y) > 0) {
     # target_samples <- SAMPLE_DATA %>% filter(!!parse_expr(x$filter)) %>%
     #   filter(!!parse_expr(x$condition_name) == x$condition) %>%
     #   pull(sample_name) %>%
     #   str_c(collapse = ',')
-    
+
     P_condition <- calculate_per_gene_misassignment_percentages(y$species_of_interest,
-                                                                y$target_samples, y$target_species, 
-                                                                y$reference_samples, y$reference_species, 
+                                                                y$target_samples, y$target_species,
+                                                                y$reference_samples, y$reference_species,
                                                                 y$paired,
                                                                 gene_lengths)
     ret[['P_condition']] = P_condition$P %>% dplyr::select(gene,p)
     ret[['P_condition_debug']]=P_condition
     ret[['condition_reference_samples']] = y$reference_samples
-    
+
   } else {
     ret[['P_condition']] = NA
     ret[['P_condition_debug']] = NA
     ret[['condition_reference_samples']] = NA
   }
-  
-  
-  
+
+
+
   #for condition_base
-  y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% 
-    filter(comparison_name == x$comparison) %>% 
+  y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>%
+    filter(comparison_name == x$comparison) %>%
     filter(condition == x$condition_base)
-  
+
   if (nrow(y) > 0) {
     # target_samples <- SAMPLE_DATA %>% filter(!!parse_expr(x$filter)) %>%
     #   filter(!!parse_expr(x$condition_name) == x$condition_base) %>%
     #   pull(sample_name) %>%
     #   str_c(collapse = ',')
     P_condition_base <- calculate_per_gene_misassignment_percentages(y$species_of_interest,
-                                                                     y$target_samples, y$target_species, 
-                                                                     y$reference_samples, y$reference_species, 
+                                                                     y$target_samples, y$target_species,
+                                                                     y$reference_samples, y$reference_species,
                                                                      y$paired,
                                                                      gene_lengths)
     ret[['P_condition_base']] = P_condition_base$P %>% dplyr::select(gene,p)

@@ -35,12 +35,9 @@ done
 python3 -m snakemake -s Snakefile.multispecies_analysis bams -j $NUM_TOTAL_THREADS
 python3 -m snakemake -s Snakefile.multispecies_analysis multiqc -j $NUM_TOTAL_THREADS
 {% else %}
-python3 -m snakemake -s Snakefile.singlespecies_analysis  bams -j $NUM_TOTAL_THREADS
-python3 -m snakemake -s Snakefile.singlespecies_analysis  multiqc -j $NUM_TOTAL_THREADS
+python3 -m snakemake -s Snakefile.singlespecies_analysis bams -j $NUM_TOTAL_THREADS
+python3 -m snakemake -s Snakefile.singlespecies_analysis multiqc -j $NUM_TOTAL_THREADS
 {% endif %}
-
-##### Gather all QC data
-multiqc -d -f -m featureCounts -m star -m fastqc -m salmon -m kallisto -m sargasso -m picard -m bowtie2 ${RESULTS_DIR}
 
 #### we check if all the sample are the same strandness settings
 #### https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/127

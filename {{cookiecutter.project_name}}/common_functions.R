@@ -1112,7 +1112,9 @@ perform_go_analyses <- function(significant_genes, expressed_genes, comparison_n
       extract2('go_results') %>% 
       inner_join(GO_TERMS) %>% 
       dplyr::mutate(Term=FullTerm) %>% 
-      dplyr::select(-FullTerm) %>% 
+      dplyr::select(-FullTerm) %>%
+      dplyr::rename(annotated_in_background = Annotated, annotated_in_gene_set = Significant,
+                    expected_annotated_in_gene_set = Expected, p.value = weight_fisher) %>% # Changing column names in results
       write_csv(file.path(top_dir, str_c(comparison_name, file_prefix, "_go_", x %>% tolower, ".csv")), na="")
 
     ret

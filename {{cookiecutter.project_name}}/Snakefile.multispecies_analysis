@@ -109,7 +109,12 @@ def calculate_strandedness(strand_dict):
         raise Exception('Can not calculate strandedness from values: one=%s, two=%s, three=%s' % (strand_zero, strand_one, strand_two))
 
 
+def set_strand(strandedness):
+    global STRAND
+    STRAND=strandedness
+
 def strand_test(picard=False):
+    global STRAND
     picard_strand_value = {"0": "NONE", "1": "FIRST_READ_TRANSCRIPTION_STRAND", "2": "SECOND_READ_TRANSCRIPTION_STRAND"}
     if STRAND is None:
         strand_assigned_reads = {"0": 0, "1": 0, "2": 0}
@@ -118,12 +123,12 @@ def strand_test(picard=False):
             assigned = get_assigned_reads(counts_file)
             strand_assigned_reads[i] = assigned
         strandedness = calculate_strandedness(strand_assigned_reads)
+        set_strand(strandedness)
     else:
         strandedness = STRAND
     if picard is True:
         return picard_strand_value[strandedness]
     return strandedness
-
 
 
 def retrieve_fastqs(sample):

@@ -25,6 +25,7 @@ MAPPER_INDEX=[]
 BOWTIE_INDEX=[]
 GTF_FILE=[]
 REF_FLAT=[]
+STRAND=None
 
 DATA_TYPE = "{{cookiecutter.data_type}}"
 if DATA_TYPE == "rnaseq":
@@ -110,13 +111,16 @@ def calculate_strandedness(strand_dict):
 
 
 def strand_test(picard=False):
-    strand_assigned_reads = {"0": 0, "1": 0, "2": 0}
-    for i in strand_assigned_reads:
-        counts_file = run_featurecounts(i)
-        assigned = get_assigned_reads(counts_file)
-        strand_assigned_reads[i] = assigned
-    strandedness = calculate_strandedness(strand_assigned_reads)
     picard_strand_value = {"0": "NONE", "1": "FIRST_READ_TRANSCRIPTION_STRAND", "2": "SECOND_READ_TRANSCRIPTION_STRAND"}
+    if STRAND is None:
+        strand_assigned_reads = {"0": 0, "1": 0, "2": 0}
+        for i in strand_assigned_reads:
+            counts_file = run_featurecounts(i)
+            assigned = get_assigned_reads(counts_file)
+            strand_assigned_reads[i] = assigned
+        strandedness = calculate_strandedness(strand_assigned_reads)
+    else:
+        strandedness = STRAND
     if picard is True:
         return picard_strand_value[strandedness]
     return strandedness

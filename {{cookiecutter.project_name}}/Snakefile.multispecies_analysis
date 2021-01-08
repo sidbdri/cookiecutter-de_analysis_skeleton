@@ -254,7 +254,7 @@ rule create_rrna_intervals:
     shell:
         """
         grep rRNA {input.gtf} | cut -s -f 1,4,5,7,9 > {output.rrna_intervals}
-        sambamba view -H {input.bam} > {output.rrna_header}
+        sambamba view -t {threads} -H {input.bam} > {output.rrna_header}
         cat {output.rrna_header} {output.rrna_intervals} > {output.sample_rrna} 
         """
 

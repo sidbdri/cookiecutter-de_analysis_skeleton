@@ -278,8 +278,8 @@ rule bams:
 
 rule multiqc:
     input:
-         picard = expand("results/alignment_metrics/{species}/{sample}.txt", sample=SAMPLES, species=SPECIES),
          fc = expand("results/read_counts/{sample}.{species}.counts", sample=SAMPLES, species=SPECIES),
+         picard = expand("results/alignment_metrics/{species}/{sample}.txt", sample=SAMPLES, species=SPECIES),
          fastqc = expand("results/fastqc/{sample}/stdin_fastqc.html", sample=SAMPLES)
     output:
         "multiqc_report.html"

@@ -11,7 +11,6 @@ DATA_DIR = os.path.join(MAIN_DIR, 'data')
 RNASEQ_DIR=os.path.join(DATA_DIR, 'rnaseq')
 PICARD_DIR = os.path.join(DATA_DIR, 'picard')
 
-NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
 NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}
 
 STAR_EXECUTABLE="STAR{{cookiecutter.star_version}}"

@@ -283,7 +283,6 @@ rule multiqc:
          fastqc = expand("results/fastqc/{sample}/stdin_fastqc.html", sample=SAMPLES)
     output:
         "multiqc_report.html"
-    threads: NUM_THREADS_PER_SAMPLE
     params:
         input_dir = "results"
     shell:

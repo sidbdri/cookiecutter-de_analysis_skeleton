@@ -4,6 +4,7 @@ from glob import glob
 from subprocess import call, check_output
 import os
 
+include: "Snakefile.common"
 
 HOME_DIR = os.path.expanduser("~")
 MAIN_DIR = os.path.join(HOME_DIR, '{{cookiecutter.projects_base}}/{{cookiecutter.project_name}}')
@@ -146,23 +147,6 @@ def species_index():
     return species_index_pairs
 
 
-
-
-rule fastqc:
-    input:
-        fastq = lambda wildcards: retrieve_fastqs(wildcards.sample)
-    output:
-        "results/fastqc/{sample}/stdin_fastqc.html"
-    params:
-        output_dir = lambda wildcards, output: os.path.dirname(output[0]),
-        fqc = FASTQC_EXECUTABLE
-    log: "results/logs/fastqc/{sample}.log"
-    threads: NUM_THREADS_PER_SAMPLE
-    shell:
-        """
-        zcat {input.fastq} | {params.fqc} -t {threads} -o {params.output_dir} stdin > {log} 2>&1
-        """
-
 rule star:
     input:
         fastq = lambda wildcards: retrieve_fastqs(wildcards.sample)
@@ -217,60 +201,6 @@ rule index_bam:
         """
         sambamba sort -t {threads} --tmpdir {params.tmp_dir} {input} {output}
         """
-
-rule feature_counts:
-    input:
-        bam = "results/final_bams/{sample}.{species}.bam"
-    output:
-        counts_temp = temp("results/read_counts/{sample}.{species}.counts.tmp"),
-        counts_temp_summary = temp("results/read_counts/{sample}.{species}.counts.tmp.summary"),
-        counts_out = "results/read_counts/{sample}.{species}.counts",
-        counts_summary_out = "results/read_counts/{sample}.{species}.counts.summary"
-    threads: NUM_THREADS_PER_SAMPLE
-    params:
-        strandedness_flag = lambda parameter: strand_test(),
-        featurecount = FEATURECOUNTS_EXECUTABLE,
-        gtf = lambda wildcards: gtf_dict[wildcards.species]
-    log: "results/logs/featureCount/{sample}.{species}.log"
-    shell:
-        """
-        {params.featurecount} -T {threads} -p -a {params.gtf} -o {output.counts_temp} -s {params.strandedness_flag} {input.bam} 2> {log}
-        tail -n +3 {output.counts_temp} | cut -f 1,7 > {output.counts_out}
-        cp {output.counts_temp_summary} {output.counts_summary_out}
-        """
-
-rule create_rrna_intervals:
-    input:
-        gtf = lambda wildcards: gtf_dict[wildcards.species],
-        bam = "results/final_bams/{sample}.{species}.bam"
-    output:
-        rrna_intervals = "results/alignment_metrics/{species}/{sample}_intervalListBody.txt",
-        rrna_header = "data/picard/{species}/{sample}_header.txt",
-        sample_rrna = "data/picard/{species}/{sample}.txt"
-    threads: NUM_THREADS_PER_SAMPLE
-    shell:
-        """
-        grep rRNA {input.gtf} | cut -s -f 1,4,5,7,9 > {output.rrna_intervals}
-        sambamba view -t {threads} -H {input.bam} > {output.rrna_header}
-        cat {output.rrna_header} {output.rrna_intervals} > {output.sample_rrna} 
-        """
-
-rule run_picard:
-    input:
-        rrna_intervals = "data/picard/{species}/{sample}.txt",
-        bam = "results/final_bams/{sample}.{species}.bam"
-    output:
-        picard_metrics = "results/alignment_metrics/{species}/{sample}.txt"
-    params:
-        picard = PICARD_EXECUTABLE,
-        ref = lambda wildcards: glob("data/picard/%s/*rff" % wildcards.species ),
-        strandedness_flag = lambda parameter: strand_test(picard=True)
-    log: "results/logs/picard/{sample}.{species}.log"
-    shell:
-        """
-        java -jar {params.picard} CollectRnaSeqMetrics I={input.bam} O={output.picard_metrics} REF_FLAT={params.ref} STRAND={params.strandedness_flag} RIBOSOMAL_INTERVALS={input.rrna_intervals} 2> {log}
-        """
-
 
 rule bams:
     input:

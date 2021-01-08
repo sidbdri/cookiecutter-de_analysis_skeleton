@@ -82,8 +82,10 @@ def run_featurecounts(strand_setting):
     test_bam, test_gtf = pick_first_sample()
     outfile = os.path.join(read_counts_folder, "counts_temp.%s.out" % strand_setting)
     call("featureCounts -T 4 -p -a %s -o %s -s %s %s" % (test_gtf, outfile, strand_setting, test_bam), shell=True)
-    outfile_summary = ".".join([outfile, "testsummary"])
-    return outfile_summary
+    outfile_old = ".".join([outfile, "summary"])
+    outfile_new = ".".join([outfile, "testsummary"])
+    call("mv %s %s" % (outfile_old, outfile_new), shell=True)
+    return outfile_new
 
 
 def get_assigned_reads(counts_file):

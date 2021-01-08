@@ -1,6 +1,6 @@
-
-
-
+from glob import glob
+from subprocess import call, check_output
+import os
 
 def pick_first_sample():
     test_sample = SAMPLES[0]

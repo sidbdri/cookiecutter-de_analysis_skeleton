@@ -1,7 +1,4 @@
 
-
-from glob import glob
-from subprocess import call, check_output
 import os
 
 HOME_DIR = os.path.expanduser("~")

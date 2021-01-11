@@ -21,7 +21,6 @@ MAPPER_INDEX=[]
 BOWTIE_INDEX=[]
 GTF_FILE=[]
 REF_FLAT=[]
-STRAND=None
 
 DATA_TYPE = "{{cookiecutter.data_type}}"
 if DATA_TYPE == "rnaseq":

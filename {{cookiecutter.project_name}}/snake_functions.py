@@ -45,12 +45,19 @@ def calculate_strandedness(strand_dict):
     else:
         raise Exception('Can not calculate strandedness from values: one=%s, two=%s, three=%s' % (strand_zero, strand_one, strand_two))
 
+def get_strand():
+    if not os.path.exists("strand.txt"):
+        return None
+    with open("strand.txt", "r") as openfile:
+        strand=openfile.read().rstrip()
+        return strand
+
 def set_strand(strandedness):
-    global STRAND
-    STRAND=strandedness
+    with open("strand.txt", "r") as openfile:
+        openfile.write(strandedness)
 
 def strand_test(picard=False):
-    global STRAND
+    STRAND=get_strand()
     picard_strand_value = {"0": "NONE", "1": "FIRST_READ_TRANSCRIPTION_STRAND", "2": "SECOND_READ_TRANSCRIPTION_STRAND"}
     if STRAND is None:
         strand_assigned_reads = {"0": 0, "1": 0, "2": 0}

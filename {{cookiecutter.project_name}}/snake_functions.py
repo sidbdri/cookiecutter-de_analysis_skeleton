@@ -1,6 +1,7 @@
 from glob import glob
 from subprocess import call, check_output
 import os
+from snake_variables import *
 
 def pick_first_sample():
     test_sample = SAMPLES[0]
@@ -53,7 +54,7 @@ def get_strand():
         return strand
 
 def set_strand(strandedness):
-    with open("strand.txt", "r") as openfile:
+    with open("strand.txt", "w") as openfile:
         openfile.write(strandedness)
 
 def strand_test(picard=False):

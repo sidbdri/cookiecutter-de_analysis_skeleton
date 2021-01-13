@@ -1,7 +1,6 @@
 
 
 from snake_functions import *
-from snake_variables import *
 
 rule fastqc:
     input:

@@ -17,7 +17,7 @@ rule sargasso:
         species_index = lambda parameter: species_index(),
         main_dir=MAIN_DIR
     log: "results/logs/sargasso/sargasso.log"
-    threads: NUM_TOTAL_THREADS
+    threads: NUM_THREADS_PER_SAMPLE
     output:
         bam = expand("results/sargasso/filtered_reads/{sample}___{species}___filtered.bam", sample=SAMPLES, species=SPECIES)
     shell:

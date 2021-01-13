@@ -1,7 +1,8 @@
-from glob import glob
-from subprocess import call, check_output
-import os
 from snake_variables import *
+from subprocess import call, check_output
+from glob import glob
+import os
+
 
 def pick_first_sample():
     test_sample = SAMPLES[0]
@@ -88,4 +89,23 @@ def species_index():
         species_index_pairs.append(species_index_pair)
     species_index_pairs = " ".join(species_index_pairs)
     return species_index_pairs
+
+def sample_tsv():
+    outfile_name = 'sample.tsv'
+    with open(outfile_name, 'w') as outfile:
+        tsv_lines = []
+        for sample in SAMPLES:
+            fastqs = []
+            fastq_f = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', READ1_SUFFIX, '.{{ cookiecutter.fastq_suffix }}'])))
+            fastq_f = ",".join(fastq_f)
+            fastqs.append(fastq_f)
+            if IS_PAIRED_END == 'yes':
+                fastq_r = glob(os.path.join(RNASEQ_DIR, sample, ''.join(['*', READ2_SUFFIX, '.{{ cookiecutter.fastq_suffix }}'])))
+                fastq_r = ",".join(fastq_r)
+                fastqs.append(fastq_r)
+            fastqs = " ".join(fastqs)
+            line = " ".join([sample, fastqs])
+            tsv_lines.append(line)
+        outfile.write("\n".join(tsv_lines))
+    return outfile_name
 

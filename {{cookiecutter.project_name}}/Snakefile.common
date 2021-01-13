@@ -1,5 +1,3 @@
-
-
 from snake_functions import *
 
 rule fastqc:

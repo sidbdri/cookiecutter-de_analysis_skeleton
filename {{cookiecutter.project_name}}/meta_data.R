@@ -45,8 +45,10 @@ SAMPLE_DATA$read_bias=read_median_5prime_to_3prime_bias(SAMPLE_DATA$sample_name)
 # in 6 columns, i.e.:
 # cortical_correction_avg_fpkm, cortical_mutant_avg_fpkm, motor_correction_avg_fpkm, 
 # motor_mutant_avg_fpkm, cortical_avg_fpkm, motor_avg_fpkm
-
 AVG_FPKM_GROUP <- list(c(), c())
+
+## we reorder the sample_data table base on the first PCA feature(s) https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/110
+SAMPLE_DATA %>% dplyr::arrange_at(vars(AVG_FPKM_GROUP[[1]]))
 
 # An example can be found here:
 # https://github.com/sidbdri/cookiecutter-sargasso-de_analysis_skeleton

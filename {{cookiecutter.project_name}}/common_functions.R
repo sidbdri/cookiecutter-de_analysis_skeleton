@@ -354,7 +354,7 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
                           extract2("sample_info"))
     
     start_plot(str_c("pca_", x$comparison))
-    vst %>% plot_pca(intgroup=x$condition_name) %>% print()
+    vst %>% plot_pca(intgroup=x$condition_name,output_data_table_path=file.path(GRAPHS_DIR,str_c("pca_", x$comparison,'_',SPECIES,'.csv'))) %>% print()
     end_plot()
 
     start_plot(str_c("heatmap_", x$comparison))
@@ -589,7 +589,7 @@ read_de_results <- function(filename, num_samples, num_conditions, num_compariso
 ##### Quality control checks and plots
 
 plot_pca <- function(vst, intgroup=c("condition"), plot_label = TRUE, label_name='name', include_gene = c(),
-                     removeBatchEffect = FALSE, batch = NULL){
+                     removeBatchEffect = FALSE, batch = NULL, output_data_table_path=NULL){
   
   if (removeBatchEffect) {
     if (is.null(batch)) {
@@ -600,6 +600,11 @@ plot_pca <- function(vst, intgroup=c("condition"), plot_label = TRUE, label_name
   }
   
   pca_data <- vst %>% plotPCA2(intgroup = intgroup, returnData = TRUE, include_gene = include_gene)
+
+  # we want to save the data table used for the pca plot for future reference https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/115
+  if(!is.null(output_data_table_path)){
+    write.csv(pca_data, output_data_table_path)
+  }
   
   percent_var <- round(100 * attr(pca_data, "percentVar"))
   
@@ -632,7 +637,7 @@ plot_pca <- function(vst, intgroup=c("condition"), plot_label = TRUE, label_name
   if(plot_label)
     p <- p + geom_text(aes(label = !!parse_expr(label_name)), colour="darkgrey", 
                        position=position_nudge(y = 1), size=3)
-  
+
   p
 }
 

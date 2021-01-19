@@ -1895,7 +1895,7 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
 
   x <- COMPARISON_TABLE %>% filter(comparison == comparison_name)
 
-  ret <- {}
+  ret <- list()
 
   #for condition
   y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>%

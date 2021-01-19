@@ -475,7 +475,7 @@ save_results_by_group <- function(results,use_tx=FALSE) {
     n_comparisons <- COMPARISON_TABLE %>% 
       filter(group != g) %>% 
       pull(comparison) %>% 
-      str_c("^", ., '$' ,collapse = '|')
+      str_c("^", ., '\\.' ,collapse = '|')
     
     samples_to_include <- SAMPLE_DATA %>%
       filter(!!parse_expr(COMPARISON_TABLE %>% filter(group==g) %>% pull(filter) %>% str_c(collapse = '|'))) %>%

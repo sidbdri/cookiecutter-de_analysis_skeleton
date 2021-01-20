@@ -1565,6 +1565,9 @@ calculate_fpkm <- function(samples, gene_counts_and_lengths, total_reads){
     }) %>% reduce(inner_join)
 }
 
+read_overall_filtering_summary <-function(){
+    read_csv(file.path("results","sargasso","filtered_reads","overall_filtering_summary.txt"))
+}
 
 calculate_per_gene_misassignment_percentages <- function(species_of_interest,
                                                          target_samples,target_species,

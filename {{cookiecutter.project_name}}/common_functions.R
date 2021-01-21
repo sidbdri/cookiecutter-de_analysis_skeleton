@@ -99,6 +99,14 @@ check_samples <- function(){
     }) %>% reduce(rbind)
 }
 
+check_comparison_name <- function(){
+    invalid=COMPARISON_TABLE %>% pull(comparison) %>% grepl('^[0-9]',x = .,perl=T)
+    if(any(invalid)){
+        message('Comparison cannot start with a number. The following comparison names are invalid: ')
+        cat(COMPARISON_TABLE %>% pull(comparison) %>% extract(which(not_valid))%>%paste(collapse = '\n'))
+    }
+}
+
 start_plot <- function(prefix,width=12, height=12, path=GRAPHS_DIR, num_plots=1) {
   .adjust_pdf_size<-function(num_plots){
     num_features <- num_plots

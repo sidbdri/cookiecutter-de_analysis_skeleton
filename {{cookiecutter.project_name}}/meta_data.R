@@ -59,6 +59,9 @@ COMPARISON_TABLE <- tribble(
   #"P10_Ctx_KO_vs_WT", "~genotype", "genotype", "KO", "WT", "age=='P10' & region=='Ctx'",group_1
 )
 
+# to make sure comparison name does not start with a number https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/142
+check_comparison_name()
+
 # This is to make sure the DESeq2 formulas are ordered so that the 'deciding' 
 # condition is the last item in the formula
 check_formulas()

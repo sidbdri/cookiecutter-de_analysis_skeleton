@@ -41,9 +41,16 @@ python3 -m snakemake -s Snakefile.singlespecies_analysis multiqc -j $NUM_TOTAL_T
 
 #### we check if all the sample are the same strandness settings
 #### https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/127
-strandness_qc=`cat ${MAIN_DIR}/multiqc_data/multiqc_picard_RnaSeqMetrics.txt | tail -n +2 | awk -F '\t' '$19<99 {print $1"\t"$19}'`
+strandedness=`head -1 strand.txt`
+strandness_qc=`cat ${MAIN_DIR}/multiqc_data/multiqc_picard_RnaSeqMetrics.txt | tail -n +2 | \
+                awk -v s=$strandedness -F '\t' '{ if (s==0 && ($19<=45 || $19>=55))
+                                                    print $1"\t"$19;
+                                                  else if (s==1 && $19>=5)
+                                                    print $1"\t"$19;
+                                                  else if (s==2 && $19<=95)
+                                                    print $1"\t"$19};'`
 if [ ! `echo -n "${strandness_qc}" | wc -l` = 0 ]; then
-    echo "Error: The following sample may have the wrong strandness setting:"
+    echo "Error: The following sample may have the wrong strandedness setting:"
     echo "${strandness_qc}"
     exit
 fi

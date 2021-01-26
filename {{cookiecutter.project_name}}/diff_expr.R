@@ -29,13 +29,13 @@ dir.create(GRAPHS_DIR, recursive = TRUE)
 total_dds_data <- get_total_dds(SAMPLE_DATA, SPECIES, qSVA = qSVA, design_formula = ~1)
 total_vst <- total_dds_data %>% varianceStabilizingTransformation(blind = TRUE)
 
-start_plot("pca_all")
-total_vst %>% plot_pca(intgroup = PCA_FEATURE,output_data_table_path=file.path(GRAPHS_DIR,str_c('pca_all_',SPECIES,'.csv'))) %>% print()
+start_plot("pca_all_samples")
+total_vst %>% plot_pca(intgroup = FEATURES_FOR_ALL_SAMPLES_PCA,output_data_table_path=file.path(GRAPHS_DIR,str_c('pca_all_samples_',SPECIES,'.csv'))) %>% print()
 end_plot()
 
 # scale the pdf base on number of features to be plotted
 num_features <- SAMPLE_DATA %>% dplyr::select(-contains('species'), -contains('sample_name')) %>% colnames() %>% length()
-start_plot("pca_features",num_plots=num_features)
+start_plot("pca_all_features_all_samples",num_plots=num_features)
 
 if (global_exists('patchworkplot')) {
   rm_global('patchworkplot')
@@ -56,7 +56,7 @@ start_plot("heatmap_all")
 total_vst %>% plot_heat_map(
   SAMPLE_DATA %>% 
     tibble::rownames_to_column("tmp_sample_name") %>%
-    tidyr::unite(col='sample_info', c(tmp_sample_name, HEAT_MAP_FEATURE), 
+    tidyr::unite(col='sample_info', c(tmp_sample_name, FEATURES_FOR_ALL_SAMPLES_HEATMAP),
                  sep = ":", remove = FALSE) %>% 
     extract2("sample_info"))
 end_plot()

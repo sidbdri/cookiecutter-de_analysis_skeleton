@@ -35,13 +35,13 @@ if (!dir.exists(GRAPHS_DIR)) dir.create(GRAPHS_DIR, recursive=TRUE)
 total_dds_data <- get_total_dds_tximport(SAMPLE_DATA, QUANT_METHOD, TX_LEVEL)
 total_vst <- total_dds_data %>% varianceStabilizingTransformation
 
-start_plot("pca_all_tx")
-total_vst %>% plot_pca(intgroup = PCA_FEATURE) %>% print()
+start_plot("pca_all_samples_tx")
+total_vst %>% plot_pca(intgroup = FEATURES_FOR_ALL_SAMPLES_PCA) %>% print()
 end_plot()
 
 
 num_features <- SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>% length()
-start_plot("pca_features_tx")
+start_plot("pca_all_features_all_samples_tx")
 if(exists(x = 'patchworkplot')) rm(patchworkplot)
 #This is to plot individually every feature defined in the SAMPLE_DATA table
 SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>%
@@ -57,7 +57,7 @@ start_plot("heatmap_all_tx")
 total_vst %>% plot_heat_map(
   SAMPLE_DATA %>% 
     tibble::rownames_to_column("tmp_sample_name") %>%
-    tidyr::unite(col='sample_info', c(tmp_sample_name, HEAT_MAP_FEATURE), 
+    tidyr::unite(col='sample_info', c(tmp_sample_name, FEATURES_FOR_ALL_SAMPLES_HEATMAP),
                  sep = ":", remove = FALSE) %>% 
     extract2("sample_info"))
 end_plot()

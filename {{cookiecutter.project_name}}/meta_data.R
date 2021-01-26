@@ -125,8 +125,8 @@ MISASSIGNMENT_SAMPLE_REFERENCE_TABLE <- tribble(
 
 
 # Set up PCA and heatmap plots
-PCA_FEATURE <- c('condition')
-HEAT_MAP_FEATURE <- c('condition', 'treatment')
+FEATURES_FOR_ALL_SAMPLES_PCA <- c('condition')
+FEATURES_FOR_ALL_SAMPLES_HEATMAP <- c('condition', 'treatment')
 
 SUMMARY_TB <- setNames(data.frame(matrix(ncol = 14, nrow = 0)),
                      c("Comparison", 

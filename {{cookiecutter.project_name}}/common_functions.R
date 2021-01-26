@@ -99,6 +99,14 @@ check_samples <- function(){
     }) %>% reduce(rbind)
 }
 
+check_comparison_name <- function(){
+    invalid=COMPARISON_TABLE %>% pull(comparison) %>% grepl('^[0-9]',x = .,perl=T)
+    if(any(invalid)){
+        message('Comparison cannot start with a number. The following comparison names are invalid: ')
+        cat(COMPARISON_TABLE %>% pull(comparison) %>% extract(which(not_valid))%>%paste(collapse = '\n'))
+    }
+}
+
 start_plot <- function(prefix,width=12, height=12, path=GRAPHS_DIR, num_plots=1) {
   .adjust_pdf_size<-function(num_plots){
     num_features <- num_plots
@@ -354,7 +362,7 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
                           extract2("sample_info"))
     
     start_plot(str_c("pca_", x$comparison))
-    vst %>% plot_pca(intgroup=x$condition_name) %>% print()
+    vst %>% plot_pca(intgroup=x$condition_name,output_data_table_path=file.path(GRAPHS_DIR,str_c("pca_", x$comparison,'_',SPECIES,'.csv'))) %>% print()
     end_plot()
 
     start_plot(str_c("heatmap_", x$comparison))
@@ -475,7 +483,7 @@ save_results_by_group <- function(results,use_tx=FALSE) {
     n_comparisons <- COMPARISON_TABLE %>% 
       filter(group != g) %>% 
       pull(comparison) %>% 
-      str_c("^", ., '$' ,collapse = '|')
+      str_c("^", ., '\\.' ,collapse = '|')
     
     samples_to_include <- SAMPLE_DATA %>%
       filter(!!parse_expr(COMPARISON_TABLE %>% filter(group==g) %>% pull(filter) %>% str_c(collapse = '|'))) %>%
@@ -589,7 +597,7 @@ read_de_results <- function(filename, num_samples, num_conditions, num_compariso
 ##### Quality control checks and plots
 
 plot_pca <- function(vst, intgroup=c("condition"), plot_label = TRUE, label_name='name', include_gene = c(),
-                     removeBatchEffect = FALSE, batch = NULL){
+                     removeBatchEffect = FALSE, batch = NULL, output_data_table_path=NULL){
   
   if (removeBatchEffect) {
     if (is.null(batch)) {
@@ -600,6 +608,11 @@ plot_pca <- function(vst, intgroup=c("condition"), plot_label = TRUE, label_name
   }
   
   pca_data <- vst %>% plotPCA2(intgroup = intgroup, returnData = TRUE, include_gene = include_gene)
+
+  # we want to save the data table used for the pca plot for future reference https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/115
+  if(!is.null(output_data_table_path)){
+    write.csv(pca_data, output_data_table_path)
+  }
   
   percent_var <- round(100 * attr(pca_data, "percentVar"))
   
@@ -632,7 +645,7 @@ plot_pca <- function(vst, intgroup=c("condition"), plot_label = TRUE, label_name
   if(plot_label)
     p <- p + geom_text(aes(label = !!parse_expr(label_name)), colour="darkgrey", 
                        position=position_nudge(y = 1), size=3)
-  
+
   p
 }
 
@@ -1560,6 +1573,9 @@ calculate_fpkm <- function(samples, gene_counts_and_lengths, total_reads){
     }) %>% reduce(inner_join)
 }
 
+read_overall_filtering_summary <-function(){
+    read_csv(file.path("results","sargasso","filtered_reads","overall_filtering_summary.txt"))
+}
 
 calculate_per_gene_misassignment_percentages <- function(species_of_interest,
                                                          target_samples,target_species,
@@ -1890,7 +1906,7 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
 
   x <- COMPARISON_TABLE %>% filter(comparison == comparison_name)
 
-  ret <- {}
+  ret <- list()
 
   #for condition
   y <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>%

@@ -30,7 +30,7 @@ total_dds_data <- get_total_dds(SAMPLE_DATA, SPECIES, qSVA = qSVA, design_formul
 total_vst <- total_dds_data %>% varianceStabilizingTransformation(blind = TRUE)
 
 start_plot("pca_all")
-total_vst %>% plot_pca(intgroup = PCA_FEATURE) %>% print()
+total_vst %>% plot_pca(intgroup = PCA_FEATURE,output_data_table_path=file.path(GRAPHS_DIR,str_c('pca_all_',SPECIES,'.csv'))) %>% print()
 end_plot()
 
 # scale the pdf base on number of features to be plotted

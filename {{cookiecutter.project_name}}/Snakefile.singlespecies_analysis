@@ -7,7 +7,7 @@ rule star:
         bam = "results/mapped_reads/{sample}.bam",
         sorted_bam = "results/mapped_reads/{sample}.sorted.bam",
         final_log = "results/mapped_reads/{sample}.log.out",
-        log = temp("results/mapped_reads/{sample}Log.out"),
+        log = "results/mapped_reads/{sample}Log.out",
         progress = temp("results/mapped_reads/{sample}Log.progress.out"),
         SJ = temp("results/mapped_reads/{sample}SJ.out.tab")
     params:

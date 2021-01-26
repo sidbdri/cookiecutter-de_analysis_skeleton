@@ -17,6 +17,9 @@ ENSEMBL_DIR+=(${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}})
 GTF_FILE+=(${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecutter.gtf_files[s]}})
 {% endfor %}
 
+# make sure we are in project ve https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/108
+workon {{cookiecutter.project_name}}
+
 echo "Running get_gene_lengths for species ...."
 for species in ${!SPECIES[@]}; do
     if [ ! -f "${ENSEMBL_DIR[$species]}/gene_lengths.csv" ]; then

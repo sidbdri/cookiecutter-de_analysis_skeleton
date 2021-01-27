@@ -4,5 +4,35 @@ sp:
     bowtie2:
             fn: '*.log.out'
     picard/rnaseqmetrics:
-            contents_re: .*CollectRnaSeqMetrics.*
+            fn: "*.log"
             shared: true
+    picard/markdups:
+            skip: true
+    picard/alignment_metrics:
+            skip: true
+    picard/basedistributionbycycle:
+            skip: true
+    picard/gcbias:
+            skip: true
+    picard/hsmetrics:
+            skip: true
+    picard/insertsize:
+            skip: true
+    picard/oxogmetrics:
+            skip: true
+    picard/pcr_metrics:
+            skip: true
+    picard/quality_by_cycle:
+            skip: true
+    picard/quality_score_distribution:
+            skip: true
+    picard/quality_yield_metrics:
+            skip: true
+    picard/rrbs_metrics:
+            skip: true
+    picard/sam_file_validation:
+            skip: true
+    picard/variant_calling_metrics:
+            skip: true
+    picard/wgs_metrics:
+            skip: true

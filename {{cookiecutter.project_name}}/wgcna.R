@@ -36,8 +36,7 @@ read_counts <- function(sample) {
 }
 
 remove_gene_column <- function(count_data) {
-  row.names(count_data) <- count_data$gene
-  count_data %>% dplyr::select(-gene)
+count_data %>% tibble::column_to_rownames(var="gene")
 }
 
 get_deseq2_dataset <- function(count_data, sample_data, filter_low_counts=TRUE, 

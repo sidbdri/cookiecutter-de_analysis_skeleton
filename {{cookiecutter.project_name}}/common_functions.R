@@ -439,7 +439,7 @@ get_fpkms <- function(all_counts, gene_lengths, samples, col_suffix) {
   lapply(AVG_FPKM_GROUP,function(g){
     SAMPLE_DATA %>%  tibble::rownames_to_column(var = "tmp_row_names") %>%
       group_by(.dots=g) %>%
-      summarise(samples=str_c(tmp_row_names, unit, sep = '', collapse = ',')) %>%
+      dplyr::summarise(samples=str_c(tmp_row_names, unit, sep = '', collapse = ',')) %>%
       tidyr::unite('avg_name', g, sep='_')
   }) %>% reduce(rbind)
 }

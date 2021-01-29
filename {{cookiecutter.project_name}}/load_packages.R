@@ -20,8 +20,12 @@ library(rlang)
 library(sva)
 library(knitr)
 library(patchwork)
+library(conflicted)
 
+conflict_scout(c("plyr", "dplyr"))
 sessionInfo()
 
 writeLines("")
 BiocManager::version()
+
+

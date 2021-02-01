@@ -33,7 +33,7 @@ rule star:
 
 rule bam_per_species:
     input:
-        "results/mapped_reads/{sample}.bam"
+        "results/mapped_reads/{sample}.sorted.bam"
     output:
         "results/final_bams/{sample}.{species}.bam"
     threads: NUM_THREADS_PER_SAMPLE
@@ -46,18 +46,16 @@ rule index_bam:
     input:
         "results/final_bams/{sample}.{species}.bam"
     output:
-        "results/final_bams/{sample}.{species}.sorted.bam.bai"
-    params:
-        tmp_dir = 'tmp'
+        "results/final_bams/{sample}.{species}.bam.bai"
     threads: NUM_THREADS_PER_SAMPLE
     shell:
         """
-        sambamba sort -t {threads} --tmpdir {params.tmp_dir} {input} {output}
+        sambamba index -t {threads} {input} {output}
         """
 
 rule bams:
     input:
-        indexed_bams = expand("results/final_bams/{sample}.{species}.sorted.bam.bai", sample=SAMPLES, species=SPECIES)
+        indexed_bams = expand("results/final_bams/{sample}.{species}.bam.bai", sample=SAMPLES, species=SPECIES)
 
 rule multiqc:
     input:

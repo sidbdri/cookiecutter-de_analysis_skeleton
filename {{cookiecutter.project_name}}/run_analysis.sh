@@ -42,6 +42,10 @@ python3 -m snakemake -s Snakefile.singlespecies_analysis bams -j $NUM_TOTAL_THRE
 python3 -m snakemake -s Snakefile.singlespecies_analysis multiqc -j $NUM_TOTAL_THREADS
 {% endif %}
 
+{% if cookiecutter.qSVA == "yes" %}
+python3 -m snakemake -s Snakefile.common all_qsva
+{% endif %}
+
 #### we check if all the sample are the same strandness settings
 #### https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/127
 strandedness=`head -1 strand.txt`

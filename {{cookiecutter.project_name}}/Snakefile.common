@@ -68,3 +68,21 @@ rule run_picard:
         """
         java -jar {params.picard} CollectRnaSeqMetrics I={input.bam} O={output.picard_metrics} REF_FLAT={params.ref} STRAND={params.strandedness_flag} RIBOSOMAL_INTERVALS={input.rrna_intervals} 2> {log}
         """
+
+rule run_qsva:
+    input:
+        bam = "results/final_bams/{sample}.{species}.bam"
+    output:
+        qsva_out = "results/read_counts/{sample}.{species}.dm.tsv"
+    params:
+        region_matrix_executable = "/opt/region_matrix/region_matrix.py",
+        regions = "/opt/region_matrix/sorted_polyA_degradation_regions_v2.bed",
+        wiggletools = "/usr/local/bin/wiggletools"
+    shell:
+        """
+        python2 {params.region_matrix_executable} --regions {params.regions} --bams {input.bam} --wiggletools {params.wiggletools} > {output.qsva_out}
+        """
+
+rule all_qsva:
+    input:
+        expand("results/read_counts/{sample}.{species}.dm.tsv",sample=SAMPLES, species=SPECIES)

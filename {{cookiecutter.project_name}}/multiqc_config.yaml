@@ -4,7 +4,7 @@ sp:
     bowtie2:
             fn: '*.log.out'
     picard/rnaseqmetrics:
-            fn: "*.log"
+            fn: "*.txt"
             shared: true
     picard/markdups:
             skip: true

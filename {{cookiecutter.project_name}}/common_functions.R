@@ -35,9 +35,7 @@ read_counts <- function(sample, species) {
 }
 
 remove_gene_column <- function(count_data) {
-  #Setting row names on a tibble is deprecated.
-  row.names(count_data) <- count_data$gene
-  count_data %>% dplyr::select(-gene)
+  count_data %>% tibble::column_to_rownames(var="gene")
 }
 
 get_gene_info <- function(species) {

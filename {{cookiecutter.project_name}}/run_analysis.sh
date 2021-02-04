@@ -48,20 +48,24 @@ python3 -m snakemake -s Snakefile.common all_qsva
 
 #### we check if all the sample are the same strandness settings
 #### https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/127
+[[ ! -s strand.txt ]] && echo "Error: strand.txt not found. Cannot perform strandness check." && exit
+[[ ! -s multiqc_data/multiqc_picard_RnaSeqMetrics.txt ]] && echo "Error: multiqc_picard_RnaSeqMetrics.txt not found. Cannot perform strandness check." && exit
+
 strandedness=`head -1 strand.txt`
-strandness_qc=`cat ${MAIN_DIR}/multiqc_data/multiqc_picard_RnaSeqMetrics.txt | tail -n +2 | \
-                awk -v s=$strandedness -F '\t' '{ if (s==0 && ($19<=45 || $19>=55))
-                                                    print $1"\t"$19;
-                                                  else if (s==1 && $19>=5)
-                                                    print $1"\t"$19;
-                                                  else if (s==2 && $19<=95)
-                                                    print $1"\t"$19};'`
+strandness_qc=`cat multiqc_data/multiqc_picard_RnaSeqMetrics.txt | \
+               awk -F '\t' 'NR==1 { for (i=1; i<=NF; i++) { f[$i] = i}}
+                            NR>1  { print $(f["Sample"])"\t"$(f["PCT_R2_TRANSCRIPT_STRAND_READS"])}' | \
+               awk -v s=$strandedness -F '\t' '{ if (s==0 && ($2<=45 || $2>=55))
+                                                    print $1"\t"$2;
+                                                 else if (s==1 && $2>=5)
+                                                    print $1"\t"$2;
+                                                 else if (s==2 && $2<=95)
+                                                    print $1"\t"$2};'`
 if [ ! `echo -n "${strandness_qc}" | wc -l` = 0 ]; then
     echo "Error: The following sample may have the wrong strandedness setting:"
     echo "${strandness_qc}"
     exit
 fi
-
 
 exit;
 

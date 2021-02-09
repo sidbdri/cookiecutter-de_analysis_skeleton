@@ -898,7 +898,7 @@ check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
 
     for (i in genes) {
       plot_name <- str_c(cell_type, '_', i)
-      l <- plot_gene_fpkms(i, result_table = result_table, debug = FALSE, print_graph = FALSE)
+      l <- plot_gene_fpkms(i, result_table = result_table, debug = FALSE, print_graph = FALSE, feature_group = CELLTYPE_FEATURE_GROUP, plot_feature=CELLTYPE_PLOT_FEATURE)
       l$graph <- l$graph + geom_hline(yintercept = fpkm_check_cutoff, linetype = "dashed", color = "black")
       assign(plot_name, l$graph)
       fpkm_info <- l$info %>% mutate(gene_marker_cell_type = cell_type) %>% rbind(fpkm_info)

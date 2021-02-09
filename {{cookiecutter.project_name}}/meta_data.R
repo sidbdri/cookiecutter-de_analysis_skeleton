@@ -127,7 +127,11 @@ MISASSIGNMENT_SAMPLE_REFERENCE_TABLE <- tribble(
 # Set up PCA and heatmap plots
 FEATURES_FOR_ALL_SAMPLES_PCA <- c('condition')
 FEATURES_FOR_ALL_SAMPLES_HEATMAP <- c('condition', 'treatment')
-CELLTYPE_FEATURE <- c('celltype')
+
+# Set up celltype graph features
+# The following two vectors must be the same length
+CELLTYPE_FEATURE_GROUP <- c('celltype')
+CELLTYPE_PLOT_FEATURE <- c('colour')
 
 SUMMARY_TB <- setNames(data.frame(matrix(ncol = 14, nrow = 0)),
                      c("Comparison", 

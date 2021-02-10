@@ -872,7 +872,8 @@ plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE,
                       nudge_x = -0.35, direction = "y", hjust= 0.5, 
                       segment.size = 0.1, size = 3) +
       ggtitle(gene_identifier %>% str_c(gene_name, sep = ':')) + 
-      theme(legend.position = "top")
+      theme(legend.position = "top") +
+      theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
   }
   
   if (print_graph) {

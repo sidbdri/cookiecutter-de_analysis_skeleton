@@ -26,6 +26,8 @@ conflict_prefer("filter", "dplyr")
 conflict_prefer("reduce", "purrr")
 conflict_prefer("rowVars", "matrixStats")
 conflict_prefer("set_names", "rlang")
+conflict_prefer("clusterExport", "parallel")
+conflict_prefer("clusterEvalQ", "parallel")
 
 conflict_scout(c("plyr", "dplyr"))
 sessionInfo()

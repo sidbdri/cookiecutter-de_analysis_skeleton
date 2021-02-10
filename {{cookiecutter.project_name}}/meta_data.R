@@ -128,6 +128,13 @@ MISASSIGNMENT_SAMPLE_REFERENCE_TABLE <- tribble(
 FEATURES_FOR_ALL_SAMPLES_PCA <- c('condition')
 FEATURES_FOR_ALL_SAMPLES_HEATMAP <- c('condition', 'treatment')
 
+# Set up celltype graph features, change to match one or more feature group
+# The following two vectors must be the same length
+# CELLTYPE_PLOT_FEATURE options: "color", "shape", "size"
+CELLTYPE_FEATURE_GROUP <- c('condition')
+CELLTYPE_PLOT_FEATURE <- c('color')
+
+
 SUMMARY_TB <- setNames(data.frame(matrix(ncol = 14, nrow = 0)),
                      c("Comparison", 
                        "DESeq_model_formula", 

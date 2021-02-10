@@ -762,7 +762,7 @@ plot_pvalue_distribution <- function(results, pvalue_column) {
 #' for(g in split(genes, ceiling(seq_along(genes)/4)) ){
 #'   for( i in g ){
 #'     plot_name<-str_c('p','_',i)
-#'     assign(plot_name,plot_gene_fpkms(i, result_table=results,debug=FALSE,print=FALSE))
+#'     assign(plot_name,plot_gene_fpkms(i, result_table=results, debug=FALSE, print_graph=FALSE))
 #'     if(nchar(p)==0){
 #'       p<-plot_name
 #'     }else{
@@ -797,21 +797,26 @@ plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE,
     
     result_table <- read.csv(result_table)
   }
-  
+
+  # get the results table, and get the fpkms, and also filter by gene name
+  # result should be the fpkms for our selected gene we want to plot
   fpkm_debug <- result_table %>% 
     dplyr::select(gene, gene_name, chromosome, entrez_id,
                   dplyr::ends_with("_fpkm"), 
                   -dplyr::ends_with("avg_fpkm"),
                   -dplyr::ends_with(".stat")) %>%
     dplyr::filter(gene_name==gene_identifier | gene==gene_identifier | entrez_id==gene_identifier)
-  
+
+  # get the gene name from the results table
   gene_name <- fpkm_debug$gene_name %>% as.vector()
-  
+
+  # turn the tibble into long format: each row is a sample and its fpkm etc
   fpkm_debug_long <- fpkm_debug %>% 
     as_tibble() %>%
     melt(id.var=c("gene", "gene_name", "chromosome", "entrez_id"),
          variable.name = 'sample_meta', value.name = 'fpkm')
-  
+
+  # check if featuregroup has been set; if not enter this code
   if (feature_group %>% length() == 0) {
     ## No feature group provided, we are going to plot the FPKM using the sample name and color.
     plot_x <- 'sample_meta'
@@ -831,21 +836,29 @@ plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE,
       ggtitle(gene_identifier %>% str_c(gene_name, sep = ':')) + 
       theme(legend.position = 'none') +
       theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+  # if featuregroup has been set, instead enter this code
   } else {
-    ## We are using sample info for plotting
-    fpkm_debug_long %<>%
-      tidyr::separate(meta,sep='_', into = c(feature_group, "tmp"), remove=TRUE) %>%
-      tidyr::unite(col = "sample_meta", feature_group, remove = FALSE) %>%
-      dplyr::select(-tmp)
-    
-    ## We want to plot only these samples
+    # tell it that we are using sample meta column to label the points on the plot later
+    plot_label <- 'sample_meta'
+
+    # remove the trailing fpkm from end of smaple names, resulting in sample names
+    # trims only trailing _fpkm in case theres an fpkm in the sample name
+    fpkm_debug_long %<>% mutate(sample_meta = sub("_fpkm$", "", sample_meta))
+
+    # join sample data with fpkm table by sample name
+    # all sample data variables are now included
+    fpkm_debug_long %<>% inner_join(SAMPLE_DATA, by=c("sample_meta" = "sample_name"))
+
+    # We want to plot only these samples
     if (filter_string != '') {
       fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
     }
-    
-    p <- fpkm_debug_long %>% ggplot(mapping = aes_string(y = "fpkm", x = plot_x))
-    
-    ## add features
+
+    # set up plot, giving x and y variables
+    p <- fpkm_debug_long %>% ggplot(mapping = aes_string(y = "fpkm", x = "sample_meta"))
+
+    # where set, change features of plot to be by our selected feature group
     for (i in which(plot_feature!='')) {
       switch(plot_feature[i],
              'color' = p <- p + aes_string(color=feature_group[i]),
@@ -894,7 +907,7 @@ check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
     
     for (i in genes) {
       plot_name <- str_c(cell_type, '_', i)
-      l <- plot_gene_fpkms(i, result_table = result_table, debug = FALSE, print = FALSE)
+      l <- plot_gene_fpkms(i, result_table = result_table, debug = FALSE, print_graph = FALSE, feature_group = CELLTYPE_FEATURE_GROUP, plot_feature = CELLTYPE_PLOT_FEATURE)
       l$graph <- l$graph + geom_hline(yintercept = fpkm_check_cutoff, linetype = "dashed", color = "black")
       assign(plot_name, l$graph)
       fpkm_info <- l$info %>% mutate(gene_marker_cell_type = cell_type) %>% rbind(fpkm_info)

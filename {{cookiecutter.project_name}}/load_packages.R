@@ -12,7 +12,7 @@ library(readr)
 library(reshape2)
 library(org.Hs.eg.db)
 library(org.Mm.eg.db)
-library(org.Rn.eg.db)
+library(org.Rn.eg.db)w
 library(stringr)
 library(topGO)
 library(tximport)

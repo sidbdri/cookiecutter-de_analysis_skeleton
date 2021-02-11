@@ -52,7 +52,7 @@ SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>%
 patchworkplot %>% print()
 end_plot()
 
-start_plot("heatmap_all")
+start_plot("heatmap_all_samples")
 total_vst %>% plot_heat_map(
   SAMPLE_DATA %>% 
     tibble::rownames_to_column("tmp_sample_name") %>%

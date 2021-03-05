@@ -24,7 +24,7 @@ dir.create(file.path(OUTPUT_DIR, "de_gene"), recursive = TRUE)
 GRAPHS_DIR <- 'results/differential_expression/graphs/'
 dir.create(GRAPHS_DIR, recursive = TRUE)
 
-#####
+#### Quality control ####
 
 total_dds_data <- get_total_dds(SAMPLE_DATA, SPECIES, qSVA = qSVA, design_formula = ~1)
 total_vst <- total_dds_data %>% varianceStabilizingTransformation(blind = TRUE)
@@ -69,7 +69,7 @@ start_plot("count_distribution")
 plot_count_distribution(total_dds_data, norm=F)
 end_plot()
 
-#####
+#### Differential gene expression ####
 
 gene_info <- get_gene_info(SPECIES)
 gene_lengths <- get_gene_lengths(SPECIES)
@@ -169,7 +169,6 @@ lapply(comparisons_results, function(cmp) {
   'success'
 }) 
 
-
 start_plot("all_comparison_pvalue_distribution")
 all_comparison_pvalue_distribution
 end_plot()
@@ -203,7 +202,7 @@ results %>%
 SUMMARY_TB %>%
   write_csv(file.path(OUTPUT_DIR, "de_gene", str_c("de_summary_", SPECIES, ".csv")), na="")
 
-#####
+#### GO enrichment analysis ####
 
 # For each comparison: 
 #   - for the GO/Reactome analyses, we are using all/up/down regulated genes,
@@ -213,8 +212,6 @@ SUMMARY_TB %>%
 if (PARALLEL) {
   adjust_parallel_cores()
 }
-
-##### GO analysis
 
 expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts = TRUE) %>% 
   get_count_data()
@@ -243,7 +240,7 @@ GO_results <- COMPARISON_TABLE %>%
   }
 )
 
-##### Reactome pathway analysis
+#### Reactome pathway analysis
 
 Reactome_results<- COMPARISON_TABLE %>% 
   pull(comparison) %>% 
@@ -268,7 +265,7 @@ Reactome_results<- COMPARISON_TABLE %>%
   }
 )
 
-##### Gene set enrichment analysis
+#### Gene set enrichment analysis ####
 
 gene_set_categories <- list("CURATED", "MOTIF", "GO", "CELL_TYPE")
 
@@ -307,7 +304,7 @@ GS_results <- COMPARISON_TABLE %>%
 # results %>% plot_gene_set(list_of_gene_sets[[3]], "GO_<go_term>", "condition.stat")
 # results %>% get_gene_set_results(list_of_gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head
 
-##### Saving and loading the workspace
+#### Saving and loading the workspace ####
 
 # Save the objects in the workspace for future analysis
 

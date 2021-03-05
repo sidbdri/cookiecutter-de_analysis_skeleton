@@ -4,7 +4,7 @@ SALMON <- "salmon"
 GO_TERMS <- Term(GOTERM) %>% as.data.frame() %>% tibble::rownames_to_column(var="GO.ID")
 colnames(GO_TERMS) <- c("GO.ID", "FullTerm")
 
-##### Utility functions
+#### Utility functions ####
 
 set_global <- function(value, variable) {
   assign(variable, envir=.GlobalEnv, value)
@@ -241,7 +241,7 @@ load_rs_data <- function(file = 'results/Rworkspace/diff_expr.RData') {
   load(file, envir = .GlobalEnv)
 }
 
-##### Gene-level D. E. analyses
+#### Gene-level D. E. analyses ####
 
 get_total_dds <- function(sample_data, species, filter_low_counts = FALSE, qSVA = FALSE, design_formula = ~1) {
   # Collate count data
@@ -467,8 +467,6 @@ get_avg_tpm <- function(tpms, tx_level) {
   avg_tpm %>% dplyr::select(gene, contains('avg'))
 }
 
-
-
 save_results_by_group <- function(results,use_tx=FALSE) {
   # This function will, for each group defined in the COMPARISON_TABLE, save the comparisons into
   # a CSV file, prefixed with the group name.
@@ -592,7 +590,7 @@ read_de_results <- function(filename, num_samples, num_conditions, num_compariso
   read_csv(filename, col_types = col_types_string)
 }
 
-##### Quality control checks and plots
+#### Quality control checks and plots ####
 
 plot_pca <- function(vst, intgroup=c("condition"), plot_label = TRUE, label_name='name', include_gene = c(),
                      removeBatchEffect = FALSE, batch = NULL, output_data_table_path=NULL){
@@ -980,7 +978,16 @@ check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
   }
 }
 
-##### Transcript-level D. E. analyses
+# read picard qc matrix for rna degradation
+read_median_5prime_to_3prime_bias <- function(samples=c()){
+  PICARD_ALIGNMENT_MATRIX=file.path('results/','alignment_metrics',SPECIES)
+  MEDIAN_5PRIME_TO_3PRIME_BIAS <- samples %>% lapply(function(sample){
+    read_tsv(file.path(PICARD_ALIGNMENT_MATRIX,str_c(sample,'.txt')),comment = '#',n_max = 1,col_type = cols()) %>%
+      pull(MEDIAN_5PRIME_TO_3PRIME_BIAS)
+  }) %>% unlist() %>% setNames(samples)
+}
+
+#### Transcript-level D. E. analyses ####
 
 get_transcripts_to_genes <- function(species = 'human') {
   str_c("data/", species , "_ensembl_{{cookiecutter.ensembl_version}}/tx2gene.tsv") %>%
@@ -1073,7 +1080,7 @@ get_avg_tpm <- function(tpms, tx_level) {
   tpms %>% dplyr::select(!!id_column, contains('avg'))
 }
 
-##### Gene ontology enrichment analyses
+#### Gene ontology enrichment analyses ####
 
 get_significant_genes <- function(term, GOdata, gene_info) {
   genes_for_term <- GOdata %>% genesInTerm(term) %>% extract2(1)
@@ -1146,7 +1153,7 @@ perform_go_analyses <- function(significant_genes, expressed_genes, comparison_n
   })
 }
 
-##### Reactome pathway analysis
+#### Reactome pathway analysis ####
 
 perform_pathway_enrichment <- function(significant_genes, expressed_genes, 
                                        comparison_name, file_prefix, species, out_dir="results/differential_expression/reactome/") {
@@ -1185,7 +1192,7 @@ perform_pathway_enrichment <- function(significant_genes, expressed_genes,
     ret
 }
 
-##### Camera gene set enrichment analysis
+#### Gene set enrichment analysis ####
 
 get_human_vs_species_ortholog_info <- function(species) {
   orthologs <- species %>% 
@@ -1487,7 +1494,7 @@ track_go <- function(target_terms = c('GO:0051492', 'GO:0010811'),
     panel.border = element_blank(),panel.background = element_blank())
 }
 
-##### Quality surrogate variable analysis
+#### Quality surrogate variable analysis ####
 
 qsva <- function(degradationMatrix, mod = matrix(1, ncol = 1, nrow = ncol(degradationMatrix))) {
   degPca = prcomp(t(log2(degradationMatrix + 1)))
@@ -1535,7 +1542,7 @@ get_qsva_dds <- function(dds) {
   dds
 }
 
-##### Calculate per-gene FPKM misassignment percentages
+#### Sargasso misassignment percentages ####
 
 get_gene_counts_and_lengths <- function(samples, species, gene_lengths, sum_counts = FALSE) {
   res <- samples %>%  
@@ -1973,108 +1980,3 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
   }
   ret
 }
-
-
-# read picard qc matrix for rna degradation
-read_median_5prime_to_3prime_bias <- function(samples=c()){
-  PICARD_ALIGNMENT_MATRIX=file.path('results/','alignment_metrics',SPECIES)
-  MEDIAN_5PRIME_TO_3PRIME_BIAS <- samples %>% lapply(function(sample){
-    read_tsv(file.path(PICARD_ALIGNMENT_MATRIX,str_c(sample,'.txt')),comment = '#',n_max = 1,col_type = cols()) %>%
-    pull(MEDIAN_5PRIME_TO_3PRIME_BIAS)
-  }) %>% unlist() %>% setNames(samples)
-}
-
-########
-## Functions to work out Sargasso error assignment ratio.
-## Commented out for now.
-##
-# get_single_species_only_counts <- function(samples, species) {
-#   samples %>%
-#     map(read_counts,species) %>%
-#     reduce(inner_join) %>%
-#     mutate(total = rowSums(dplyr::select(., one_of(samples)))) %>%
-#     dplyr::select(gene, total)
-# }
-#
-# get_mouse_rat_ortholog_info <- function() {
-#   orthologs <- read_tsv("data/rat_ensembl_92/mouse_orthologs.tsv",
-#   col_names=c("rat_gene", "mouse_gene", "type"))
-#
-#   remove_duplicate_genes <- function(gene_info, gene_column) {
-#     duplicates_removed <- gene_info %>%
-#       group_by_(gene_column) %>%
-#       mutate(num_genes=n()) %>%
-#       filter(num_genes == 1) %>%
-#       dplyr::select(-num_genes) %>%
-#       ungroup()
-#   }
-#
-#   get_duplicate_genes <- function(orthologs, gene_column) {
-#     all_orthologs %>%
-#       group_by_(gene_column) %>%
-#       mutate(num_genes=n()) %>%
-#       filter(num_genes > 1) %>%
-#       distinct() %>%
-#       pull(gene_column)
-#   }
-#
-#   # Select only 1-to-1 orthologs
-#   o2o_orthologs <- orthologs %>%
-#     filter(type == "ortholog_one2one") %>%
-#     dplyr::select(-type) %>%
-#     mutate(o2o_ortholog="Y") %>%
-#     remove_duplicate_genes("mouse_gene") %>%
-#     remove_duplicate_genes("rat_gene")
-#
-#   same_name_genes <- (get_gene_info("mouse") %>%
-#     mutate(gene_name=tolower(gene_name)) %>%
-#     dplyr::select(-chromosome, -description, -entrez_id, -gene_type) %>%
-#     rename(mouse_gene=gene)) %>%
-#     inner_join(get_gene_info("rat") %>%
-#       mutate(gene_name=tolower(gene_name)) %>%
-#       dplyr::select(-chromosome, -description, -entrez_id, -gene_type) %>%
-#       rename(rat_gene=gene)) %>%
-#     dplyr::select(-gene_name) %>%
-#     mutate(same_name="Y") %>%
-#     remove_duplicate_genes("mouse_gene") %>%
-#     remove_duplicate_genes("rat_gene")
-#
-#   all_orthologs <- same_name_genes %>% merge(o2o_orthologs, all=T)
-#   all_orthologs[is.na(all_orthologs)] <- ""
-#
-#   all_orthologs %>%
-#     filter(not(mouse_gene %in% get_duplicate_genes(., "mouse_gene") & same_name == "Y")) %>%
-#     filter(not(rat_gene %in% get_duplicate_genes(., "rat_gene") & same_name == "Y"))
-# }
-
-#######
-# comment out for now, needs project information to fill 
-# this function in order to source the function.
-# get_condition_res_tximport <- function(quant_method) {
-#   sample_data <- data.frame(
-#     condition=c(),
-#     sample=c(),
-#     filename=c(),
-#     row.names=c("<SAMPLE1>", "<SAMPLE2>", etc)
-#   )
-# 
-#   quant_file <- get_transcript_quant_file(quant_method)
-#   quant_files <- str_c("results/", quant_method, "_quant/", sample_data$filename, "/", quant_file)
-#   names(quant_files) <- sample_data$filename
-# 
-#   txi <- tximport(quant_files, type=quant_method, tx2gene=get_transcripts_to_genes(), reader=read_tsv)
-# 
-#   dds <- DESeqDataSetFromTximport(txi, sample_data, ~condition)
-#   dds <- dds[rowSums(counts(dds)) > 1, ]
-#   dds <- DESeq(dds)
-# 
-#   results <- dds %>% get_deseq2_results("condition", "<cond2>", "<cond1>")
-# 
-#   l2fc <- get_count_data(dds) %>%
-#     mutate(l2fc=log2(() / ()) %>%
-#              dplyr::select(gene, l2fc)
-# 
-#            results %<>% left_join(l2fc)
-# 
-#            return(results)
-# }

@@ -130,7 +130,7 @@ FEATURES_FOR_ALL_SAMPLES_HEATMAP <- c('condition', 'treatment')
 
 # Set up celltype graph features, change to match one or more feature group
 # The following two vectors must be the same length
-# CELLTYPE_PLOT_FEATURE options: "color", "shape", "size"
+# CELLTYPE_PLOT_FEATURE options: "color", "shape"
 CELLTYPE_FEATURE_GROUP <- c('condition')
 CELLTYPE_PLOT_FEATURE <- c('color')
 

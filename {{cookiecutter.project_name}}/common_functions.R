@@ -862,8 +862,7 @@ plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE,
     for (i in which(plot_feature!='')) {
       switch(plot_feature[i],
              'color' = p <- p + aes_string(color=feature_group[i]),
-             'shape' = p <- p + aes_string(shape=feature_group[i]),
-             'size' = p <- p + aes_string(size=feature_group[i])
+             'shape' = p <- p + aes_string(shape=feature_group[i])
       )
     }
     

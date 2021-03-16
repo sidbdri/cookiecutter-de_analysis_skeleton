@@ -865,7 +865,7 @@ plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE,
              'shape' = p <- p + aes_string(shape=feature_group[i])
       )
     }
-    
+
     p <- p + geom_point(size = 3) +
       geom_text_repel(aes(label = !!parse_expr(plot_label)),
                       nudge_x = -0.35, direction = "y", hjust= 0.5, 
@@ -909,6 +909,16 @@ check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
       plot_name <- str_c(cell_type, '_', i)
       l <- plot_gene_fpkms(i, result_table = result_table, debug = FALSE, print_graph = FALSE, feature_group = CELLTYPE_FEATURE_GROUP, plot_feature = CELLTYPE_PLOT_FEATURE)
       l$graph <- l$graph + geom_hline(yintercept = fpkm_check_cutoff, linetype = "dashed", color = "black")
+      # if it's the first graph, override the theme to have no legend
+      # ensures legend is only on right hand side of graph
+      if (nchar(p) == 0) {
+        l$graph <- l$graph + theme_update(legend.position = "none",
+                                          axis.title.x = element_blank(),
+                                          axis.text.x = element_blank(),
+                                          axis.ticks.x = element_blank())
+      }
+
+
       assign(plot_name, l$graph)
       fpkm_info <- l$info %>% mutate(gene_marker_cell_type = cell_type) %>% rbind(fpkm_info)
       

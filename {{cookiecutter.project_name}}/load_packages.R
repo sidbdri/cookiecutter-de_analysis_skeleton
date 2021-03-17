@@ -28,6 +28,8 @@ conflict_prefer("rowVars", "matrixStats")
 conflict_prefer("set_names", "rlang")
 conflict_prefer("clusterExport", "parallel")
 conflict_prefer("clusterEvalQ", "parallel")
+conflict_prefer("parSapply", "parallel")
+conflict_prefer("extract", "magrittr")
 
 sessionInfo()
 

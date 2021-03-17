@@ -1,8 +1,12 @@
 .R*
 *.Rproj
+.Rproj.user
 data
 results
 multiqc*
 !multiqc_config.yaml
 nohup.out
 README
+.snakemake
+__pycache__
+sidbdri-utils

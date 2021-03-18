@@ -22,6 +22,7 @@ library(knitr)
 library(patchwork)
 library(conflicted)
 
+conflict_prefer("setdiff", "dplyr")
 conflict_prefer("filter", "dplyr")
 conflict_prefer("reduce", "purrr")
 conflict_prefer("rowVars", "matrixStats")

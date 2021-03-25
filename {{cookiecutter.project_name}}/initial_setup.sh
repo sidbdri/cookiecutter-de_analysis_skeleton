@@ -11,9 +11,7 @@ mkproject -f {{cookiecutter.project_name}}
 
 source config.sh
 
-pip3 install "snakemake==5.6.0"
-pip install scipy
-pip install multiqc
+pip install -I --requirement requirements.txt
 pip install git+https://github.com/sidbdri/transcript-utils.git@${transcript_utils_hash}
 {% if cookiecutter.sargasso == "yes" %}
 pip install git+https://github.com/statbio/Sargasso.git@${sargasso_hash}

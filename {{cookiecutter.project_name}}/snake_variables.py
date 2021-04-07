@@ -42,7 +42,6 @@ REF_FLAT.append("%s/{{ s }}/{{cookiecutter.rff_files[s]}}" % PICARD_DIR)
 STRATEGY="{{cookiecutter.strategy}}"
 
 
-NUM_THREADS_PER_SAMPLE=8
 IS_PAIRED_END="{{cookiecutter.paired_end_read}}"
 gtf_dict = dict(zip(SPECIES, GTF_FILE))
 SAMPLES="{{cookiecutter.rnaseq_samples}}"

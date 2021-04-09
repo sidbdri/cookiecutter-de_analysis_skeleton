@@ -332,7 +332,7 @@ plot_significant_set_heatmap<-function(set_name, all_sets, comparison, samples_i
 
     # declare the path to the heatmaps, based on the gene set category and comparison
     # create the dir if it doesnt exist
-    heatmap_path<-paste("results/differential_expression/gene_set_tests/mouse", comparison, "significant_set_heatmaps", set_name, "/", sep = "/")
+    heatmap_path<-paste("results/differential_expression/gsa/mouse", comparison, "significant_set_heatmaps", set_name, "/", sep = "/")
     ifelse(!dir.exists(file.path(heatmap_path)), dir.create(file.path(heatmap_path), recursive = TRUE), FALSE)
 
     # TODO: currently, the column to rownames call complains about duplicate row names (i.e. gene names)

@@ -332,7 +332,8 @@ plot_significant_set_heatmap<-function(set_name, all_sets, comparison, samples_i
 
     # declare the path to the heatmaps, based on the gene set category and comparison
     # create the dir if it doesnt exist
-    heatmap_path<-paste("results/differential_expression/gsa/mouse", comparison, "significant_set_heatmaps", set_name, "/", sep = "/")
+    heatmap_path_clustered<-paste("results/differential_expression/gsa/mouse", comparison, "clustered_significant_set_heatmaps", set_name, "/", sep = "/")
+    heatmap_path_unclustered<-paste("results/differential_expression/gsa/mouse", comparison, "unlustered_significant_set_heatmaps", set_name, "/", sep = "/")
     ifelse(!dir.exists(file.path(heatmap_path)), dir.create(file.path(heatmap_path), recursive = TRUE), FALSE)
 
     # TODO: currently, the column to rownames call complains about duplicate row names (i.e. gene names)
@@ -343,8 +344,18 @@ plot_significant_set_heatmap<-function(set_name, all_sets, comparison, samples_i
     heatmap_data<-to_heatmap_unique %>% tibble::column_to_rownames(var="gene_name") %>% dplyr::select(-entrez_id)
 
     # TODO: plot heatmap in relevant dir. Currently adding 1 to each value to enable log2 - open to change?
-    start_plot(prefix=i, path=heatmap_path)
-    pheatmap(log2(heatmap_data+1))
+    start_plot(prefix=i, path=heatmap_path_clustered)
+    pheatmap(log2(heatmap_data+1),
+    breaks = seq(-3, 3, length.out = 100),
+    cluster_rows = TRUE,
+    show_rownames = FALSE)
+    end_plot()
+
+    start_plot(prefix=i, path=heatmap_path_unclustered)
+    pheatmap(log2(heatmap_data+1),
+    breaks = seq(-3, 3, length.out = 100),
+    cluster_rows = FALSE,
+    show_rownames = FALSE)
     end_plot()
   }
 }

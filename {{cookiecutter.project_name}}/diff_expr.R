@@ -326,22 +326,36 @@ plot_significant_set_heatmap<-function(set_name, all_sets, comparison, samples_i
     # get the significant entrez ids
     entrez_ids<-list_of_gene_sets[[set_name]][[i]]
 
+    # get the name of the column of the log 2 fold changes
+    comparison_log2fc<-paste(comp, "l2fc", sep='.')
+
     # from the global results variable, get rows and columns corresponding to significant entrez IDs
     # and samples from the correct comparison
-    to_heatmap<-results %>% dplyr::select(gene_name, entrez_id, samples_in_comparison) %>% filter(entrez_id %in% entrez_ids)
+    to_heatmap<-results %>% dplyr::select(gene_name, entrez_id, samples_in_comparison, comparison_log2fc) %>% filter(entrez_id %in% entrez_ids)
+
+    # reorder
+    to_heatmap<-to_heatmap %>% arrange(desc(!!sym(comparison_log2fc)))
 
     # declare the path to the heatmaps, based on the gene set category and comparison
     # create the dir if it doesnt exist
     heatmap_path_clustered<-paste("results/differential_expression/gsa/mouse", comparison, "clustered_significant_set_heatmaps", set_name, "/", sep = "/")
     heatmap_path_unclustered<-paste("results/differential_expression/gsa/mouse", comparison, "unlustered_significant_set_heatmaps", set_name, "/", sep = "/")
-    ifelse(!dir.exists(file.path(heatmap_path)), dir.create(file.path(heatmap_path), recursive = TRUE), FALSE)
+
+    ifelse(!dir.exists(file.path(heatmap_path_clustered)), dir.create(file.path(heatmap_path_clustered), recursive = TRUE), FALSE)
+    ifelse(!dir.exists(file.path(heatmap_path_unclustered)), dir.create(file.path(heatmap_path_unclustered), recursive = TRUE), FALSE)
 
     # TODO: currently, the column to rownames call complains about duplicate row names (i.e. gene names)
     # I have removed duplicates - is this how we want to do this? Is there a better way?
     to_heatmap_unique<-distinct(to_heatmap, gene_name, .keep_all= TRUE)
 
     # prepare heatmap data so the row names are the gene IDs and remove the entrez column
-    heatmap_data<-to_heatmap_unique %>% tibble::column_to_rownames(var="gene_name") %>% dplyr::select(-entrez_id)
+    heatmap_data<-to_heatmap_unique %>% tibble::column_to_rownames(var="gene_name") %>% dplyr::select(-entrez_id, -comparison_log2fc)
+
+    # divide each row by the mean of that row
+    heatmap_data<-t(apply(heatmap_data, 1, function(x) x/mean(x)))
+
+    heatmap_data <- na.omit(heatmap_data)
+    print(heatmap_data %>% head())
 
     # TODO: plot heatmap in relevant dir. Currently adding 1 to each value to enable log2 - open to change?
     start_plot(prefix=i, path=heatmap_path_clustered)

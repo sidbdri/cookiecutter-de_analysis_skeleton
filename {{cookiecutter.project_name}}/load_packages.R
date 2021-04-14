@@ -21,6 +21,7 @@ library(sva)
 library(knitr)
 library(patchwork)
 library(conflicted)
+library(pheatmap)
 
 conflict_prefer("filter", "dplyr")
 conflict_prefer("reduce", "purrr")

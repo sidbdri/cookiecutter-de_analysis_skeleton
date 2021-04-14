@@ -355,7 +355,6 @@ plot_significant_set_heatmap<-function(set_name, all_sets, comparison, samples_i
     heatmap_data<-t(apply(heatmap_data, 1, function(x) x/mean(x)))
 
     heatmap_data <- na.omit(heatmap_data)
-    print(heatmap_data %>% head())
 
     # TODO: plot heatmap in relevant dir. Currently adding 1 to each value to enable log2 - open to change?
     start_plot(prefix=i, path=heatmap_path_clustered)

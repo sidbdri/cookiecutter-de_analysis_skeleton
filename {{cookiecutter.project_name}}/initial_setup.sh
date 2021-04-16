@@ -7,7 +7,7 @@ source /usr/local/bin/virtualenvwrapper.sh
 ## we do some init setup such as recording versions
 [[ -f "./project_setup.sh" ]] && bash ./project_setup.sh
 
-mkproject -f {{cookiecutter.project_name}}
+mkproject -f -p python3 {{cookiecutter.project_name}}
 
 source config.sh
 

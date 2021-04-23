@@ -301,14 +301,11 @@ GS_results <- COMPARISON_TABLE %>%
   }
 )
 
-# results %>% plot_gene_set(list_of_gene_sets[[3]], "GO_<go_term>", "condition.stat")
-# results %>% get_gene_set_results(list_of_gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head
-
 # get  entrez IDs from significantly DE gene sets
 significant_entrez_ids<-function(gene_set_category, sets_per_comparison){
   # filter by significance
   significant<-sets_per_comparison[[gene_set_category]] %>% filter(FDR < 0.05) %>% rownames()
-
+  
   # use the globally defined gene set category to get all the entrez IDs in that gene set
   significant_entrez<-sapply(significant, function(x) list_of_gene_sets[[gene_set_category]][[x]])
   return(significant_entrez)
@@ -320,85 +317,77 @@ plot_significant_set_heatmap<-function(set_name, all_sets, comparison, samples_i
   for (i in names(all_sets[[set_name]])){
     # get the significant entrez ids
     entrez_ids<-list_of_gene_sets[[set_name]][[i]]
-
+    
     # get the name of the column of the log 2 fold changes
     comparison_log2fc<-paste(comp, "l2fc", sep='.')
-
+    
     # from the global results variable, get rows and columns corresponding to significant entrez IDs
     # and samples from the correct comparison
     to_heatmap<-results %>% dplyr::select(gene_name, entrez_id, samples_in_comparison, comparison_log2fc) %>% filter(entrez_id %in% entrez_ids)
-
+    
     # reorder
     to_heatmap<-to_heatmap %>% arrange(desc(!!sym(comparison_log2fc)))
-
+    
     # declare the path to the heatmaps, based on the gene set category and comparison
     # create the dir if it doesnt exist
-    heatmap_path_clustered<-paste("results/differential_expression/gsa/mouse", comparison, "clustered_significant_set_heatmaps", set_name, "/", sep = "/")
-    heatmap_path_unclustered<-paste("results/differential_expression/gsa/mouse", comparison, "unlustered_significant_set_heatmaps", set_name, "/", sep = "/")
-
-    ifelse(!dir.exists(file.path(heatmap_path_clustered)), dir.create(file.path(heatmap_path_clustered), recursive = TRUE), FALSE)
-    ifelse(!dir.exists(file.path(heatmap_path_unclustered)), dir.create(file.path(heatmap_path_unclustered), recursive = TRUE), FALSE)
-
+    heatmap_path<-paste("results/differential_expression/gene_set_tests/mouse", comparison, set_name, "/", sep = "/")
+    
+    ifelse(!dir.exists(file.path(heatmap_path)), dir.create(file.path(heatmap_path), recursive = TRUE), FALSE)
+    
     # TODO: currently, the column to rownames call complains about duplicate row names (i.e. gene names)
     # I have removed duplicates - is this how we want to do this? Is there a better way?
     to_heatmap_unique<-distinct(to_heatmap, gene_name, .keep_all= TRUE)
-
+    
     # prepare heatmap data so the row names are the gene IDs and remove the entrez column
     heatmap_data<-to_heatmap_unique %>% tibble::column_to_rownames(var="gene_name") %>% dplyr::select(-entrez_id, -comparison_log2fc)
-
+    
     # divide each row by the mean of that row
     heatmap_data<-t(apply(heatmap_data, 1, function(x) x/mean(x)))
-
-    heatmap_data <- na.omit(heatmap_data)
-
-    # TODO: plot heatmap in relevant dir. Currently adding 1 to each value to enable log2 - open to change?
-    start_plot(prefix=i, path=heatmap_path_clustered)
-    pheatmap(log2(heatmap_data+1),
-    breaks = seq(-3, 3, length.out = 100),
-    cluster_rows = TRUE,
-    show_rownames = FALSE)
-    end_plot()
-
-    start_plot(prefix=i, path=heatmap_path_unclustered)
-    pheatmap(log2(heatmap_data+1),
-    breaks = seq(-3, 3, length.out = 100),
-    cluster_rows = FALSE,
-    show_rownames = FALSE)
+    heatmap_data<-log2(heatmap_data)
+    
+    heatmap_data[is.infinite(heatmap_data)] <- NA
+    heatmap_data <- heatmap_data[rowSums(!is.nan(heatmap_data))>0,]
+    heatmap_data <- heatmap_data[rowSums(!is.na(heatmap_data))>0,]
+    
+    start_plot(prefix=i, path=heatmap_path)
+    pheatmap(heatmap_data,
+             breaks = seq(-3, 3, length.out = 100),
+             cluster_rows = FALSE, cluster_cols = FALSE,
+             border_color=NA, show_rownames = (heatmap_data %>% nrow()) < 100)
     end_plot()
   }
 }
 
-
 # loop through comparisons
 for (comp in COMPARISON_TABLE$comparison){
-
+  
   # get the gene set results from camera for that comparison
   comparison_list<-GS_results[comp]
-
+  
   # because of the way it seems to be arranged, the comparison name is used to get all the
   # gene set categories (e.g. GO, CELL TYPE etc.) for that comparison
   gene_sets_per_comparison<-comparison_list[[comp]]
-
+  
   # for each gene set catgory, defined elsewhere globally
   # get the entrez ids of the gene sets which are significant e.g. FDR < 0.05
   # replace names using the gene set categories as these seem to be removed during the apply
   significant_entrez<-sapply(gene_set_categories, significant_entrez_ids, gene_sets_per_comparison, simplify = FALSE)
   names(significant_entrez)<-unlist(gene_set_categories)
-
+  
   #get the comparison criteria for this comparison
   comparison_criteria<-COMPARISON_TABLE %>% filter(comparison == comp) %>% dplyr::select(condition_name, condition, condition_base, filter)
   selected_conditions<-comparison_criteria %>% dplyr::select(condition, condition_base) %>% as.character()
-
+  
   # pull out samples which have the conditions in this comparison
   # and samples which match the filter specified
   samples_in_comparison<-SAMPLE_DATA %>%
     filter(!!parse_expr(comparison_criteria %>%  dplyr::select(condition_name) %>% pull()) %in% selected_conditions &
-           !!(parse_expr(comparison_criteria %>% dplyr::select(filter) %>% pull()))) %>%
+             !!(parse_expr(comparison_criteria %>% dplyr::select(filter) %>% pull()))) %>%
     dplyr::select(sample_name) %>% pull()
-
+  
   # append _fpkm to allow selection from fpkms tibble
   samples_in_comparison_fpkm<-paste(samples_in_comparison, "_fpkm", sep="")
-
+  
   # loop over significant entrez for gene set categories
   # plot heatmap using the sample names corresponding to the relevant comparison
   sapply(names(significant_entrez), plot_significant_set_heatmap, significant_entrez, comp, samples_in_comparison_fpkm)

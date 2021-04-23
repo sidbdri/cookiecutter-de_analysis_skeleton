@@ -23,6 +23,7 @@ library(patchwork)
 library(conflicted)
 library(pheatmap)
 
+conflict_prefer("desc", "dplyr")
 conflict_prefer("setdiff", "dplyr")
 conflict_prefer("intersect", "dplyr")
 conflict_prefer("filter", "dplyr")

@@ -21,6 +21,7 @@ library(sva)
 library(knitr)
 library(patchwork)
 library(conflicted)
+library(pheatmap)
 
 conflict_prefer("setdiff", "dplyr")
 conflict_prefer("intersect", "dplyr")

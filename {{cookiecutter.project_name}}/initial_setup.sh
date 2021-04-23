@@ -7,13 +7,11 @@ source /usr/local/bin/virtualenvwrapper.sh
 ## we do some init setup such as recording versions
 [[ -f "./project_setup.sh" ]] && bash ./project_setup.sh
 
-mkproject -f {{cookiecutter.project_name}}
+mkproject -f -p python3 {{cookiecutter.project_name}}
 
 source config.sh
 
-pip3 install "snakemake==5.6.0"
-pip install scipy
-pip install multiqc
+pip install -I --requirement requirements.txt
 pip install git+https://github.com/sidbdri/transcript-utils.git@${transcript_utils_hash}
 {% if cookiecutter.sargasso == "yes" %}
 pip install git+https://github.com/statbio/Sargasso.git@${sargasso_hash}

@@ -1,5 +1,9 @@
 #!/bin/bash
 
+export WORKON_HOME=${HOME}/{{cookiecutter.virtualenv_home}}
+export PROJECT_HOME=${HOME}/{{cookiecutter.projects_base}}
+source /usr/local/bin/virtualenvwrapper.sh
+
 NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
 
 MAIN_DIR=${HOME}/{{cookiecutter.projects_base}}/{{cookiecutter.project_name}}

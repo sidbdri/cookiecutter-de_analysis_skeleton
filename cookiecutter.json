@@ -32,7 +32,7 @@
         "rat": "Rattus_norvegicus.{{ cookiecutter.rat_assembly }}.{{ cookiecutter.ensembl_version }}.gtf"
     },
     "rff_files": {
-        "mouse": "Mus_musculus.{{ cookicutter.mouse_assembly }}.{{ cookiecutter.ensembl_version }}.rff",
+        "mouse": "Mus_musculus.{{ cookiecutter.mouse_assembly }}.{{ cookiecutter.ensembl_version }}.rff",
         "human": "Homo_sapiens.{{ cookiecutter.human_assembly }}.{{ cookiecutter.ensembl_version }}.rff",
         "rat": "Rattus_norvegicus.{{ cookiecutter.rat_assembly }}.{{ cookiecutter.ensembl_version }}.rff"
     },

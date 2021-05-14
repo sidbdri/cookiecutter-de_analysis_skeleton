@@ -14,7 +14,7 @@ source config.sh
 pip install -I --requirement requirements.txt
 pip install git+https://github.com/sidbdri/transcript-utils.git@${transcript_utils_hash}
 {% if cookiecutter.sargasso == "yes" %}
-pip install git+https://github.com/statbio/Sargasso.git@${sargasso_hash}
+pip install git+https://github.com/biomedicalinformaticsgroup/Sargasso.git@${sargasso_hash}
 {% endif %}
 
 ## Clone sidbdri-utils package

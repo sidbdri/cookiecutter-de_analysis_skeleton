@@ -21,7 +21,7 @@ if grep -Fq "unknown_hash" config.sh; then
     sed -i "s/unknown_hash_transcript-utils/$(findHashFromBranchName "sidbdri" "transcript-utils" "master")/" config.sh
     sed -i "s/unknown_hash_sidbdri-utils/$(findHashFromBranchName "sidbdri" "sidbdri-utils" "master")/" config.sh
     {% if cookiecutter.sargasso == "yes" %}
-    sed -i "s/unknown_hash_sargasso/$(findHashFromBranchName "statbio" "Sargasso" "master")/" config.sh
+    sed -i "s/unknown_hash_sargasso/$(findHashFromBranchName "biomedicalinformaticsgroup" "Sargasso" "master")/" config.sh
     {% endif %}
 
 fi

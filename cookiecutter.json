@@ -23,15 +23,18 @@
     "fastqc_version": "0.11.8",
     "qSVA": "no",
     "virtualenv_home": ".virtualenvs",
+    "human_assembly": "GRCh38",
+    "mouse_assembly": "GRCm39",
+    "rat_assembly": "Rnor_6.0",
     "gtf_files": {
-        "mouse": "Mus_musculus.GRCm38.{{ cookiecutter.ensembl_version }}.gtf",
-        "human": "Homo_sapiens.GRCh38.{{ cookiecutter.ensembl_version }}.gtf",
-        "rat": "Rattus_norvegicus.Rnor_6.0.{{ cookiecutter.ensembl_version }}.gtf"
+        "mouse": "Mus_musculus.{{ cookiecutter.mouse_assembly }}.{{ cookiecutter.ensembl_version }}.gtf",
+        "human": "Homo_sapiens.{{ cookiecutter.human_assembly }}.{{ cookiecutter.ensembl_version }}.gtf",
+        "rat": "Rattus_norvegicus.{{ cookiecutter.rat_assembly }}.{{ cookiecutter.ensembl_version }}.gtf"
     },
     "rff_files": {
-        "mouse": "Mus_musculus.GRCm38.{{ cookiecutter.ensembl_version }}.rff",
-        "human": "Homo_sapiens.GRCh38.{{ cookiecutter.ensembl_version }}.rff",
-        "rat": "Rattus_norvegicus.Rnor_6.0.{{ cookiecutter.ensembl_version }}.rff"
+        "mouse": "Mus_musculus.{{ cookiecutter.mouse_assembly }}.{{ cookiecutter.ensembl_version }}.rff",
+        "human": "Homo_sapiens.{{ cookiecutter.human_assembly }}.{{ cookiecutter.ensembl_version }}.rff",
+        "rat": "Rattus_norvegicus.{{ cookiecutter.rat_assembly }}.{{ cookiecutter.ensembl_version }}.rff"
     },
     "assembly_names": {
         "mouse": "primary_assembly",

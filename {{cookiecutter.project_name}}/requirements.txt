@@ -55,5 +55,5 @@ snakemake==5.6.0
 spectra==0.0.11
 toml==0.10.2
 typing-extensions==3.7.4.3
-urllib3==1.26.4
+urllib3==1.26.5
 wrapt==1.12.1

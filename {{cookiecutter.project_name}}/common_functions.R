@@ -896,46 +896,42 @@ check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
   
   gene_markers <- GENE_MARKERS %>% pull(SPECIES) %>% split(f = GENE_MARKERS$cell_type)
   fpkm_info <- data.frame()
-  p <- ''
   message("Cell type check results are saved in [", GRAPHS_DIR,"]")
   
-  # for(g in split(genes_markers, ceiling(seq_along(genes)/4)) ){
   for (cell_type in gene_markers %>% names()) {
     genes <- gene_markers %>% extract2(cell_type)
+    num_genes <- length(genes)
     
-    for (i in genes) {
-      plot_name <- str_c(cell_type, '_', i)
-      l <- plot_gene_fpkms(i, result_table = result_table, debug = FALSE, print_graph = FALSE, feature_group = CELLTYPE_FEATURE_GROUP, plot_feature = CELLTYPE_PLOT_FEATURE)
+    plot_statement <- ''
+    
+    for (index in seq(num_genes)) {
+      plot_name <- str_c(cell_type, '_', genes[index])
+      l <- plot_gene_fpkms(genes[index], result_table = result_table, debug = FALSE, print_graph = FALSE, feature_group = CELLTYPE_FEATURE_GROUP, plot_feature = CELLTYPE_PLOT_FEATURE)
       l$graph <- l$graph + geom_hline(yintercept = fpkm_check_cutoff, linetype = "dashed", color = "black")
       # if it's the first graph, override the theme to have no legend
       # ensures legend is only on right hand side of graph
-      if (nchar(p) == 0) {
+      if (index < num_genes) {
         l$graph <- l$graph + theme_update(legend.position = "none",
                                           axis.title.x = element_blank(),
                                           axis.text.x = element_blank(),
                                           axis.ticks.x = element_blank())
       }
-
-
+      
+      
       assign(plot_name, l$graph)
       fpkm_info <- l$info %>% mutate(gene_marker_cell_type = cell_type) %>% rbind(fpkm_info)
       
-      ifelse(nchar(p) == 0,
-             p <- plot_name,
-             p <- str_c(p, plot_name, sep = '+')
-      )
+      plot_statement <- ifelse(index == 1, plot_name, plot_statement %>% str_c(plot_name, sep = '+'))
     }
     
     start_plot(str_c("cell_type_check_", cell_type))
     
-    if (length(genes) < 2) {
-      p %>% parse_expr() %>% eval() %>% print()
-    } else {
-      str_c(p, " plot_layout(ncol = 2)", sep = '+') %>% parse_expr() %>% eval() %>% print()
+    if (num_genes > 1) {
+      plot_statement %<>% str_c(" + plot_layout(ncol = ", num_genes, ")") 
     }
+    plot_statement %>% parse_expr() %>% eval() %>% print()
     
     end_plot()
-    p <- ''
   }
   
   ## check fpkms
@@ -1379,6 +1375,66 @@ write_camera_results <- function(
   ret[['genes_in_sets']]<- de_results %>% cbind(gene_set_results)
 
   ret
+}
+
+# function to plot heatmap of genes in significant gene sets, per comparison
+plot_significant_set_heatmap <- function(set_name, all_sets, comparison, samples_in_comparison) {
+  # get names of FPKM data columns
+  samples_in_comparison %<>% mutate(fpkm_columns = str_c(sample_name, "_fpkm"))
+  fpkm_columns <- samples_in_comparison %>% pull(fpkm_columns)
+  
+  # construct sample annotation
+  rownames(samples_in_comparison) <- NULL
+  samples_in_comparison %<>% tibble::column_to_rownames(var = "fpkm_columns")
+  annot <- samples_in_comparison %<>% dplyr::select(-sample_name)
+  
+  # loop over each gene set category
+  for (i in names(all_sets[[set_name]])) {
+    # get the significant entrez ids
+    entrez_ids <- list_of_gene_sets[[set_name]][[i]]
+    
+    # get the name of the column of the log 2 fold changes
+    comparison_log2fc <- paste(comp, "l2fc", sep = '.')
+    
+    # from the global results variable, get rows and columns corresponding to significant entrez IDs
+    # and samples from the correct comparison; remove genes with no name
+    to_heatmap <- results %>% 
+      dplyr::select(gene_name, entrez_id, fpkm_columns, comparison_log2fc) %>% 
+      filter(entrez_id %in% entrez_ids) %>% 
+      filter(!is.na(gene_name))
+    
+    # reorder
+    to_heatmap <- to_heatmap %>% arrange(desc(!!sym(comparison_log2fc)))
+    
+    # declare the path to the heatmaps, based on the gene set category and comparison
+    # create the dir if it doesnt exist
+    heatmap_path <- paste("results/differential_expression/gene_set_tests/mouse", comparison, set_name, "/", sep = "/")
+    
+    ifelse(!dir.exists(file.path(heatmap_path)), dir.create(file.path(heatmap_path), recursive = TRUE), FALSE)
+    
+    # TODO: currently, the column to rownames call complains about duplicate row names (i.e. gene names)
+    # I have removed duplicates - is this how we want to do this? Is there a better way?
+    to_heatmap_unique <- distinct(to_heatmap, gene_name, .keep_all = TRUE)
+    
+    # prepare heatmap data so the row names are the gene IDs and remove the entrez column
+    heatmap_data<-to_heatmap_unique %>% tibble::column_to_rownames(var="gene_name") %>% dplyr::select(-entrez_id, -comparison_log2fc)
+    
+    # divide each row by the mean of that row
+    heatmap_data <- t(apply(heatmap_data, 1, function(x) x/mean(x)))
+    heatmap_data <- log2(heatmap_data)
+    
+    heatmap_data[is.infinite(heatmap_data)] <- NA
+    heatmap_data <- heatmap_data[rowSums(!is.nan(heatmap_data)) > 0,]
+    heatmap_data <- heatmap_data[rowSums(!is.na(heatmap_data)) > 0,]
+    
+    start_plot(prefix = i, path = heatmap_path)
+    pheatmap(heatmap_data,
+             breaks = seq(-3, 3, length.out = 100),
+             cluster_rows = FALSE, cluster_cols = FALSE,
+             border_color = NA, show_rownames = (heatmap_data %>% nrow()) < 100,
+             annotation_col = annot)
+    end_plot()
+  }
 }
 
 #' This function reads in all the GSA results and tracks the given gene sets

@@ -2,6 +2,7 @@
 
 export WORKON_HOME=${HOME}/{{cookiecutter.virtualenv_home}}
 export PROJECT_HOME=${HOME}/{{cookiecutter.projects_base}}
+export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3.8
 source /usr/local/bin/virtualenvwrapper.sh
 
 NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}

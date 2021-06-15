@@ -269,10 +269,8 @@ Reactome_results<- COMPARISON_TABLE %>%
 
 gene_set_categories <- list("CURATED", "MOTIF", "GO", "CELL_TYPE")
 
-list_of_gene_sets <- gene_set_categories %>% 
-  set_names(.) %>% 
-  lapply_fork(cores = length(gene_set_categories), X = ., 
-              function(category, ...) get_gene_sets(SPECIES, category))
+list_of_gene_sets <- gene_set_categories %>%
+set_names(.) %>% lapply(function(category, ...) get_gene_sets(SPECIES, category))
 
 GS_results <- COMPARISON_TABLE %>% 
   pull(comparison) %>% 

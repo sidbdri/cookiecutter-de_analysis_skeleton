@@ -907,16 +907,15 @@ check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
     for (index in seq(num_genes)) {
       plot_name <- str_c(cell_type, '_', genes[index])
       l <- plot_gene_fpkms(genes[index], result_table = result_table, debug = FALSE, print_graph = FALSE, feature_group = CELLTYPE_FEATURE_GROUP, plot_feature = CELLTYPE_PLOT_FEATURE)
-      l$graph <- l$graph + geom_hline(yintercept = fpkm_check_cutoff, linetype = "dashed", color = "black")
-      # if it's the first graph, override the theme to have no legend
-      # ensures legend is only on right hand side of graph
-      if (index < num_genes) {
-        l$graph <- l$graph + theme_update(legend.position = "none",
-                                          axis.title.x = element_blank(),
-                                          axis.text.x = element_blank(),
-                                          axis.ticks.x = element_blank())
-      }
-      
+      l$graph <- l$graph + 
+        geom_hline(yintercept = fpkm_check_cutoff, linetype = "dashed", color = "grey") + 
+        geom_hline(yintercept = 0, color = "grey") + 
+        ylim(0, NA) + 
+        theme_classic() + 
+        theme(legend.position = "right",
+              axis.title.x = element_blank(),
+              axis.text.x = element_blank(),
+              axis.ticks.x = element_blank())
       
       assign(plot_name, l$graph)
       fpkm_info <- l$info %>% mutate(gene_marker_cell_type = cell_type) %>% rbind(fpkm_info)
@@ -927,7 +926,7 @@ check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
     start_plot(str_c("cell_type_check_", cell_type))
     
     if (num_genes > 1) {
-      plot_statement %<>% str_c(" + plot_layout(ncol = ", num_genes, ")") 
+      plot_statement %<>% str_c(" + plot_layout(ncol = ", num_genes, ", guides = \"collect\")") 
     }
     plot_statement %>% parse_expr() %>% eval() %>% print()
     

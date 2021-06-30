@@ -13,6 +13,8 @@ BOWTIE2_EXECUTABLE="bowtie2-{{cookiecutter.bowtie2_version}}"
 FASTQC_EXECUTABLE="fastqc{{cookiecutter.fastqc_version}}"
 FEATURECOUNTS_EXECUTABLE="featureCounts{{cookiecutter.featurecounts_version}}"
 PICARD_EXECUTABLE="/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar"
+CELLRANGER_EXECUTABLE="/usr/local/bin/cellranger-{{cookiecutter.cellranger_version}}"
+
 
 SPECIES=[]
 ENSEMBL_DIR=[]

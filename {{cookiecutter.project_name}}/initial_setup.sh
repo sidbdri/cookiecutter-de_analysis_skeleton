@@ -35,9 +35,14 @@ if [[ `echo {{cookiecutter.rnaseq_samples}} | grep -P '[\t\n.]'` != ''  ]];then
 fi
 
 mkdir -p ${RNASEQ_DIR}
+
+{% if cookiecutter.data_type == "rnaseq" %}
 for sample in {{cookiecutter.rnaseq_samples}}; do
     ln -s {{cookiecutter.rnaseq_samples_dir}}/$sample ${RNASEQ_DIR}/$sample
 done
+{% elif cookiecutter.data_type == "sc" %}
+    ln -s {{cookiecutter.rnaseq_samples_dir}}/*/*/*/*/$sample ${RNASEQ_DIR}/$sample
+{% endif %}
 
 {% for s in cookiecutter.species.split(' ') %}
 ENSEMBL_DIR=${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}

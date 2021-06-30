@@ -1,0 +1,40 @@
+from snake_variables import *
+from glob import glob
+import os
+
+CELLRANGER_EXECUTABLE
+
+/srv/data/ghardingham/zoeb_scs_p310s_cortical_astrocytes/ZJ_NS550_260521/outs/fastq_path/HCKJGBGXH/Cortex_Control
+
+rule count:
+    input:
+        {}
+    output:
+
+    params:
+        cellranger = CELLRANGER_EXECUTABLE
+    shell:
+        """
+       {params.cellranger} count --id {wildcards.sample}_count --fastqs {input}
+        """
+
+rule create_aggr_csv:
+    input:
+
+    output:
+
+
+    shell:
+
+
+
+rule aggr:
+    input:
+
+    output:
+
+    shell:
+        """
+        
+        
+        """

@@ -47,6 +47,7 @@ done
 {% for s in cookiecutter.species.split(' ') %}
 ENSEMBL_DIR=${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}
 GENOME_DATA_DIR=/srv/data/genome/{{ s }}/ensembl-{{cookiecutter.ensembl_version}}
+#TRANSCRIPTOME_DATA_DIR=/srv/data/genome/{{ s }}
 REF_FLAT=${PICARD_DATA}/{{ s }}/{{cookiecutter.rff_files[s]}}
 GTF_FILE=${GENOME_DATA_DIR}/{{cookiecutter.gtf_files[s]}}
 
@@ -57,6 +58,8 @@ ln -s ${GENOME_DATA_DIR}/SALMON_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/KALLISTO_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/BOWTIE2_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/*orthologs.tsv  ${ENSEMBL_DIR}
+ln -s /srv/data/genome/{{ s }}/{{cookiecutter.cellranger_references[s]}}  ${ENSEMBL_DIR}
+
 
 ## Instead of using the genes.tsv from ${GENOME_DATA_DIR}, we download it from Ensembl
 download_gene_tb {{ s }} {{cookiecutter.ensembl_version}} > ${ENSEMBL_DIR}/genes.tsv

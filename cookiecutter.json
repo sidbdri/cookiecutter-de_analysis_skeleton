@@ -41,5 +41,10 @@
         "mouse": "primary_assembly",
         "human": "primary_assembly",
         "rat": "toplevel"
+    },
+    "cellranger_references": {
+        "mouse": "refdata-cellranger-mm10-3.0.0",
+        "human": "refdata-cellranger-GRCh38-3.0.0",
+        "rat": "10x_refseq"
     }
 }

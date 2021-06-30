@@ -4,18 +4,17 @@ import os
 
 CELLRANGER_EXECUTABLE
 
-/srv/data/ghardingham/zoeb_scs_p310s_cortical_astrocytes/ZJ_NS550_260521/outs/fastq_path/HCKJGBGXH/Cortex_Control
 
 rule count:
     input:
-        {}
+        RNASEQ_DIR/{sample}
     output:
-
+        {sample}_count/outs/molecule_info.h5
     params:
         cellranger = CELLRANGER_EXECUTABLE
     shell:
         """
-       {params.cellranger} count --id {wildcards.sample}_count --fastqs {input}
+       {params.cellranger} count --id {wildcards.sample}_count --fastqs {input} --transcriptome 
         """
 
 rule create_aggr_csv:

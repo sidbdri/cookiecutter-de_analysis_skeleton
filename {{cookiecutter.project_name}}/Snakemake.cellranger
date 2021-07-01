@@ -20,11 +20,14 @@ rule count:
 
 rule create_aggr_csv:
     input:
-
+        expand("{sample}_count/outs/molecule_info.h5", sample=SAMPLES)
     output:
-
-
+        "aggr.csv"
     shell:
+        """
+        # tbd
+        
+        """
 
 
 

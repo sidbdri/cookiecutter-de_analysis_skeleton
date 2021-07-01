@@ -11,10 +11,11 @@ rule count:
     output:
         {sample}_count/outs/molecule_info.h5
     params:
-        cellranger = CELLRANGER_EXECUTABLE
+        cellranger = CELLRANGER_EXECUTABLE,
+        transcriptome = MAPPER_INDEX
     shell:
         """
-       {params.cellranger} count --id {wildcards.sample}_count --fastqs {input} --transcriptome 
+       {params.cellranger} count --id {wildcards.sample}_count --fastqs {input} --transcriptome {params.transcriptome} --sample {wildcards.sample}
         """
 
 rule create_aggr_csv:

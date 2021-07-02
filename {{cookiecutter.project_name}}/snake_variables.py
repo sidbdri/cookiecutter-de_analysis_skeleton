@@ -36,7 +36,7 @@ ENSEMBL_DIR.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}" % DATA_
 if DATA_TYPE == "rnaseq":
     MAPPER_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/STAR_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.star_version}}" % DATA_DIR)
 elif DATA_TYPE == "sc":
-    MAPPER_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecutter.cellranger_references[s]}}")
+    MAPPER_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecutter.cellranger_references[s]}}" % DATA_DIR)
 else:
     MAPPER_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/BOWTIE2_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.bowtie2_version}}" % DATA_DIR)
 GTF_FILE.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecutter.gtf_files[s]}}" % DATA_DIR)

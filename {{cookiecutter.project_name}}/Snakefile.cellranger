@@ -1,15 +1,10 @@
 from snake_variables import *
-from glob import glob
-import os
-
-CELLRANGER_EXECUTABLE
-
 
 rule count:
     input:
         directory("data/rnaseq/{sample}")
     output:
-        {sample}_count/outs/molecule_info.h5
+        "{sample}_count/outs/molecule_info.h5"
     params:
         cellranger = CELLRANGER_EXECUTABLE,
         transcriptome = MAPPER_INDEX

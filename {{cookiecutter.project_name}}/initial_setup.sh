@@ -41,7 +41,9 @@ for sample in {{cookiecutter.rnaseq_samples}}; do
     ln -s {{cookiecutter.rnaseq_samples_dir}}/$sample ${RNASEQ_DIR}/$sample
 done
 {% elif cookiecutter.data_type == "sc" %}
+for sample in {{cookiecutter.rnaseq_samples}}; do
     ln -s {{cookiecutter.rnaseq_samples_dir}}/*/*/*/*/$sample ${RNASEQ_DIR}/$sample
+done
 {% endif %}
 
 {% for s in cookiecutter.species.split(' ') %}

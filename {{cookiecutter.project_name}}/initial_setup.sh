@@ -47,7 +47,6 @@ done
 {% for s in cookiecutter.species.split(' ') %}
 ENSEMBL_DIR=${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}
 GENOME_DATA_DIR=/srv/data/genome/{{ s }}/ensembl-{{cookiecutter.ensembl_version}}
-#TRANSCRIPTOME_DATA_DIR=/srv/data/genome/{{ s }}
 REF_FLAT=${PICARD_DATA}/{{ s }}/{{cookiecutter.rff_files[s]}}
 GTF_FILE=${GENOME_DATA_DIR}/{{cookiecutter.gtf_files[s]}}
 

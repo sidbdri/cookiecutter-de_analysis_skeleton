@@ -7,7 +7,7 @@ CELLRANGER_EXECUTABLE
 
 rule count:
     input:
-        RNASEQ_DIR/"{sample}"
+        directory("data/rnaseq/{sample}")
     output:
         {sample}_count/outs/molecule_info.h5
     params:

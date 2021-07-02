@@ -10,6 +10,7 @@ rule count:
         transcriptome = MAPPER_INDEX
     shell:
         """
+        rm -rf {wildcards.sample}_count
        {params.cellranger} count --id {wildcards.sample}_count --fastqs {input} --transcriptome {params.transcriptome} --sample {wildcards.sample}
         """
 

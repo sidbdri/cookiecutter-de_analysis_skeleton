@@ -49,7 +49,7 @@ STRATEGY="{{cookiecutter.strategy}}"
 
 IS_PAIRED_END="{{cookiecutter.paired_end_read}}"
 gtf_dict = dict(zip(SPECIES, GTF_FILE))
-SAMPLES="{{cookiecutter.rnaseq_samples}}"
+SAMPLES="{{cookiecutter.samples}}"
 SAMPLES=SAMPLES.split()
 
 READ1_SUFFIX = ''

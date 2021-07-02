@@ -29,7 +29,7 @@ PICARD=/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar
 
 # we check sample name for special character
 # https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/98
-if [[ `echo {{cookiecutter.rnaseq_samples}} | grep -P '[\t\n.]'` != ''  ]];then
+if [[ `echo {{cookiecutter.samples}} | grep -P '[\t\n.]'` != ''  ]];then
     echo "Error: Please make sure sample names don't contain specieal characters."
     exit 1
 fi
@@ -37,11 +37,11 @@ fi
 mkdir -p ${RNASEQ_DIR}
 
 {% if cookiecutter.data_type == "rnaseq" %}
-for sample in {{cookiecutter.rnaseq_samples}}; do
+for sample in {{cookiecutter.samples}}; do
     ln -s {{cookiecutter.rnaseq_samples_dir}}/$sample ${RNASEQ_DIR}/$sample
 done
 {% elif cookiecutter.data_type == "sc" %}
-for sample in {{cookiecutter.rnaseq_samples}}; do
+for sample in {{cookiecutter.samples}}; do
     ln -s {{cookiecutter.rnaseq_samples_dir}}/*/*/*/*/$sample ${RNASEQ_DIR}/$sample
 done
 {% endif %}

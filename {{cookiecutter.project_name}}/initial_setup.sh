@@ -38,11 +38,11 @@ mkdir -p ${RNASEQ_DIR}
 
 {% if cookiecutter.data_type == "rnaseq" %}
 for sample in {{cookiecutter.samples}}; do
-    ln -s {{cookiecutter.rnaseq_samples_dir}}/$sample ${RNASEQ_DIR}/$sample
+    ln -s {{cookiecutter.samples_dir}}/$sample ${RNASEQ_DIR}/$sample
 done
 {% elif cookiecutter.data_type == "sc" %}
 for sample in {{cookiecutter.samples}}; do
-    ln -s {{cookiecutter.rnaseq_samples_dir}}/*/*/*/*/$sample ${RNASEQ_DIR}/$sample
+    ln -s {{cookiecutter.samples_dir}}/*/*/*/*/$sample ${RNASEQ_DIR}/$sample
 done
 {% endif %}
 

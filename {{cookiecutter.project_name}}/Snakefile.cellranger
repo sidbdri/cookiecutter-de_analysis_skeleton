@@ -31,11 +31,14 @@ rule create_aggr_csv:
 
 rule aggr:
     input:
-
+        "aggr.csv"
     output:
-
+        "aggr_samples/outs/filtered_feature_bc_matrix.h5"
+    params:
+        cellranger = CELLRANGER_EXECUTABLE
     shell:
         """
-        
+        rm -rf aggr_samples
+        {params.cellranger} aggr --id aggr_samples --csv aggr.csv
         
         """

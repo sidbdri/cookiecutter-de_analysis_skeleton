@@ -16,14 +16,16 @@ rule count:
 
 rule create_aggr_csv:
     input:
-        expand("{sample}_count/outs/molecule_info.h5", sample=SAMPLES)
+        expand("{sample}_count/outs/molecule_info.h5", sample=SAMPLES),
     output:
         "aggr.csv"
-    shell:
-        """
-        # tbd
-        
-        """
+    run:
+        with open(output[0], "w") as outfile:
+            outfile.write("library_id,molecule_h5\n")
+            for s in input:
+                sample_name = s.split("/")[0]
+                outfile.write(",".join([sample_name, s]))
+                outfile.write("\n")
 
 
 

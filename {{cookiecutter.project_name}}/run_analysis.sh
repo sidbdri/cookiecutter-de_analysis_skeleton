@@ -38,12 +38,16 @@ for species in ${!SPECIES[@]}; do
     fi
 done
 
+{% if cookiecutter.data_type == "rnaseq" %}
 {% if cookiecutter.sargasso == "yes" %}
 python3 -m snakemake -s Snakefile.multispecies_analysis bams -j $NUM_TOTAL_THREADS
 python3 -m snakemake -s Snakefile.multispecies_analysis multiqc -j $NUM_TOTAL_THREADS
 {% else %}
 python3 -m snakemake -s Snakefile.singlespecies_analysis bams -j $NUM_TOTAL_THREADS
 python3 -m snakemake -s Snakefile.singlespecies_analysis multiqc -j $NUM_TOTAL_THREADS
+{% endif %}
+{% elif cookiecutter.data_type == "sc" %}
+python3 -m snakemake -s Snakefile.cellranger aggr -j $NUM_TOTAL_THREADS
 {% endif %}
 
 {% if cookiecutter.qSVA == "yes" %}

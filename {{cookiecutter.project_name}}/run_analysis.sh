@@ -38,6 +38,7 @@ for species in ${!SPECIES[@]}; do
     fi
 done
 
+
 {% if cookiecutter.data_type == "rnaseq" %}
 {% if cookiecutter.sargasso == "yes" %}
 python3 -m snakemake -s Snakefile.multispecies_analysis bams -j $NUM_TOTAL_THREADS
@@ -46,14 +47,6 @@ python3 -m snakemake -s Snakefile.multispecies_analysis multiqc -j $NUM_TOTAL_TH
 python3 -m snakemake -s Snakefile.singlespecies_analysis bams -j $NUM_TOTAL_THREADS
 python3 -m snakemake -s Snakefile.singlespecies_analysis multiqc -j $NUM_TOTAL_THREADS
 {% endif %}
-{% elif cookiecutter.data_type == "sc" %}
-python3 -m snakemake -s Snakefile.cellranger aggr -j $NUM_TOTAL_THREADS
-{% endif %}
-
-{% if cookiecutter.qSVA == "yes" %}
-python3 -m snakemake -s Snakefile.common all_qsva
-{% endif %}
-
 #### we check if all the sample are the same strandness settings
 #### https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/127
 [[ ! -s strand.txt ]] && echo "Error: strand.txt not found. Cannot perform strandness check." && exit
@@ -80,6 +73,14 @@ exit;
 {% for s in cookiecutter.species.split(' ') %}
 Rscript diff_expr_{{ s }}.R
 {% endfor %}
+
+{% elif cookiecutter.data_type == "sc" %}
+python3 -m snakemake -s Snakefile.cellranger aggr -j $NUM_TOTAL_THREADS
+{% endif %}
+
+{% if cookiecutter.qSVA == "yes" %}
+python3 -m snakemake -s Snakefile.common all_qsva
+{% endif %}
 
 # Generate Shiny app
 echo Generating Shiny app

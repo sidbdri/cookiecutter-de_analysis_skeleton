@@ -1,7 +1,7 @@
 {
     "project_name": "newproject",
     "projects_base": "projects",
-    {"data_type": ["rnaseq", "sc"]},
+    "data_type": "rnaseq",
     "samples_dir": "",
     "samples": "",
     "fastq_suffix": "fastq.gz",

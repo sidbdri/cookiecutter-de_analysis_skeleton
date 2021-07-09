@@ -72,16 +72,18 @@ exit;
 
 {% for s in cookiecutter.species.split(' ') %}
 Rscript diff_expr_{{ s }}.R
+# Generate Shiny app
+echo Generating Shiny app
+./generate_shiny.sh
 {% endfor %}
 
 {% elif cookiecutter.data_type == "sc" %}
 python3 -m snakemake -s Snakefile.cellranger aggr -j $NUM_TOTAL_THREADS
+Rscript seurat_analysis.R
 {% endif %}
 
 {% if cookiecutter.qSVA == "yes" %}
 python3 -m snakemake -s Snakefile.common all_qsva
 {% endif %}
 
-# Generate Shiny app
-echo Generating Shiny app
-./generate_shiny.sh
+

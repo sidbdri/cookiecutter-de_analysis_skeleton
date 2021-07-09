@@ -16,4 +16,5 @@ seurat.object <- FindNeighbors(seurat.object, dims = 1:10)
 seurat.object_temp <- FindClusters(seurat.object, resolution = 0.7)
 seurat.object_temp <- RunTSNE(seurat.object_temp, dims = 1:10, check_duplicates = FALSE)
 
+pdf("")
 DimPlot(seurat.object_temp, reduction = "tsne", pt.size=0.7, order = TRUE)

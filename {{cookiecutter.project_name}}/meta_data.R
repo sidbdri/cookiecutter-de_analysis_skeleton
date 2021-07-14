@@ -63,6 +63,13 @@ COMPARISON_TABLE <- tribble(
   #"P10_Ctx_KO_vs_WT", "~genotype", "genotype", "KO", "WT", "age=='P10' & region=='Ctx'",group_1
 )
 
+# This table is for the comparisons that contains a interaction term in their formula
+# http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#interactions
+INTERACTION_TABLE <- tribble(
+  ~comparison, ~condition_name_1, ~condition_1, ~condition_base_1,~condition_name_2, ~condition_2, ~condition_base_2,
+  #"LBC_THp_BA17_Good_vs_Poor_interaction","sex","M","F","cognitive","Good","Poor"
+)
+
 # to make sure comparison name does not start with a number https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/142
 check_comparison_name()
 

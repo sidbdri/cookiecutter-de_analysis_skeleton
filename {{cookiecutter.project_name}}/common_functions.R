@@ -59,13 +59,22 @@ check_formulas <- function() {
     row <- COMPARISON_TABLE[r,]
     f <- row$formula %>% as.formula() %>% terms()
     condition <- row$condition_name
-    
-    deciding_condition <- labels(f) %>% tail(1)
-    
-    if (condition != deciding_condition) {
-      print(row)
-      stop("The formula ends with a label which is different to the one specified in the condition_name column.
+
+    # if there is an interaction, we check if we have the interaction detail in the INTERACTION_TABLE,
+    # otherwise, we check if we have the deciding condition correctly setup
+    if(any(f %>% attr( "order") > 1)){
+      if(! row$comparison %in% INTERACTION_TABLE$comparison){
+        print(row)
+        stop("interaction formula was detected but interaction details cannot be found in the INTERACTION_TABLE.")
+      }
+    }else{
+      deciding_condition <- labels(f) %>% tail(1)
+
+      if (condition != deciding_condition) {
+        print(row)
+        stop("The formula ends with a label which is different to the one specified in the condition_name column.
            This will cause the GSA algorithm to pick up the wrong condition.")
+      }
     }
   }
 }
@@ -268,12 +277,24 @@ get_deseq2_dataset <- function(count_data, sample_data, filter_low_counts = TRUE
   if(qSVA) {
     dds %<>% get_qsva_dds()
   }
-  
-  dds %>% DESeq(betaPrior = TRUE)
+
+  betaPrior=TRUE
+  if(any(dds %>% design() %>% terms.formula %>% attr( "order") >1)) betaPrior=FALSE
+
+  dds %>% DESeq(betaPrior = betaPrior)
 }
 
 get_deseq2_results <- function(dds, comparison, condition, condition_base, alpha = 0.05) {
-  res <- dds %>% results(c(comparison, condition, condition_base), alpha=alpha)
+
+  # if we have interaction term in the formula, we ignore the condition parameter and check the last
+  # contrast, which in a 2 by 2 condition case, will be the testing
+  # if the condition effect is different in interaction term 1 compared to 2
+  if(any(dds %>% design() %>% terms.formula %>% attr( "order")>1)){
+    res <- dds %>% results(name=resultsNames(dds) %>% tail(1), alpha=alpha)
+  }else{
+    res <- dds %>% results(c(comparison, condition, condition_base), alpha=alpha)
+  }
+
   res %>% summary %>% print
   
   res %>% as.data.frame() %>%
@@ -322,7 +343,14 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
     tibble::column_to_rownames(var = "tmp_row_names")
   
   # Ensure that conditions to be used in GSA comparisons are factors with the correct base level set.
-  sample_data[,x$condition_name] %<>% relevel(x$condition_base)
+  if(any(x$formula %>% as.formula() %>% terms.formula %>% attr( "order") >1)){
+    # if there is interaction, we relevel the interaction conditions
+    x2 <- INTERACTION_TABLE %>% filter(comparison == comparison_name)
+    sample_data[,x2$condition_name_1] %<>% as.factor() %>% relevel(x2$condition_base_1)
+    sample_data[,x2$condition_name_2] %<>% as.factor() %>% relevel(x2$condition_base_2)
+  }else{
+    sample_data[,x$condition_name] %<>% relevel(x$condition_base)
+  }
   
   if (use_tx) {
     txi <- get_tximport(sample_data, quant_method, tx_level)
@@ -1570,7 +1598,7 @@ get_quality_surrogate_variables <- function(dds) {
   design_formula <- dds %>% design()
   sample_data <- dds %>% colData()
   sample_names <- sample_data %>% rownames()
-
+  #@todo adding of the interaction formula might affect this, needs to come back and check later
   quality_surrogate_variables <- sample_names %>%
     str_c("results/read_counts/", ., ".", SPECIES, ".dm.tsv") %>%
     read.degradation.matrix(

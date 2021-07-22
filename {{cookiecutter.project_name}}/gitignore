@@ -10,3 +10,4 @@ README
 .snakemake
 __pycache__
 sidbdri-utils
+strand.txt

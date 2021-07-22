@@ -1405,7 +1405,7 @@ write_camera_results <- function(
 }
 
 # function to plot heatmap of genes in significant gene sets, per comparison
-plot_significant_set_heatmap <- function(set_name, all_sets, comparison, samples_in_comparison) {
+plot_significant_set_heatmap <- function(set_name, all_sets, comparison, samples_in_comparison, species) {
   # get names of FPKM data columns
   samples_in_comparison %<>% mutate(fpkm_columns = str_c(sample_name, "_fpkm"))
   fpkm_columns <- samples_in_comparison %>% pull(fpkm_columns)
@@ -1435,7 +1435,7 @@ plot_significant_set_heatmap <- function(set_name, all_sets, comparison, samples
     
     # declare the path to the heatmaps, based on the gene set category and comparison
     # create the dir if it doesnt exist
-    heatmap_path <- paste("results/differential_expression/gene_set_tests/mouse", comparison, set_name, "/", sep = "/")
+    heatmap_path <- paste("results/differential_expression/gene_set_tests/", species, comparison, set_name, "/", sep = "/")
     
     ifelse(!dir.exists(file.path(heatmap_path)), dir.create(file.path(heatmap_path), recursive = TRUE), FALSE)
     

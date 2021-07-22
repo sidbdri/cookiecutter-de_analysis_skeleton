@@ -341,7 +341,7 @@ for (comp in COMPARISON_TABLE$comparison) {
   
   # loop over significant entrez for gene set categories
   # plot heatmap using the sample names corresponding to the relevant comparison
-  sapply(names(significant_entrez), plot_significant_set_heatmap, significant_entrez, comp, samples_in_comparison)
+  sapply(names(significant_entrez), plot_significant_set_heatmap, significant_entrez, comp, samples_in_comparison, SPECIES)
 }
 
 #### Saving and loading the workspace ####

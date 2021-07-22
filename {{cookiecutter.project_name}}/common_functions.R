@@ -1409,6 +1409,7 @@ plot_significant_set_heatmap <- function(set_name, all_sets, comparison, samples
   # get names of FPKM data columns
   samples_in_comparison %<>% mutate(fpkm_columns = str_c(sample_name, "_fpkm"))
   fpkm_columns <- samples_in_comparison %>% pull(fpkm_columns)
+  num_samples <- length(fpkm_columns)
   
   # construct sample annotation
   rownames(samples_in_comparison) <- NULL
@@ -1451,12 +1452,16 @@ plot_significant_set_heatmap <- function(set_name, all_sets, comparison, samples
     heatmap_data <- log2(heatmap_data)
     
     heatmap_data[is.infinite(heatmap_data)] <- NA
-    heatmap_data <- heatmap_data[rowSums(!is.nan(heatmap_data)) > 0,]
-    heatmap_data <- heatmap_data[rowSums(!is.na(heatmap_data)) > 0,]
+    heatmap_data[is.nan(heatmap_data)] <- NA
+    heatmap_data <- heatmap_data[rowSums(!is.na(heatmap_data)) == num_samples,]
+    
+    max_data <- max(heatmap_data, na.rm=TRUE)
+    min_data <- -min(heatmap_data, na.rm=TRUE)
+    range <- min(max_data, min_data)
     
     start_plot(prefix = i, path = heatmap_path)
     pheatmap(heatmap_data,
-             breaks = seq(-3, 3, length.out = 100),
+             breaks = seq(-range, range, length.out = 100),
              cluster_rows = FALSE, cluster_cols = FALSE,
              border_color = NA, show_rownames = (heatmap_data %>% nrow()) < 100,
              annotation_col = annot)

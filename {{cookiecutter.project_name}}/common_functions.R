@@ -2077,3 +2077,92 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
   }
   ret
 }
+
+
+
+setwd('/srv/data/results/nrf2_ich_jamie_loan/aaaaaaaaarggggghhhhh-959851d2469757607aa3e1f8b0ec1e1cc533cf42/20210805')
+g <- check_sample_bam(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='mouse',chr='2',start=75505857,end=75505957)
+plot(g)
+check_sample_bam <- function(samples,species=SPECIES,chr='2',start=75505857,end=75510000){
+  library('Rsamtools')
+  library(GenomicAlignments)
+  library(parallel)
+  library(ggplot2)
+  library(dplyr)
+  bamRanges=GRanges(chr, IRanges(start,end))
+
+  bamFiles <- list.files('results/final_bams/',pattern = '.bam$',full.names = T) %>%
+  grep(pattern = paste(samples,collapse = '|'),value = T)
+  bamIndexFile <- list.files('results/final_bams/',pattern = '.bam.bai',full.names = T) %>%
+  grep(pattern = paste(samples,collapse = '|'),value = T)
+  bamExperiment <-list(description="",created=date())
+  bv <- BamViews(bamFiles, bamIndicies=bamIndexFile,bamRanges=bamRanges, bamExperiment=bamExperiment)
+  reads<-readGAlignments(bv)
+
+  olap1 <- endoapply(reads, subsetByOverlaps, bamRanges)
+  olap1 <- lapply(olap1, "seqlevels<-", value=as.character(seqnames(bamRanges)))
+  cvg <- endoapply(olap1, coverage,
+  shift=-start(ranges(bamRanges[1])),
+  width=width(ranges(bamRanges[1])))
+
+  coverage_tb <- lapply(names(cvg), function(sample){
+    a=cvg[[sample]][[1]]
+    sapply(c(1:length(runLength(a))),function(x){
+      rep(runValue(a)[x],runLength(a)[x])
+    }) %>% unlist() %>% set_names(c(start(ranges(bamRanges))[1]:end(ranges(bamRanges))[1])) %>%
+      as.data.frame() %>% setNames(c('count')) %>%
+      tibble::rownames_to_column('position') %>%
+      mutate(sample=sample,position=as.numeric(position))
+  }) %>% purrr::reduce(rbind)
+  ggplot2::ggplot(data=coverage_tb, aes(x=position, y=count)) +
+  # geom_line(linetype="dashed", size=0.2) +
+    geom_area() +
+  # geom_bar(stat="identity")
+  # geom_point() +
+    facet_wrap(~sample)
+}
+
+
+# This function plots the read distribution of a chromosome region of bam files
+# It can be used as a pre-'igv' check
+# one can test the code with the following:
+# >setwd('/srv/data/results/nrf2_ich_jamie_loan/aaaaaaaaarggggghhhhh-959851d2469757607aa3e1f8b0ec1e1cc533cf42/20210805')
+# >check_sample_bam(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='mouse',chr='2',start=75505857,end=75505957) %>% plot
+check_sample_bam <- function(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='mouse',chr='2',start=75505857,end=75510000){
+  library('Rsamtools')
+  library(GenomicAlignments)
+  library(parallel)
+  library(ggplot2)
+  library(dplyr)
+  bamRanges=GRanges(chr, IRanges(start,end))
+
+  bamFiles <- list.files('results/final_bams/',pattern = '.bam$',full.names = T) %>%
+  grep(pattern = paste(samples,collapse = '|'),value = T)
+  bamIndexFile <- list.files('results/final_bams/',pattern = '.bam.bai',full.names = T) %>%
+  grep(pattern = paste(samples,collapse = '|'),value = T)
+  bamExperiment <-list(description="",created=date())
+  bv <- BamViews(bamFiles, bamIndicies=bamIndexFile,bamRanges=bamRanges, bamExperiment=bamExperiment)
+  reads<-readGAlignments(bv)
+
+  olap1 <- endoapply(reads, subsetByOverlaps, bamRanges)
+  olap1 <- lapply(olap1, "seqlevels<-", value=as.character(seqnames(bamRanges)))
+  cvg <- endoapply(olap1, coverage,
+  shift=-start(ranges(bamRanges[1])),
+  width=width(ranges(bamRanges[1])))
+
+  coverage_tb <- lapply(names(cvg), function(sample){
+    a=cvg[[sample]][[1]]
+    sapply(c(1:length(runLength(a))),function(x){
+      rep(runValue(a)[x],runLength(a)[x])
+    }) %>% unlist() %>% set_names(c(start(ranges(bamRanges))[1]:end(ranges(bamRanges))[1])) %>%
+      as.data.frame() %>% setNames(c('count')) %>%
+      tibble::rownames_to_column('position') %>%
+      mutate(sample=sample,position=as.numeric(position))
+  }) %>% purrr::reduce(rbind)
+  ggplot2::ggplot(data=coverage_tb, aes(x=position, y=count)) +
+  # geom_line(linetype="dashed", size=0.2) +
+    geom_area() +
+  # geom_bar(stat="identity")
+  # geom_point() +
+    facet_wrap(~sample)
+}

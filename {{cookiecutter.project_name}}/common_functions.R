@@ -2166,3 +2166,42 @@ check_sample_bam <- function(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='m
   # geom_point() +
     facet_wrap(~sample)
 }
+
+# plot avg fpkm for each comparison
+# https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/163
+plot_scatter_fpkm <- function(results){
+  COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>% lapply(function(comparison_name){
+    x=comparison_table %>% filter(comparison == comparison_name)
+    same_in_base<-  SAMPLE_DATA %>%
+      filter(!!parse_expr(x$condition_name) == x$condition_base) %>%
+      pull(sample_name) %>% str_c('_fpkm',sep = '')
+    same_in_condition <-  SAMPLE_DATA %>%
+      filter(!!parse_expr(x$condition_name) == x$condition) %>%
+      pull(sample_name) %>% str_c('_fpkm',sep = '')
+
+    result_for_plot<-results %>%
+    dplyr::select(one_of(c(same_in_base,same_in_condition)),
+    padj=str_c(comparison_name, '.padj'),
+    l2fc=str_c(comparison_name, '.l2fc'))
+
+    result_for_plot$avg_fpkm_base <- result_for_plot %>% dplyr::select(one_of(same_in_base)) %>%
+      mutate(avg_1=rowMeans(.)) %>% pull(avg_1)
+    result_for_plot$avg_fpkm_condition <- result_for_plot %>% dplyr::select(one_of(same_in_condition)) %>%
+      mutate(avg_1=rowMeans(.)) %>% pull(avg_1)
+
+
+    start_plot(str_c("scatter_fpkm_", x$comparison))
+    p <- result_for_plot %>%
+    ggplot(aes(x=avg_fpkm_condition, y=avg_fpkm_base)) +
+      geom_point(data = result_for_plot %>% dplyr::filter(padj == P.ADJ.CUTOFF), shape = 4, colour="black", alpha=0.25) +
+      geom_point(data = result_for_plot %>% dplyr::filter(padj < P.ADJ.CUTOFF & l2fc > 0), shape = 4, colour="red") +
+      geom_point(data = result_for_plot %>% dplyr::filter(padj < P.ADJ.CUTOFF & l2fc < 0), shape = 4, colour="blue") +
+      scale_x_log10() +
+      scale_y_log10() +
+      xlab(x$condition) + ylab(x$condition_base) +
+      theme_classic()
+    plot(p)
+    end_plot()
+    'success'
+  })
+}

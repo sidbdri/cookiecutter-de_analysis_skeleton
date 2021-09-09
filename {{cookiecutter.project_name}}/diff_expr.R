@@ -177,6 +177,8 @@ start_plot("all_comparison_pvalue_distribution")
 all_comparison_pvalue_distribution
 end_plot()
 
+plot_scatter_fpkm(results)
+
 # save results
 if (COMPARISON_TABLE %>% pull(group) %>% unique() %>% length() > 1) {
   save_results_by_group(results)

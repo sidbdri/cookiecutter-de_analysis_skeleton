@@ -1416,62 +1416,64 @@ plot_significant_set_heatmap <- function(set_name, all_sets, comparison, samples
   samples_in_comparison %<>% mutate(fpkm_columns = str_c(sample_name, "_fpkm"))
   fpkm_columns <- samples_in_comparison %>% pull(fpkm_columns)
   num_samples <- length(fpkm_columns)
-  
+
   # construct sample annotation
   rownames(samples_in_comparison) <- NULL
   samples_in_comparison %<>% tibble::column_to_rownames(var = "fpkm_columns")
   annot <- samples_in_comparison %<>% dplyr::select(-sample_name)
-  
+
   # loop over each gene set category
-  for (i in names(all_sets[[set_name]])) {
+  for (i in names(all_sets[[set_name]])){
     # get the significant entrez ids
     entrez_ids <- list_of_gene_sets[[set_name]][[i]]
-    
+
     # get the name of the column of the log 2 fold changes
     comparison_log2fc <- paste(comp, "l2fc", sep = '.')
-    
+
     # from the global results variable, get rows and columns corresponding to significant entrez IDs
     # and samples from the correct comparison; remove genes with no name
-    to_heatmap <- results %>% 
-      dplyr::select(gene_name, entrez_id, fpkm_columns, comparison_log2fc) %>% 
-      filter(entrez_id %in% entrez_ids) %>% 
+    to_heatmap <- results %>%
+      dplyr::select(gene_name, entrez_id, fpkm_columns, comparison_log2fc) %>%
+      filter(entrez_id %in% entrez_ids) %>%
       filter(!is.na(gene_name))
-    
+
     # reorder
     to_heatmap <- to_heatmap %>% arrange(desc(!!sym(comparison_log2fc)))
-    
+
     # declare the path to the heatmaps, based on the gene set category and comparison
     # create the dir if it doesnt exist
     heatmap_path <- paste("results/differential_expression/gene_set_tests/", species, comparison, set_name, "/", sep = "/")
-    
+
     ifelse(!dir.exists(file.path(heatmap_path)), dir.create(file.path(heatmap_path), recursive = TRUE), FALSE)
-    
+
     # TODO: currently, the column to rownames call complains about duplicate row names (i.e. gene names)
     # I have removed duplicates - is this how we want to do this? Is there a better way?
     to_heatmap_unique <- distinct(to_heatmap, gene_name, .keep_all = TRUE)
-    
+
     # prepare heatmap data so the row names are the gene IDs and remove the entrez column
     heatmap_data<-to_heatmap_unique %>% tibble::column_to_rownames(var="gene_name") %>% dplyr::select(-entrez_id, -comparison_log2fc)
-    
+
     # divide each row by the mean of that row
     heatmap_data <- t(apply(heatmap_data, 1, function(x) x/mean(x)))
     heatmap_data <- log2(heatmap_data)
-    
+
     heatmap_data[is.infinite(heatmap_data)] <- NA
     heatmap_data[is.nan(heatmap_data)] <- NA
-    heatmap_data <- heatmap_data[rowSums(!is.na(heatmap_data)) == num_samples,]
-    
-    max_data <- max(heatmap_data, na.rm=TRUE)
-    min_data <- -min(heatmap_data, na.rm=TRUE)
-    range <- min(max_data, min_data)
-    
-    start_plot(prefix = i, path = heatmap_path)
-    pheatmap(heatmap_data,
-             breaks = seq(-range, range, length.out = 100),
-             cluster_rows = FALSE, cluster_cols = FALSE,
-             border_color = NA, show_rownames = (heatmap_data %>% nrow()) < 100,
-             annotation_col = annot)
-    end_plot()
+    heatmap_data <- subset(heatmap_data,rowSums(!is.na(heatmap_data)) == num_samples)
+
+    if(nrow(heatmap_data)!=0){
+      max_data <- max(heatmap_data, na.rm=TRUE)
+      min_data <- -min(heatmap_data, na.rm=TRUE)
+      range <- min(max_data, min_data)
+
+      start_plot(prefix = i, path = heatmap_path)
+      pheatmap(heatmap_data,
+      breaks = seq(-range, range, length.out = 100),
+      cluster_rows = FALSE, cluster_cols = FALSE,
+      border_color = NA, show_rownames = (heatmap_data %>% nrow()) < 100,
+      annotation_col = annot)
+      end_plot()
+    }
   }
 }
 

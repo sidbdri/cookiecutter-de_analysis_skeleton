@@ -851,8 +851,11 @@ plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE,
     if (filter_string!='') {
       fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
     }
-    
-    p <- fpkm_debug_long %>% 
+
+    # we force the sample order on x axis
+    fpkm_debug_long$sample_meta %<>%factor(levels=unique(fpkm_debug_long$sample_meta))
+
+    p <- fpkm_debug_long %>%
       ggplot(mapping=aes_string(y="fpkm", x = plot_x)) + 
       aes_string(color = plot_x) + 
       geom_point(size = 3) +
@@ -880,6 +883,9 @@ plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE,
     if (filter_string != '') {
       fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
     }
+
+    # we force the sample order on x axis
+    fpkm_debug_long$sample_meta %<>%factor(levels=unique(fpkm_debug_long$sample_meta))
 
     # set up plot, giving x and y variables
     p <- fpkm_debug_long %>% ggplot(mapping = aes_string(y = "fpkm", x = "sample_meta"))

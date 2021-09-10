@@ -68,7 +68,7 @@ rule multiqc:
         input_dir = "results"
     shell:
         """
-        multiqc -d -f -m featureCounts -m {{ "star" if cookiecutter.data_type=="rnaseq" else "bowtie" }} -m fastqc -m salmon -m kallisto -m sargasso -m picard {params.input_dir}
+        multiqc --interactive -d -f -m featureCounts -m {{ "star" if cookiecutter.data_type=="rnaseq" else "bowtie" }} -m fastqc -m salmon -m kallisto -m sargasso -m picard {params.input_dir}
         """
 
 

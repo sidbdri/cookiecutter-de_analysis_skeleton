@@ -28,11 +28,12 @@ rule feature_counts:
     params:
         strandedness_flag = lambda parameter: strand_test(),
         featurecount = FEATURECOUNTS_EXECUTABLE,
-        gtf = lambda wildcards: gtf_dict[wildcards.species]
+        gtf = lambda wildcards: gtf_dict[wildcards.species],
+        paird_end_flag = FEATURECOUNTS_PAIRD_END_FLAG
     log: "results/logs/featureCount/{sample}.{species}.log"
     shell:
         """
-        {params.featurecount} -T {threads} -p -a {params.gtf} -o {output.counts_temp} -s {params.strandedness_flag} {input.bam} 2> {log}
+        {params.featurecount} -T {threads} {params.paird_end_flag} -a {params.gtf} -o {output.counts_temp} -s {params.strandedness_flag} {input.bam} 2> {log}
         tail -n +3 {output.counts_temp} | cut -f 1,7 > {output.counts_out}
         cp {output.counts_temp_summary} {output.counts_summary_out}
         """

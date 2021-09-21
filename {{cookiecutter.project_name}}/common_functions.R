@@ -851,8 +851,11 @@ plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE,
     if (filter_string!='') {
       fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
     }
-    
-    p <- fpkm_debug_long %>% 
+
+    # we force the sample order on x axis
+    fpkm_debug_long$sample_meta %<>%factor(levels=unique(fpkm_debug_long$sample_meta))
+
+    p <- fpkm_debug_long %>%
       ggplot(mapping=aes_string(y="fpkm", x = plot_x)) + 
       aes_string(color = plot_x) + 
       geom_point(size = 3) +
@@ -880,6 +883,9 @@ plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE,
     if (filter_string != '') {
       fpkm_debug_long %<>% filter(!!parse_expr(filter_string))
     }
+
+    # we force the sample order on x axis
+    fpkm_debug_long$sample_meta %<>%factor(levels=unique(fpkm_debug_long$sample_meta))
 
     # set up plot, giving x and y variables
     p <- fpkm_debug_long %>% ggplot(mapping = aes_string(y = "fpkm", x = "sample_meta"))
@@ -1410,62 +1416,64 @@ plot_significant_set_heatmap <- function(set_name, all_sets, comparison, samples
   samples_in_comparison %<>% mutate(fpkm_columns = str_c(sample_name, "_fpkm"))
   fpkm_columns <- samples_in_comparison %>% pull(fpkm_columns)
   num_samples <- length(fpkm_columns)
-  
+
   # construct sample annotation
   rownames(samples_in_comparison) <- NULL
   samples_in_comparison %<>% tibble::column_to_rownames(var = "fpkm_columns")
   annot <- samples_in_comparison %<>% dplyr::select(-sample_name)
-  
+
   # loop over each gene set category
-  for (i in names(all_sets[[set_name]])) {
+  for (i in names(all_sets[[set_name]])){
     # get the significant entrez ids
     entrez_ids <- list_of_gene_sets[[set_name]][[i]]
-    
+
     # get the name of the column of the log 2 fold changes
     comparison_log2fc <- paste(comp, "l2fc", sep = '.')
-    
+
     # from the global results variable, get rows and columns corresponding to significant entrez IDs
     # and samples from the correct comparison; remove genes with no name
-    to_heatmap <- results %>% 
-      dplyr::select(gene_name, entrez_id, fpkm_columns, comparison_log2fc) %>% 
-      filter(entrez_id %in% entrez_ids) %>% 
+    to_heatmap <- results %>%
+      dplyr::select(gene_name, entrez_id, fpkm_columns, comparison_log2fc) %>%
+      filter(entrez_id %in% entrez_ids) %>%
       filter(!is.na(gene_name))
-    
+
     # reorder
     to_heatmap <- to_heatmap %>% arrange(desc(!!sym(comparison_log2fc)))
-    
+
     # declare the path to the heatmaps, based on the gene set category and comparison
     # create the dir if it doesnt exist
     heatmap_path <- paste("results/differential_expression/gene_set_tests/", species, comparison, set_name, "/", sep = "/")
-    
+
     ifelse(!dir.exists(file.path(heatmap_path)), dir.create(file.path(heatmap_path), recursive = TRUE), FALSE)
-    
+
     # TODO: currently, the column to rownames call complains about duplicate row names (i.e. gene names)
     # I have removed duplicates - is this how we want to do this? Is there a better way?
     to_heatmap_unique <- distinct(to_heatmap, gene_name, .keep_all = TRUE)
-    
+
     # prepare heatmap data so the row names are the gene IDs and remove the entrez column
     heatmap_data<-to_heatmap_unique %>% tibble::column_to_rownames(var="gene_name") %>% dplyr::select(-entrez_id, -comparison_log2fc)
-    
+
     # divide each row by the mean of that row
     heatmap_data <- t(apply(heatmap_data, 1, function(x) x/mean(x)))
     heatmap_data <- log2(heatmap_data)
-    
+
     heatmap_data[is.infinite(heatmap_data)] <- NA
     heatmap_data[is.nan(heatmap_data)] <- NA
-    heatmap_data <- heatmap_data[rowSums(!is.na(heatmap_data)) == num_samples,]
-    
-    max_data <- max(heatmap_data, na.rm=TRUE)
-    min_data <- -min(heatmap_data, na.rm=TRUE)
-    range <- min(max_data, min_data)
-    
-    start_plot(prefix = i, path = heatmap_path)
-    pheatmap(heatmap_data,
-             breaks = seq(-range, range, length.out = 100),
-             cluster_rows = FALSE, cluster_cols = FALSE,
-             border_color = NA, show_rownames = (heatmap_data %>% nrow()) < 100,
-             annotation_col = annot)
-    end_plot()
+    heatmap_data <- subset(heatmap_data,rowSums(!is.na(heatmap_data)) == num_samples)
+
+    if(nrow(heatmap_data)!=0){
+      max_data <- max(heatmap_data, na.rm=TRUE)
+      min_data <- -min(heatmap_data, na.rm=TRUE)
+      range <- min(max_data, min_data)
+
+      start_plot(prefix = i, path = heatmap_path)
+      pheatmap(heatmap_data,
+      breaks = seq(-range, range, length.out = 100),
+      cluster_rows = FALSE, cluster_cols = FALSE,
+      border_color = NA, show_rownames = (heatmap_data %>% nrow()) < 100,
+      annotation_col = annot)
+      end_plot()
+    }
   }
 }
 
@@ -2076,4 +2084,132 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
     ret[['condition_base_reference_samples']] = NA
   }
   ret
+}
+
+
+
+setwd('/srv/data/results/nrf2_ich_jamie_loan/aaaaaaaaarggggghhhhh-959851d2469757607aa3e1f8b0ec1e1cc533cf42/20210805')
+g <- check_sample_bam(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='mouse',chr='2',start=75505857,end=75505957)
+plot(g)
+check_sample_bam <- function(samples,species=SPECIES,chr='2',start=75505857,end=75510000){
+  library('Rsamtools')
+  library(GenomicAlignments)
+  library(parallel)
+  library(ggplot2)
+  library(dplyr)
+  bamRanges=GRanges(chr, IRanges(start,end))
+
+  bamFiles <- list.files('results/final_bams/',pattern = '.bam$',full.names = T) %>%
+  grep(pattern = paste(samples,collapse = '|'),value = T)
+  bamIndexFile <- list.files('results/final_bams/',pattern = '.bam.bai',full.names = T) %>%
+  grep(pattern = paste(samples,collapse = '|'),value = T)
+  bamExperiment <-list(description="",created=date())
+  bv <- BamViews(bamFiles, bamIndicies=bamIndexFile,bamRanges=bamRanges, bamExperiment=bamExperiment)
+  reads<-readGAlignments(bv)
+
+  olap1 <- endoapply(reads, subsetByOverlaps, bamRanges)
+  olap1 <- lapply(olap1, "seqlevels<-", value=as.character(seqnames(bamRanges)))
+  cvg <- endoapply(olap1, coverage,
+  shift=-start(ranges(bamRanges[1])),
+  width=width(ranges(bamRanges[1])))
+
+  coverage_tb <- lapply(names(cvg), function(sample){
+    a=cvg[[sample]][[1]]
+    sapply(c(1:length(runLength(a))),function(x){
+      rep(runValue(a)[x],runLength(a)[x])
+    }) %>% unlist() %>% set_names(c(start(ranges(bamRanges))[1]:end(ranges(bamRanges))[1])) %>%
+      as.data.frame() %>% setNames(c('count')) %>%
+      tibble::rownames_to_column('position') %>%
+      mutate(sample=sample,position=as.numeric(position))
+  }) %>% purrr::reduce(rbind)
+  ggplot2::ggplot(data=coverage_tb, aes(x=position, y=count)) +
+  # geom_line(linetype="dashed", size=0.2) +
+    geom_area() +
+  # geom_bar(stat="identity")
+  # geom_point() +
+    facet_wrap(~sample)
+}
+
+
+# This function plots the read distribution of a chromosome region of bam files
+# It can be used as a pre-'igv' check
+# one can test the code with the following:
+# >setwd('/srv/data/results/nrf2_ich_jamie_loan/aaaaaaaaarggggghhhhh-959851d2469757607aa3e1f8b0ec1e1cc533cf42/20210805')
+# >check_sample_bam(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='mouse',chr='2',start=75505857,end=75505957) %>% plot
+check_sample_bam <- function(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='mouse',chr='2',start=75505857,end=75510000){
+  library('Rsamtools')
+  library(GenomicAlignments)
+  library(parallel)
+  library(ggplot2)
+  library(dplyr)
+  bamRanges=GRanges(chr, IRanges(start,end))
+
+  bamFiles <- list.files('results/final_bams/',pattern = '.bam$',full.names = T) %>%
+  grep(pattern = paste(samples,collapse = '|'),value = T)
+  bamIndexFile <- list.files('results/final_bams/',pattern = '.bam.bai',full.names = T) %>%
+  grep(pattern = paste(samples,collapse = '|'),value = T)
+  bamExperiment <-list(description="",created=date())
+  bv <- BamViews(bamFiles, bamIndicies=bamIndexFile,bamRanges=bamRanges, bamExperiment=bamExperiment)
+  reads<-readGAlignments(bv)
+
+  olap1 <- endoapply(reads, subsetByOverlaps, bamRanges)
+  olap1 <- lapply(olap1, "seqlevels<-", value=as.character(seqnames(bamRanges)))
+  cvg <- endoapply(olap1, coverage,
+  shift=-start(ranges(bamRanges[1])),
+  width=width(ranges(bamRanges[1])))
+
+  coverage_tb <- lapply(names(cvg), function(sample){
+    a=cvg[[sample]][[1]]
+    sapply(c(1:length(runLength(a))),function(x){
+      rep(runValue(a)[x],runLength(a)[x])
+    }) %>% unlist() %>% set_names(c(start(ranges(bamRanges))[1]:end(ranges(bamRanges))[1])) %>%
+      as.data.frame() %>% setNames(c('count')) %>%
+      tibble::rownames_to_column('position') %>%
+      mutate(sample=sample,position=as.numeric(position))
+  }) %>% purrr::reduce(rbind)
+  ggplot2::ggplot(data=coverage_tb, aes(x=position, y=count)) +
+  # geom_line(linetype="dashed", size=0.2) +
+    geom_area() +
+  # geom_bar(stat="identity")
+  # geom_point() +
+    facet_wrap(~sample)
+}
+
+# plot avg fpkm for each comparison
+# https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/163
+plot_scatter_fpkm <- function(results){
+  COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>% lapply(function(comparison_name){
+    x=comparison_table %>% filter(comparison == comparison_name)
+    same_in_base<-  SAMPLE_DATA %>%
+      filter(!!parse_expr(x$condition_name) == x$condition_base) %>%
+      pull(sample_name) %>% str_c('_fpkm',sep = '')
+    same_in_condition <-  SAMPLE_DATA %>%
+      filter(!!parse_expr(x$condition_name) == x$condition) %>%
+      pull(sample_name) %>% str_c('_fpkm',sep = '')
+
+    result_for_plot<-results %>%
+    dplyr::select(one_of(c(same_in_base,same_in_condition)),
+    padj=str_c(comparison_name, '.padj'),
+    l2fc=str_c(comparison_name, '.l2fc'))
+
+    result_for_plot$avg_fpkm_base <- result_for_plot %>% dplyr::select(one_of(same_in_base)) %>%
+      mutate(avg_1=rowMeans(.)) %>% pull(avg_1)
+    result_for_plot$avg_fpkm_condition <- result_for_plot %>% dplyr::select(one_of(same_in_condition)) %>%
+      mutate(avg_1=rowMeans(.)) %>% pull(avg_1)
+
+
+    start_plot(str_c("scatter_fpkm_", x$comparison))
+    p <- result_for_plot %>%
+    ggplot(aes(x=avg_fpkm_condition, y=avg_fpkm_base)) +
+      geom_point(data = result_for_plot %>% dplyr::filter(padj == P.ADJ.CUTOFF), shape = 4, colour="black", alpha=0.25) +
+      geom_point(data = result_for_plot %>% dplyr::filter(padj < P.ADJ.CUTOFF & l2fc > 0), shape = 4, colour="red") +
+      geom_point(data = result_for_plot %>% dplyr::filter(padj < P.ADJ.CUTOFF & l2fc < 0), shape = 4, colour="blue") +
+      scale_x_log10() +
+      scale_y_log10() +
+      xlab(x$condition) + ylab(x$condition_base) +
+      theme_classic()
+    plot(p)
+    end_plot()
+    'success'
+  })
 }

@@ -26,6 +26,10 @@ dir.create(GRAPHS_DIR, recursive = TRUE)
 
 #### Quality control ####
 
+##we check read distribution for sample region
+# g <- check_sample_bam(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='mouse',chr='2',start=75505857,end=75505957)
+# plot(g)
+
 total_dds_data <- get_total_dds(SAMPLE_DATA, SPECIES, qSVA = qSVA, design_formula = ~1)
 total_vst <- total_dds_data %>% varianceStabilizingTransformation(blind = TRUE)
 
@@ -172,6 +176,8 @@ lapply(comparisons_results, function(cmp) {
 start_plot("all_comparison_pvalue_distribution")
 all_comparison_pvalue_distribution
 end_plot()
+
+plot_scatter_fpkm(results)
 
 # save results
 if (COMPARISON_TABLE %>% pull(group) %>% unique() %>% length() > 1) {

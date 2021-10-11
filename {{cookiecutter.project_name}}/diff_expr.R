@@ -106,7 +106,12 @@ comparisons_results <- COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>
                     !!str_c(comparison_name, '.stat') := stat,
                     !!str_c(comparison_name, '.pval') := pvalue,
                     !!str_c(comparison_name, '.padj') := padj)
-    
+
+    # for interaction we remove raw_l2fc column
+    if(comparison_name %in% INTERACTION_TABLE$comparison){
+        results_tb %<>% dplyr::select(-str_c(comparison_name, '.raw_l2fc'))
+    }
+
     P=NULL
     if (MISASSIGNMENT_PERCENTAGE) {
       P <- get_misassignment_percentages(comparison_name, gene_lengths)

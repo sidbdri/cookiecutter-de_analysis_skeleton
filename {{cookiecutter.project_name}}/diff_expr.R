@@ -190,6 +190,10 @@ end_plot()
 plot_scatter_fpkm(results)
 plot_top_n_de_fpkm(results)
 
+start_plot('mitochondrial_percentage')
+plot_gene_percentage(counts(total_dds_data), gene_info %>% filter(chromosome=='MT') %>% pull(gene)) %>% print
+end_plot()
+
 # save results
 if (COMPARISON_TABLE %>% pull(group) %>% unique() %>% length() > 1) {
   save_results_by_group(results)

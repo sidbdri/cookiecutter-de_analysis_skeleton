@@ -2253,3 +2253,24 @@ plot_genes_fpkm <- function(result_table,genes,print_fpkm_table = FALSE) {
 
   plot_statement %>% parse_expr() %>% eval() %>% print()
 }
+
+
+plot_gene_percentage <- function(count_matrix,genes){
+  total_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
+    summarise(across(everything(), ~ sum(., is.na(.), 0)))
+
+  total_goi_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
+    dplyr::filter(rownames(.) %in% genes) %>%
+    summarise(across(everything(), ~ sum(., is.na(.), 0)))
+
+  p <- total_count_per_sample %>% tidyr::pivot_longer(cols = everything(),names_to='sample',values_to = 'total') %>%
+    left_join(
+    total_goi_count_per_sample %>% tidyr::pivot_longer(cols = everything(),names_to='sample',values_to = 'gene_of_interests') ) %>%
+    mutate(nuclear=total-gene_of_interests) %>% dplyr::select(-total) %>%
+    tidyr::pivot_longer(cols = -sample,names_to='type',values_to='count') %>%
+    mutate(selected=ifelse(type=='gene_of_interests',TRUE,FALSE)) %>%
+    ggplot( aes(fill=selected, y=count, x=sample)) +
+    geom_bar(position="stack", stat="identity") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+  p
+}

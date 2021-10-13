@@ -2213,3 +2213,43 @@ plot_scatter_fpkm <- function(results){
     'success'
   })
 }
+
+plot_genes_fpkm <- function(result_table,genes,print_fpkm_table = FALSE) {
+  num_genes <- length(genes)
+  if(num_genes>4){
+    warning('more than 4 genes are selected to plot gene fpkm across all samples! label might not be visible in the plot.')
+  }
+
+  fpkm_info <- data.frame()
+  old.opt<-getOption("ggrepel.max.overlaps")
+  options(ggrepel.max.overlaps = 20)
+
+  for (index in seq(num_genes)) {
+    plot_name <- str_c('fpkm_plot_', result_table%>%filter(gene==genes[index]) %>% pull(gene_name),sep = '')
+    l <- plot_gene_fpkms(gene_identifier = genes[index],result_table = results,debug = FALSE, print_graph = FALSE,
+    feature_group=TOPDEGENE_FEATURE_GROUP,plot_feature=TOPDEGENE_PLOT_FEATURE)
+    l$graph <- l$graph +
+      geom_hline(yintercept = 0, color = "grey") +
+      ylim(0, NA) +
+      theme_classic() +
+      theme(legend.position = "right",
+      axis.title.x = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank())
+
+    assign(plot_name, l$graph)
+    fpkm_info <- l$info %>% rbind(fpkm_info)
+    plot_statement <- ifelse(index == 1, plot_name, plot_statement %>% str_c(plot_name, sep = '+'))
+  }
+
+  options(ggrepel.max.overlaps = old.opt)
+  if (num_genes > 1) {
+    plot_statement %<>% str_c(" + plot_layout(ncol = ", round(num_genes/2), ", guides = \"collect\")")
+  }
+
+  if (print_fpkm_table) {
+    fpkm_info %>% print()
+  }
+
+  plot_statement %>% parse_expr() %>% eval() %>% print()
+}

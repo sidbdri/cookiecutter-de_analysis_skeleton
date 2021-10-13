@@ -168,6 +168,11 @@ lapply(comparisons_results, function(cmp) {
 
   # merge the p value plots
   add_to_patchwork(cmp$p_plot, plot_var_name = 'all_comparison_pvalue_distribution')
+
+  # plot top DE gene for each comparison
+  start_plot(str_c('top_de_genes_fpkm_',cmp))
+  plot_genes_fpkm(results,results %>% arrange(across(str_c(cmp,'.padj',sep = ''))) %>% head(4) %>% pull(gene),print_fpkm_table = F)
+  end_plot()
   
   # export the res and dds
   # commnet out for now.
@@ -183,6 +188,7 @@ all_comparison_pvalue_distribution
 end_plot()
 
 plot_scatter_fpkm(results)
+plot_top_n_de_fpkm(results)
 
 # save results
 if (COMPARISON_TABLE %>% pull(group) %>% unique() %>% length() > 1) {

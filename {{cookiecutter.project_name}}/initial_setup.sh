@@ -39,6 +39,12 @@ for sample in {{cookiecutter.rnaseq_samples}}; do
     ln -s {{cookiecutter.rnaseq_samples_dir}}/$sample ${RNASEQ_DIR}/$sample
 done
 
+# we make sure the sample are in fastq.gz format
+# wrap it under if block to hopefully gain some compatibility for old project
+if [[ -f 'sidbdri-utils/scripts/genozip_to_fastqgz.sh' ]]; then
+    bash sidbdri-utils/scripts/genozip_to_fastqgz.sh -d {{cookiecutter.rnaseq_samples_dir}}
+fi
+
 {% for s in cookiecutter.species.split(' ') %}
 ENSEMBL_DIR=${DATA_DIR}/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}
 GENOME_DATA_DIR=/srv/data/genome/{{ s }}/ensembl-{{cookiecutter.ensembl_version}}

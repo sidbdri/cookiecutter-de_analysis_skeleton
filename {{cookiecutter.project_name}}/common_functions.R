@@ -2255,22 +2255,33 @@ plot_genes_fpkm <- function(result_table,genes,print_fpkm_table = FALSE) {
 }
 
 
-plot_gene_percentage <- function(count_matrix,genes){
+plot_gene_percentage <- function(count_matrix,gene_set_list){
   total_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
     summarise(across(everything(), ~ sum(., is.na(.), 0)))
 
-  total_goi_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
-    dplyr::filter(rownames(.) %in% genes) %>%
-    summarise(across(everything(), ~ sum(., is.na(.), 0)))
+  tb <- total_count_per_sample %>% tidyr::pivot_longer(cols = everything(),names_to='sample',values_to = 'total')
+  for(gs in names(gene_set_list)){
+    total_goi_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
+      dplyr::filter(rownames(.) %in% gene_set_list[[gs]]) %>%
+      summarise(across(everything(), ~ sum(., is.na(.), 0)))
+    tb %<>% left_join(total_goi_count_per_sample %>% tidyr::pivot_longer(cols = everything(),names_to='sample',values_to = gs))
+  }
 
-  p <- total_count_per_sample %>% tidyr::pivot_longer(cols = everything(),names_to='sample',values_to = 'total') %>%
-    left_join(
-    total_goi_count_per_sample %>% tidyr::pivot_longer(cols = everything(),names_to='sample',values_to = 'gene_of_interests') ) %>%
-    mutate(nuclear=total-gene_of_interests) %>% dplyr::select(-total) %>%
+  p <- tb %>%
+    mutate(others=total-rowSums(across(head(names(gene_set_list),1):tail(names(gene_set_list),1)), na.rm = T)) %>%
+    dplyr::select(-total) %>%
     tidyr::pivot_longer(cols = -sample,names_to='type',values_to='count') %>%
-    mutate(selected=ifelse(type=='gene_of_interests',TRUE,FALSE)) %>%
-    ggplot( aes(fill=selected, y=count, x=sample)) +
+    ggplot( aes(fill=type, y=count, x=sample)) +
     geom_bar(position="stack", stat="identity") +
     theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
   p
+}
+
+ontology_find_all_children_terms <- function(term,parent2children){
+  if(!is.na(term)){
+    children <- parent2children %>% extract2(term) %>% unname()
+    return(c(children,lapply(children,ontology_find_all_children_terms,parent2children) %>%
+      unlist() %>% discard(is.na) %>% unique)
+    )
+  }
 }

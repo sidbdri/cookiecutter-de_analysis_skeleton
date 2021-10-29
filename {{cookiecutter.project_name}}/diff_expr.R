@@ -48,7 +48,7 @@ if (global_exists('patchworkplot')) {
 # This is to plot individually every feature defined in the SAMPLE_DATA table
 SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>%
   walk(function(feature) {
-    total_vst %>% 
+    total_vst %>%
       plot_pca(intgroup = c(feature), FALSE) %>%
       add_to_patchwork(plot_var_name = 'patchworkplot')
 })
@@ -58,10 +58,10 @@ end_plot()
 
 start_plot("heatmap_all_samples")
 total_vst %>% plot_heat_map(
-  SAMPLE_DATA %>% 
+  SAMPLE_DATA %>%
     tibble::rownames_to_column("tmp_sample_name") %>%
     tidyr::unite(col='sample_info', c(tmp_sample_name, FEATURES_FOR_ALL_SAMPLES_HEATMAP),
-                 sep = ":", remove = FALSE) %>% 
+                 sep = ":", remove = FALSE) %>%
     extract2("sample_info"))
 end_plot()
 
@@ -78,12 +78,12 @@ end_plot()
 gene_info <- get_gene_info(SPECIES)
 gene_lengths <- get_gene_lengths(SPECIES)
 
-results <- total_dds_data %>% get_count_data() 
+results <- total_dds_data %>% get_count_data()
 
-fpkms <- results %>% 
+fpkms <- results %>%
   get_fpkms(gene_lengths, colnames(results) %>% tail(-1), "_fpkm")
 
-results %<>% 
+results %<>%
   left_join(fpkms) %>%
   left_join(gene_info) %>%
   left_join(gene_lengths)
@@ -98,8 +98,8 @@ check_cell_type(results, fpkm_check_cutoff = 5, print_check_log = TRUE, print_fp
 comparisons_results <- COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>%  lapply_fork(
   function(comparison_name) {
     res <- get_res(comparison_name, fpkms, SPECIES, qSVA = qSVA)
-    
-    results_tb <- get_global("results") %>% 
+
+    results_tb <- get_global("results") %>%
       left_join(res[[1]], by = "gene") %>%
       dplyr::rename(!!str_c(comparison_name, '.l2fc') := log2FoldChange,
                     !!str_c(comparison_name, '.raw_l2fc') := raw_l2fc,
@@ -115,31 +115,31 @@ comparisons_results <- COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>
     P=NULL
     if (MISASSIGNMENT_PERCENTAGE) {
       P <- get_misassignment_percentages(comparison_name, gene_lengths)
-      
+
       if (!is.na(P$condition_reference_samples)) {
         results_tb %<>% left_join(
-          P$P_condition %>% 
-            dplyr::select(gene, !!str_c(comparison_name, '.perc.', COMPARISON_TABLE %>% 
-                                          filter(comparison == comparison_name) %>% 
+          P$P_condition %>%
+            dplyr::select(gene, !!str_c(comparison_name, '.perc.', COMPARISON_TABLE %>%
+                                          filter(comparison == comparison_name) %>%
                                           pull(condition)) := p))
-      }   
-      
+      }
+
       if (!is.na(P$condition_base_reference_samples)) {
         results_tb %<>% left_join(
-          P$P_condition_base %>% 
-            dplyr::select(gene,!!str_c(comparison_name, '.perc.', COMPARISON_TABLE %>% 
-                                         filter(comparison == comparison_name) %>% 
+          P$P_condition_base %>%
+            dplyr::select(gene,!!str_c(comparison_name, '.perc.', COMPARISON_TABLE %>%
+                                         filter(comparison == comparison_name) %>%
                                          pull(condition_base)) := p))
-      }   
-      
+      }
+
       res$summary_tb_row %<>% as.data.frame() %>%
-        mutate(Misassignment_samples_in_comparison_level_condition = P$condition_reference_samples) %>% 
+        mutate(Misassignment_samples_in_comparison_level_condition = P$condition_reference_samples) %>%
         mutate(Misassignment_samples_in_base_level_condition = P$condition_base_reference_samples)
-      
-    }   
-    
+
+    }
+
     p_plot <- plot_pvalue_distribution(results_tb, str_c(comparison_name,'.pval'))
-    
+
     ## return the results and merge them later
     list(comparison_name = comparison_name,
          res = res$res,
@@ -157,8 +157,8 @@ if (exists(x = 'all_comparison_pvalue_distribution')) {
 
 lapply(comparisons_results, function(cmp) {
   # merge the cmp result table into global results table
-  get_global("results") %>% 
-    left_join(cmp$results_tb %>% dplyr::select(gene,contains('.'))) %>% 
+  get_global("results") %>%
+    left_join(cmp$results_tb %>% dplyr::select(gene,contains('.'))) %>%
     set_global("results")
 
   # merge the cmp summary table into global SUMMARY_TABLE
@@ -173,7 +173,7 @@ lapply(comparisons_results, function(cmp) {
   start_plot(str_c('top_de_genes_fpkm_',cmp))
   plot_genes_fpkm(results,results %>% arrange(across(str_c(cmp,'.padj',sep = ''))) %>% head(4) %>% pull(gene),print_fpkm_table = F)
   end_plot()
-  
+
   # export the res and dds
   # commnet out for now.
   # see https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/83
@@ -181,7 +181,7 @@ lapply(comparisons_results, function(cmp) {
   cmp$dds %>% set_global(cmp$comparison %>% str_c('dds', sep = '_'))
   cmp$misassignment_percentage %>% set_global(cmp$comparison %>% str_c('misassignment_percentage', sep = '_'))
   'success'
-}) 
+})
 
 start_plot("all_comparison_pvalue_distribution")
 all_comparison_pvalue_distribution
@@ -191,7 +191,11 @@ plot_scatter_fpkm(results)
 plot_top_n_de_fpkm(results)
 
 start_plot('mitochondrial_percentage')
-plot_gene_percentage(counts(total_dds_data), gene_info %>% filter(chromosome=='MT') %>% pull(gene)) %>% print
+mitochondrial_terms <- c('GO:0005739',ontology_find_all_children_terms('GO:0005739',as.list(GO.db::GOCCCHILDREN))) %>% unique()
+nuclear_encoded_mitochondrial_genes<-topGO::annFUN.org("CC", mapping = switch(species, mouse = "org.Mm.eg.db", rat = "org.Rn.eg.db", human = "org.Hs.eg.db"), ID = "ensembl") %>%
+  extract(mitochondrial_terms) %>% unlist() %>% unique()
+mitochondrial_genes <- gene_info %>% filter(chromosome=='MT') %>% pull(gene)
+plot_gene_percentage(counts(total_dds_data), list(mitochondrial_genes=mitochondrial_genes, nuclear_encoded_mitochondrial_genes=nuclear_encoded_mitochondrial_genes)) %>% print
 end_plot()
 
 # save results
@@ -199,24 +203,24 @@ if (COMPARISON_TABLE %>% pull(group) %>% unique() %>% length() > 1) {
   save_results_by_group(results)
 }
 
-results %>% 
+results %>%
   dplyr::select(
     gene, gene_name, chromosome, description, entrez_id, gene_type,
     gene_length, max_transcript_length,
     everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat")) %>%
   write_csv(file.path(OUTPUT_DIR, "de_gene", str_c("deseq2_results_count_", SPECIES, ".csv")), na="")
 
-results %>% 
+results %>%
   dplyr::select(
     gene, gene_name, chromosome, description, entrez_id, gene_type,
     gene_length, max_transcript_length,
-    dplyr::contains("_fpkm"), 
-    COMPARISON_TABLE %>% 
+    dplyr::contains("_fpkm"),
+    COMPARISON_TABLE %>%
       pull(comparison) %>%
-      sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>% 
+      sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>%
       unlist() %>%
-      as.vector() %>% 
-      unique(), 
+      as.vector() %>%
+      unique(),
     -dplyr::ends_with(".stat")) %>%
   write_csv(file.path(OUTPUT_DIR, "de_gene", str_c("deseq2_results_fpkm_", SPECIES, ".csv")), na="")
 
@@ -234,16 +238,16 @@ if (PARALLEL) {
   adjust_parallel_cores()
 }
 
-expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts = TRUE) %>% 
+expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts = TRUE) %>%
   get_count_data()
 
-GO_results <- COMPARISON_TABLE %>% 
-  pull(comparison) %>% 
-  set_names(.) %>% 
+GO_results <- COMPARISON_TABLE %>%
+  pull(comparison) %>%
+  set_names(.) %>%
   lapply_socket(X=., function(comparison_name) {
     p_str <- str_c(comparison_name, '.padj')
     l2fc_str <- str_c(comparison_name, '.l2fc')
-    
+
     results <- get_global("results")
 
     lapply_socket(cores = 3, X = c('', '.up', '.down'), function(cmp) {
@@ -254,7 +258,7 @@ GO_results <- COMPARISON_TABLE %>%
         } else {
           r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF)
         }
-        
+
         perform_go_analyses(r, expressed_genes, comparison_name, cmp, SPECIES, out_dir = file.path(OUTPUT_DIR,"enrichment_tests"))
       }
     ) %>% set_names(str_c(comparison_name,c('.all','.up','.down')))
@@ -263,13 +267,13 @@ GO_results <- COMPARISON_TABLE %>%
 
 #### Reactome pathway analysis
 
-Reactome_results<- COMPARISON_TABLE %>% 
-  pull(comparison) %>% 
-  set_names(.) %>% 
+Reactome_results<- COMPARISON_TABLE %>%
+  pull(comparison) %>%
+  set_names(.) %>%
   lapply_socket(X = ., function(comparison_name) {
     p_str <- str_c(comparison_name, 'padj', sep = '.')
     l2fc_str <- str_c(comparison_name, 'l2fc', sep = '.')
-    
+
     results <- get_global("results")
 
     lapply_socket(cores = 3, X = c('', '.up', '.down'), function(cmp) {
@@ -290,34 +294,34 @@ Reactome_results<- COMPARISON_TABLE %>%
 
 gene_set_categories <- list("CURATED", "MOTIF", "GO", "CELL_TYPE")
 
-list_of_gene_sets <- gene_set_categories %>% 
-  set_names(.) %>% 
-  lapply_fork(cores = length(gene_set_categories), X = ., 
+list_of_gene_sets <- gene_set_categories %>%
+  set_names(.) %>%
+  lapply_fork(cores = length(gene_set_categories), X = .,
               function(category, ...) get_gene_sets(SPECIES, category))
 
-GS_results <- COMPARISON_TABLE %>% 
-  pull(comparison) %>% 
-  set_names(.) %>% 
+GS_results <- COMPARISON_TABLE %>%
+  pull(comparison) %>%
+  set_names(.) %>%
   lapply_fork(X=., function(comparison_name, ...) {
     dds <- str_c(comparison_name, 'dds', sep = '_') %>% get_global()
-    
-    camera_results <- list_of_gene_sets %>% 
+
+    camera_results <- list_of_gene_sets %>%
       map(function(category_gene_sets) {
         get_camera_results(dds, category_gene_sets, gene_info)
       })
-  
+
     lapply_fork(cores = 3, X = seq(1:length(gene_set_categories)), function(category,...) {
         de_res <- results %>% dplyr::select(
-          gene, gene_name, entrez_id, 
-          starts_with(str_c(comparison_name, ".")), 
-          -starts_with(str_c(comparison_name, ".stat")))  
+          gene, gene_name, entrez_id,
+          starts_with(str_c(comparison_name, ".")),
+          -starts_with(str_c(comparison_name, ".stat")))
         write_camera_results(
-          gene_set_categories[[category]], list_of_gene_sets[[category]], 
+          gene_set_categories[[category]], list_of_gene_sets[[category]],
           comparison_name, SPECIES,
           de_res, camera_results[[category]], out_dir = file.path(OUTPUT_DIR,"gene_set_tests"))
       }
-    ) 
-    
+    )
+
     camera_results
   }
 )
@@ -326,7 +330,7 @@ GS_results <- COMPARISON_TABLE %>%
 significant_entrez_ids<-function(gene_set_category, sets_per_comparison){
   # filter by significance
   significant<-sets_per_comparison[[gene_set_category]] %>% filter(FDR < 0.05) %>% rownames()
-  
+
   # use the globally defined gene set category to get all the entrez IDs in that gene set
   significant_entrez<-sapply(significant, function(x) list_of_gene_sets[[gene_set_category]][[x]])
   return(significant_entrez)
@@ -336,30 +340,30 @@ significant_entrez_ids<-function(gene_set_category, sets_per_comparison){
 for (comp in COMPARISON_TABLE$comparison) {
   # get the gene set results from camera for that comparison
   comparison_list <- GS_results[comp]
-  
+
   # because of the way it seems to be arranged, the comparison name is used to get all the
   # gene set categories (e.g. GO, CELL TYPE etc.) for that comparison
   gene_sets_per_comparison <- comparison_list[[comp]]
-  
+
   # for each gene set category, defined elsewhere globally
   # get the entrez ids of the gene sets which are significant e.g. FDR < 0.05
   # replace names using the gene set categories as these seem to be removed during the apply
   significant_entrez <- sapply(gene_set_categories, significant_entrez_ids, gene_sets_per_comparison, simplify = FALSE)
   names(significant_entrez) <- unlist(gene_set_categories)
-  
+
   #get the comparison criteria for this comparison
   comparison_criteria <- COMPARISON_TABLE %>% filter(comparison == comp) %>% dplyr::select(condition_name, condition, condition_base, filter)
   selected_conditions <- comparison_criteria %>% dplyr::select(condition, condition_base) %>% as.character()
-  
+
   # pull out samples which have the conditions in this comparison
   # and samples which match the filter specified
   condition_name <- comparison_criteria %>% dplyr::select(condition_name) %>% pull()
   samples_in_comparison <- SAMPLE_DATA %>%
     filter(!!parse_expr(condition_name) %in% selected_conditions &
              !!(parse_expr(comparison_criteria %>% dplyr::select(filter) %>% pull()))) %>%
-    dplyr::select(sample_name, !!parse_expr(condition_name)) %>% 
+    dplyr::select(sample_name, !!parse_expr(condition_name)) %>%
     arrange(!!parse_expr(condition_name))
-  
+
   # loop over significant entrez for gene set categories
   # plot heatmap using the sample names corresponding to the relevant comparison
   sapply(names(significant_entrez), plot_significant_set_heatmap, significant_entrez, comp, samples_in_comparison, SPECIES)
@@ -376,7 +380,7 @@ if (!dir.exists(rws)) {
 
 save(list = ls() %>% grep(x = ., pattern='comparisons_results', value = T,invert = T),
      file = str_c(rws,"diff_expr",SPECIES,".RData"))
-  
+
 # Load the save workspace to get all objects back for analysis
 
 # load_rs_data()

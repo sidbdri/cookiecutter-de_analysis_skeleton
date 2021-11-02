@@ -77,14 +77,12 @@ The analysis method used here is called "Camera" (Wu & Smyth, ["Camera: a compet
 
 The gene sets we use are divided into three categories, and consist of gene sets that have been compiled by the Broad Institute:
 
-* **CELL_TYPE_**: genes sets derived by us using the Barres "Brain RNA-seq" data set (https://www.brainrnaseq.org) representing sets of marker genes for specific cell types in human and mouse. Sets with names containing "5_times" or "10_times" represent genes whose expression is at least 5 or 10 times greater in that cell type than any other cell type. Sets with "top100" in the name represent the top 100 genes ranked by ratio of expression in that cell type compared to all other cell types.
+* **CELL_TYPE**: genes sets derived by us using the Barres "Brain RNA-seq" data set (https://www.brainrnaseq.org) representing sets of marker genes for specific cell types in human and mouse. Sets with names containing "5_times" or "10_times" represent genes whose expression is at least 5 or 10 times greater in that cell type than any other cell type. Sets with "top100" in the name represent the top 100 genes ranked by ratio of expression in that cell type compared to all other cell types.
 * **CURATED**: gene sets curated from various sources such as online pathway databases, the biomedical literature, and knowledge of domain experts. 
 * **MOTIF**: gene sets representing potential targets of regulation by transcription factors or microRNAs.
 * **GO**: Gene sets that contain genes annotated by the same GO term.
 
-The results for each differential expression comparison are contained in a sub-folder under the `gene_set_tests` folder. Each sub-folder contains:
-
-1) up to four CSV files, i.e. CELL_TYPE_\_sets.csv_, _CURATED\_sets.csv_, _MOTIF\_sets.csv_ and _GO\_sets.csv_. These detail, for the particular comparison of experimental conditions, those genes sets in each category which were found by Camera to be significantly differentially expressed, as a whole, when compared to all other genes (with a False Discovery Rate cut-off of **10%**). If there were no significant differentially expressed gene sets for a category, then the file for that category will be missing.
+The results for each differential expression comparison are contained in a sub-folder under the `gene_set_tests` folder. Each sub-folder contains up to four CSV files, i.e. _CELL_TYPE_\_sets.csv_, _CURATED\_sets.csv_, _MOTIF\_sets.csv_ and _GO\_sets.csv_. These detail, for the particular comparison of experimental conditions, those genes sets in each category which were found by Camera to be significantly differentially expressed, as a whole, when compared to all other genes (with a False Discovery Rate cut-off of **10%**). If there were no significant differentially expressed gene sets for a category, then the file for that category will be missing.
 
 The columns in these CSV files are:
 
@@ -94,19 +92,11 @@ The columns in these CSV files are:
 * **PValue**: Raw p-value for the significance of this shift.
 * **FDR**: p-value corrected for multiple testing (i.e. a false discovery rate). Only gene sets with FDR < 0.1 are included (hence all entries in these spreadsheets can be considered significant).
 
-2) Up to three matching CSV files, i.e. _CURATED\_genes\_in\_sets.csv_, _MOTIF\_genes\_in\_sets.csv_ and _GO\_genes\_in\_sets.csv_, corresponding to those gene categories for which we got significant results. These files can be used to study the behaviour of the actual genes in those significant gene sets.
-
-The columns in these CSV files are:
-
-* **gene**: Ensembl gene ID.
-* **gene_name**	: Ensemble gene name.
-* **entrez\_id**: NCBI Gene ID (this is mainly for our internal use).
-* **\<comparison\>.l2fc**	, **\<comparison\>.pval**, **\<comparison\>.padj**, **\<comparison\>.raw_l2fc**: Original differential gene expression results for the gene, for the appropriate differential expression comparison. 
-* **\<SIGNIFICANT\_GENE\_SET\_1\>, \<SIGNIFICANT\_GENE\_SET\_2\>, etc**: These columns contain a "T" if and only if the gene in this row is contained in the particular significant gene set.
-
-Thus a good way to examine the behaviour of genes in a particular significant gene set is to order the spreadsheet first by the gene set column (e.g. \<SIGNIFICANT\_GENE\_SET\_1\>) and then by the adjusted p-value for the differential expression comparison.
+In addition to the CSV files, each differential expression comparison subfolder has further subfolders corresponding to each of the gene set categories, which contain heatmaps of genes in each significant gene set. This allows visualisation of gene expression across genes in each significant set, and how they change as a group across samples included in the comparison. 
 
 _n.b._ for more information about the provenance of a particular gene set, see the [MSigDb](https://software.broadinstitute.org/gsea/msigdb/) database provided by the Broad Institute (free to access, but registration required I think).
+
+
 
 ### Reactome
 

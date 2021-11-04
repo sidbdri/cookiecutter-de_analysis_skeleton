@@ -51,7 +51,7 @@ _n.b._:
 
 ### Gene Ontology enrichment analysis
 
-In the sub-folder **differential_expression/go**, there are Gene Ontology (GO) enrichment analyses for each differential expression comparison (these may be in further species-specific sub-folders). 
+In the sub-folder **differential_expression/enrichment_tests**, there are Gene Ontology (GO) enrichment analyses for each differential expression comparison (these may be in further species-specific sub-folders). 
 
 For each differential expression comparison we take (i) all genes called differentially expressed at false discovery rate < 0.05, (ii) just the up-regulated genes and (iii) just the down-regulated genes. Then for each of the GO categories of "biological process", "cellular compartment" and "molecular function", we use an algorithm to test whether the differentially expressed genes are enriched in genes annotated with particular GO terms, as compared to the background set of all genes expressed in this data. These results can start to give some clue as to the particular biological processes that are being affected, without having to just scan through huge lists of gene expression data.
 
@@ -61,29 +61,28 @@ Each GO enrichment results CSV file contains the following columns:
 
 * **GO.ID**: Gene Ontology term ID.
 * **Term**: Gene Ontology term description.
-* **Annotated**: Number of expressed genes annotated with this term.
-* **Significant**: Number of differentially expressed genes annotated with this term.
-* **Expected**: The number of genes you would expect to be annotated with this term in a random set of genes of the same sizes as the differentially expressed set.
-* **weight_fisher**: A p-value for enrichment of this Gene Ontology term in the differentially expressed set.
+* **annotated_in_background*: Number of genes in the background set annotated with this term.
+* **annotated_in_gene_set*: Number of genes in the differentially expressed set annotated with this term.
+* **expected_annotated_in_gene_set**: The number of genes you would expect to be annotated with this term in a random set of genes of the same sizes as the differentially expressed set.
+* **p.value**: A p-value for enrichment of this Gene Ontology term in the differentially expressed set.
 * **Genes**: The differentially expressed genes annotated with this Gene Ontology term. 
 
 Note that the p-values here are _not_ corrected for multiple testing (it's not straightforward to do this, since the statistical tests for different Gene Ontology terms are not independent). A common convention, however, is to consider GO terms with p-value < 0.01 as potentially interesting.
 
 ### Gene set enrichment analysis
 
-While GO analyses are useful, they can suffer from our having imposed an arbitrary significance cutoff for the sets of genes considered; whereas sub-threshold, yet coherent, shifts in the expression of groups of genes between conditions can also be biologically meaningful. These coherent shifts in expression can be investigated using "gene set enrichment analysis"; results are found in the sub-folder **differential_expression/gsa** (and may be in further species-specific sub-folders).
+While GO analyses are useful, they can suffer from our having imposed an arbitrary significance cutoff for the sets of genes considered; whereas sub-threshold, yet coherent, shifts in the expression of groups of genes between conditions can also be biologically meaningful. These coherent shifts in expression can be investigated using "gene set enrichment analysis"; results are found in the sub-folder **differential_expression/gene_set_tests** (and may be in further species-specific sub-folders).
 
 The analysis method used here is called "Camera" (Wu & Smyth, ["Camera: a competitive gene set test accounting for inter-gene correlation"](https://academic.oup.com/nar/article/40/17/e133/2411151), Nucleic Acids Research (2012)). This implements a "competitive gene set test" - that is, for a particular set of genes of interest, it takes the expression values of all genes and tests whether the fold change in expression between experimental conditions for the genes in the set is different (as a whole) to the genes not in the set. (It also takes into account that fold changes of different genes are not necessarily independent - e.g. in cases where a bunch of genes in a pathway are all coherently differentially regulated, so the p-value obtained should be more robust than some other competitive gene set test methods that are out there.)
 
 The gene sets we use are divided into three categories, and consist of gene sets that have been compiled by the Broad Institute:
 
+* **CELL_TYPE**: genes sets derived by us using the Barres "Brain RNA-seq" data set (https://www.brainrnaseq.org) representing sets of marker genes for specific cell types in human and mouse. Sets with names containing "5_times" or "10_times" represent genes whose expression is at least 5 or 10 times greater in that cell type than any other cell type. Sets with "top100" in the name represent the top 100 genes ranked by ratio of expression in that cell type compared to all other cell types.
 * **CURATED**: gene sets curated from various sources such as online pathway databases, the biomedical literature, and knowledge of domain experts. 
 * **MOTIF**: gene sets representing potential targets of regulation by transcription factors or microRNAs.
 * **GO**: Gene sets that contain genes annotated by the same GO term.
 
-The results for each differential expression comparison are contained in a sub-folder under the `gsa` folder. Each sub-folder contains:
-
-1) up to three CSV files, i.e. _CURATED\_enriched\_sets.csv_, _MOTIF\_enriched\_sets.csv_ and _GO\_enriched\_sets.csv_. These detail, for the particular comparison of experimental conditions, those genes sets in each category which were found by Camera to be significantly differentially expressed, as a whole, when compared to all other genes (with a False Discovery Rate cut-off of **10%**). If there were no significant differentially expressed gene sets for a category, then the file for that category will be missing.
+The results for each differential expression comparison are contained in a sub-folder under the `gene_set_tests` folder. Each sub-folder contains up to four CSV files, i.e. _CELL_TYPE_\_sets.csv_, _CURATED\_sets.csv_, _MOTIF\_sets.csv_ and _GO\_sets.csv_. These detail, for the particular comparison of experimental conditions, those genes sets in each category which were found by Camera to be significantly differentially expressed, as a whole, when compared to all other genes (with a False Discovery Rate cut-off of **10%**). If there were no significant differentially expressed gene sets for a category, then the file for that category will be missing.
 
 The columns in these CSV files are:
 
@@ -93,19 +92,11 @@ The columns in these CSV files are:
 * **PValue**: Raw p-value for the significance of this shift.
 * **FDR**: p-value corrected for multiple testing (i.e. a false discovery rate). Only gene sets with FDR < 0.1 are included (hence all entries in these spreadsheets can be considered significant).
 
-2) Up to three matching CSV files, i.e. _CURATED\_genes\_in\_sets.csv_, _MOTIF\_genes\_in\_sets.csv_ and _GO\_genes\_in\_sets.csv_, corresponding to those gene categories for which we got significant results. These files can be used to study the behaviour of the actual genes in those significant gene sets.
-
-The columns in these CSV files are:
-
-* **gene**: Ensembl gene ID.
-* **gene_name**	: Ensemble gene name.
-* **entrez\_id**: NCBI Gene ID (this is mainly for our internal use).
-* **\<comparison\>.l2fc**	, **\<comparison\>.pval**, **\<comparison\>.padj**, **\<comparison\>.raw_l2fc**: Original differential gene expression results for the gene, for the appropriate differential expression comparison. 
-* **\<SIGNIFICANT\_GENE\_SET\_1\>, \<SIGNIFICANT\_GENE\_SET\_2\>, etc**: These columns contain a "T" if and only if the gene in this row is contained in the particular significant gene set.
-
-Thus a good way to examine the behaviour of genes in a particular significant gene set is to order the spreadsheet first by the gene set column (e.g. \<SIGNIFICANT\_GENE\_SET\_1\>) and then by the adjusted p-value for the differential expression comparison.
+In addition to the CSV files, each differential expression comparison subfolder has further subfolders corresponding to each of the gene set categories, which contain heatmaps of genes in each significant gene set. This allows visualisation of gene expression across genes in each significant set, and how they change as a group across samples included in the comparison. 
 
 _n.b._ for more information about the provenance of a particular gene set, see the [MSigDb](https://software.broadinstitute.org/gsea/msigdb/) database provided by the Broad Institute (free to access, but registration required I think).
+
+
 
 ### Reactome
 

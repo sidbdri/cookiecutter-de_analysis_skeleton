@@ -2087,10 +2087,6 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
 }
 
 
-
-setwd('/srv/data/results/nrf2_ich_jamie_loan/aaaaaaaaarggggghhhhh-959851d2469757607aa3e1f8b0ec1e1cc533cf42/20210805')
-g <- check_sample_bam(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='mouse',chr='2',start=75505857,end=75505957)
-plot(g)
 check_sample_bam <- function(samples,species=SPECIES,chr='2',start=75505857,end=75510000){
   library('Rsamtools')
   library(GenomicAlignments)
@@ -2179,7 +2175,7 @@ check_sample_bam <- function(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='m
 # https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/163
 plot_scatter_fpkm <- function(results){
   COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>% lapply(function(comparison_name){
-    x=comparison_table %>% filter(comparison == comparison_name)
+    x=COMPARISON_TABLE %>% filter(comparison == comparison_name)
     same_in_base<-  SAMPLE_DATA %>%
       filter(!!parse_expr(x$condition_name) == x$condition_base) %>%
       pull(sample_name) %>% str_c('_fpkm',sep = '')

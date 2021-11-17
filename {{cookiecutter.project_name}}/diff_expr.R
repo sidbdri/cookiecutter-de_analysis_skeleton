@@ -171,7 +171,7 @@ lapply(comparisons_results, function(cmp) {
 
   # plot top DE gene for each comparison
   start_plot(str_c('top_de_genes_fpkm_',cmp))
-  plot_genes_fpkm(results,results %>% arrange(across(str_c(cmp,'.padj',sep = ''))) %>% head(4) %>% pull(gene),print_fpkm_table = F)
+  plot_genes_fpkm(results,results %>% arrange(across(str_c(cmp$comparison_name,'.padj',sep = ''))) %>% head(4) %>% pull(gene),print_fpkm_table = F)
   end_plot()
 
   # export the res and dds

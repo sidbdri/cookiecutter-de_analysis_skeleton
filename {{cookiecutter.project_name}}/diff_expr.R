@@ -188,7 +188,6 @@ all_comparison_pvalue_distribution
 end_plot()
 
 plot_scatter_fpkm(results)
-plot_top_n_de_fpkm(results)
 
 start_plot('mitochondrial_percentage')
 mitochondrial_terms <- c('GO:0005739',ontology_find_all_children_terms('GO:0005739',as.list(GO.db::GOCCCHILDREN))) %>% unique()

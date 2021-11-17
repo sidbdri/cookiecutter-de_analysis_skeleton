@@ -17,7 +17,7 @@ _n.b._ these plots are mainly used to spot gross QC problems and sample mix-ups,
 
 ### Differential gene expression
 
-Differential gene expression results are in the sub-folder `differential_expression/de_gene`.
+We use the "DESeq2" tool for differential expression (_Love et al._, "[Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-014-0550-8)", Genome Biology (2014)). Differential gene expression results are in the sub-folder `differential_expression/de_gene`:
 
 - `\*deseq2_results_fpkm*.csv` - One or more CSV files (these can be opened directly in Excel) containing results of differential gene expression analysis.
 - `*de_summary*.csv` - One or more CSV files containing summaries of the numbers of genes detected as differentially expressed (at a particular false discovery rate - unless otherwise requested, this will normally be 5%).

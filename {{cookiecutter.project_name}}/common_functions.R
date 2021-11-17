@@ -2269,6 +2269,8 @@ plot_gene_percentage <- function(count_matrix,gene_set_list){
     tidyr::pivot_longer(cols = -sample,names_to='type',values_to='count') %>%
     ggplot( aes(fill=type, y=count, x=sample)) +
     geom_bar(position="stack", stat="identity") +
+    scale_y_continuous(expand = expansion(mult = c(0, .05))) +
+    theme_classic() +
     theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
   p
 }

@@ -194,7 +194,7 @@ mitochondrial_terms <- c('GO:0005739',ontology_find_all_children_terms('GO:00057
 nuclear_encoded_mitochondrial_genes<-topGO::annFUN.org("CC", mapping = switch(species, mouse = "org.Mm.eg.db", rat = "org.Rn.eg.db", human = "org.Hs.eg.db"), ID = "ensembl") %>%
   extract(mitochondrial_terms) %>% unlist() %>% unique()
 mitochondrial_genes <- gene_info %>% filter(chromosome=='MT') %>% pull(gene)
-plot_gene_percentage(counts(total_dds_data), list(mitochondrial_genes=mitochondrial_genes, nuclear_encoded_mitochondrial_genes=nuclear_encoded_mitochondrial_genes)) %>% print
+plot_gene_percentage(counts(total_dds_data), list(MT_mito=mitochondrial_genes, NUC_mito=nuclear_encoded_mitochondrial_genes)) %>% print
 end_plot()
 
 # save results

@@ -2197,7 +2197,7 @@ plot_scatter_fpkm <- function(results){
     start_plot(str_c("scatter_fpkm_", x$comparison))
     p <- result_for_plot %>%
     ggplot(aes(x=avg_fpkm_condition, y=avg_fpkm_base)) +
-      geom_point(data = result_for_plot %>% dplyr::filter(padj == P.ADJ.CUTOFF), shape = 4, colour="black", alpha=0.25) +
+      geom_point(data = result_for_plot %>% dplyr::filter(padj >= P.ADJ.CUTOFF), shape = 4, colour="black", alpha=0.25) +
       geom_point(data = result_for_plot %>% dplyr::filter(padj < P.ADJ.CUTOFF & l2fc > 0), shape = 4, colour="red") +
       geom_point(data = result_for_plot %>% dplyr::filter(padj < P.ADJ.CUTOFF & l2fc < 0), shape = 4, colour="blue") +
       scale_x_log10() +

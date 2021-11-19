@@ -170,7 +170,7 @@ lapply(comparisons_results, function(cmp) {
   add_to_patchwork(cmp$p_plot, plot_var_name = 'all_comparison_pvalue_distribution')
 
   # plot top DE gene for each comparison
-  start_plot(str_c('top_de_genes_fpkm_',cmp))
+  start_plot(str_c('top_de_genes_fpkm_',cmp$comparison_name))
   plot_genes_fpkm(results,results %>% arrange(across(str_c(cmp$comparison_name,'.padj',sep = ''))) %>% head(4) %>% pull(gene),print_fpkm_table = F)
   end_plot()
 

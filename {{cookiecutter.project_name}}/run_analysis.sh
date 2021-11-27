@@ -80,4 +80,4 @@ Rscript diff_expr_{{ s }}.R
 
 # Generate Shiny app
 echo Generating Shiny app
-./generate_shiny.sh
+bash ./generate_shiny.sh

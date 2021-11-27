@@ -378,7 +378,7 @@ if (!dir.exists(rws)) {
 }
 
 save(list = ls() %>% grep(x = ., pattern='comparisons_results', value = T,invert = T),
-     file = str_c(rws,"diff_expr",SPECIES,".RData"))
+     file = str_c(rws,"diff_expr_",SPECIES,".RData"))
 
 # Load the save workspace to get all objects back for analysis
 

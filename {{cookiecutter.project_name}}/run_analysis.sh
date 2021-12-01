@@ -1,5 +1,13 @@
 #!/bin/bash
 
+function cleanup {
+#   echo "Killing all sub-processes..."
+   kill -- -$$
+}
+
+trap exit INT
+trap cleanup EXIT
+
 export WORKON_HOME=${HOME}/{{cookiecutter.virtualenv_home}}
 export PROJECT_HOME=${HOME}/{{cookiecutter.projects_base}}
 export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3.8

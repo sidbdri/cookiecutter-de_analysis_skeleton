@@ -2221,7 +2221,7 @@ plot_genes_fpkm <- function(result_table,genes,print_fpkm_table = FALSE) {
   options(ggrepel.max.overlaps = 20)
 
   for (index in seq(num_genes)) {
-    plot_name <- str_c('fpkm_plot_', result_table%>%filter(gene==genes[index]) %>% pull(gene_name),sep = '')
+    plot_name <- str_c('fpkm_plot_', result_table%>%filter(gene==genes[index]) %>% pull(gene),sep = '')
     l <- plot_gene_fpkms(gene_identifier = genes[index],result_table = results,debug = FALSE, print_graph = FALSE,
     feature_group=TOPDEGENE_FEATURE_GROUP,plot_feature=TOPDEGENE_PLOT_FEATURE)
     l$graph <- l$graph +

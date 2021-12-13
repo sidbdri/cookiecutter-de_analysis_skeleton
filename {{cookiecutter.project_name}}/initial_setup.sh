@@ -36,7 +36,7 @@ fi
 
 mkdir -p ${RNASEQ_DIR}
 for sample in {{cookiecutter.rnaseq_samples}}; do
-    ln -s {{cookiecutter.rnaseq_samples_dir}}/$sample ${RNASEQ_DIR}/$sample
+    ln -s -T {{cookiecutter.rnaseq_samples_dir}}/$sample ${RNASEQ_DIR}/$sample
 done
 
 # we make sure the sample are in fastq.gz format

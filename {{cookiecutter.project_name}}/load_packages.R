@@ -22,6 +22,8 @@ library(knitr)
 library(patchwork)
 library(conflicted)
 library(pheatmap)
+library(Rsamtools)
+library(GenomicAlignments)
 
 conflict_prefer("desc", "dplyr")
 conflict_prefer("setdiff", "dplyr")
@@ -34,6 +36,7 @@ conflict_prefer("clusterExport", "parallel")
 conflict_prefer("clusterEvalQ", "parallel")
 conflict_prefer("parSapply", "parallel")
 conflict_prefer("extract", "magrittr")
+conflict_prefer("strsplit", "base")
 
 sessionInfo()
 

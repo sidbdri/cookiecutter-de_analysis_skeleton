@@ -1269,34 +1269,11 @@ get_human_vs_species_ortholog_info <- function(species) {
     distinct
 }
 
+
 get_gene_sets <- function(species, gene_set_name) {
-  msigdb_data <- str_c("data/msigdb/v7.0/", gene_set_name, ".all.v7.0.entrez.gmt") %>%
-    read_lines()
-  
-  gene_set_names <- map_chr(msigdb_data, function(x) {str_split(x, "\t")[[1]][1]})
-  gene_sets <- map(msigdb_data, function(x) {str_split(str_split(x, "\t", n=3)[[1]][3], "\t")[[1]]})
-  
-  names(gene_sets) <- gene_set_names
-  
-  if (species == "human") {
-    return(gene_sets)
-  }
-  
-  pb <- txtProgressBar(max = length(gene_sets), style = 3)
-  count <- 0
-  
-  ortholog_info <- get_human_vs_species_ortholog_info(species)
-  
-  ret <- gene_sets %>% map(function(y) {
-    count <<- count + 1
-    setTxtProgressBar(pb, count)
-    ortholog_info[which(ortholog_info$human_entrez_id %in% y),]$species_entrez_id %>% unique
-  }) 
-  
-  close(pb)
-  
-  ret
+    str_c("data/",species,"/msigdb/v7.0/", gene_set_name, ".all.v7.0.entrez.gmt.Rdata") %>% load
 }
+
 
 get_camera_results <- function(dds, gene_sets, gene_info) {
   vst <- dds %>% varianceStabilizingTransformation

@@ -1271,7 +1271,7 @@ get_human_vs_species_ortholog_info <- function(species) {
 
 
 get_gene_sets <- function(species, gene_set_name) {
-    str_c("data/",species,"/msigdb/v7.0/", gene_set_name, ".all.v7.0.entrez.gmt.Rdata") %>% load
+    str_c("data/",species,"_ensembl_{{cookiecutter.ensembl_version}}/msigdb/v7.0/", gene_set_name, ".all.v7.0.entrez.gmt.Rdata") %>% load
 }
 
 

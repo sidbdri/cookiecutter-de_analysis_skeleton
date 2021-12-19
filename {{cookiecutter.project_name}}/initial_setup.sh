@@ -58,6 +58,7 @@ ln -s ${GENOME_DATA_DIR}/SALMON_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/KALLISTO_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/BOWTIE2_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/*orthologs.tsv  ${ENSEMBL_DIR}
+ln -s ${GENOME_DATA_DIR}/msigdb ${ENSEMBL_DIR}
 
 ## Instead of using the genes.tsv from ${GENOME_DATA_DIR}, we download it from Ensembl
 download_gene_tb {{ s }} {{cookiecutter.ensembl_version}} > ${ENSEMBL_DIR}/genes.tsv
@@ -78,5 +79,3 @@ mkdir -p ${HUMAN_ENSEMBL_DIR}
 ## Instead of using the genes.tsv from ${GENOME_DATA_DIR}, we download it from Ensembl
 download_gene_tb human {{cookiecutter.ensembl_version}} > ${HUMAN_ENSEMBL_DIR}/genes.tsv
 {% endif %}
-
-ln -s /srv/data/genome/human/msigdb ${DATA_DIR}

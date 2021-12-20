@@ -1232,48 +1232,9 @@ perform_pathway_enrichment <- function(significant_genes, expressed_genes,
 
 #### Gene set enrichment analysis ####
 
-get_human_vs_species_ortholog_info <- function(species) {
-  orthologs <- species %>% 
-    str_c("data/", ., "_ensembl_{{cookiecutter.ensembl_version}}/human_orthologs.tsv") %>% 
-    read_tsv(col_names = c("species_gene", "human_gene", "type"))
-  
-  species_genes <- get_gene_info(species)
-  human_genes <- get_gene_info("human")
-  
-  orthologs_entrez <- orthologs %>% 
-    left_join(species_genes %>% 
-                dplyr::select(gene, entrez_id) %>% 
-                dplyr::rename(species_gene = gene, species_entrez_id = entrez_id)) %>%
-    left_join(human_genes %>% 
-                dplyr::select(gene, entrez_id) %>% 
-                dplyr::rename(human_gene = gene, human_entrez_id = entrez_id)) %>%
-    dplyr::select(species_entrez_id, human_entrez_id) %>% 
-    filter(!is.na(species_entrez_id) & !is.na(human_entrez_id)) %>% 
-    distinct()
-  
-  same_name_entrez <- (species_genes %>% 
-                         mutate(gene_name = tolower(gene_name)) %>% 
-                         dplyr::select(gene_name, entrez_id) %>% 
-                         filter(!is.na(entrez_id)) %>% 
-                         dplyr::rename(species_entrez_id = entrez_id)) %>%
-    inner_join(human_genes %>% 
-                 mutate(gene_name = tolower(gene_name)) %>% 
-                 dplyr::select(gene_name, entrez_id) %>% 
-                 filter(!is.na(entrez_id)) %>% 
-                 dplyr::rename(human_entrez_id = entrez_id)) %>%
-    dplyr::select(-gene_name) %>% 
-    distinct()
-  
-  human_species_entrez_mappings <- orthologs_entrez %>% 
-    rbind(same_name_entrez) %>% 
-    distinct
-}
-
-
 get_gene_sets <- function(species, gene_set_name) {
-    str_c("data/",species,"_ensembl_{{cookiecutter.ensembl_version}}/msigdb/v7.0/", gene_set_name, ".all.v7.0.entrez.gmt.Rdata") %>% load
+    str_c("data/",species,"_ensembl_{{cookiecutter.ensembl_version}}/msigdb/v7.0/", gene_set_name, ".all.v7.0.entrez.gmt.Rdata") %>% readRDS
 }
-
 
 get_camera_results <- function(dds, gene_sets, gene_info) {
   vst <- dds %>% varianceStabilizingTransformation

@@ -26,9 +26,14 @@ dir.create(GRAPHS_DIR, recursive = TRUE)
 
 #### Quality control ####
 
-##we check read distribution for sample region
-# g <- check_sample_bam(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='mouse',chr='2',start=75505857,end=75505957)
+## we check read distribution for sample region
+## for a large region or large number of samples, increase the bin_width to 10, 100 or 1000
+## For multiple samples, the plot will order by the input samples order.
+# g <- check_sample_bam(samples=SAMPLE_DATA  %>% arrange(CultureType) %>% pull(sample_name),
+#                       species=SPECIES,chr='2',start= 75505857,end=75534985,bin_width = 1000)
 # plot(g)
+# # g + scale_y_continuous(trans='log10')
+
 
 total_dds_data <- get_total_dds(SAMPLE_DATA, SPECIES, qSVA = qSVA, design_formula = ~1)
 total_vst <- total_dds_data %>% varianceStabilizingTransformation(blind = TRUE)

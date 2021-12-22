@@ -2025,88 +2025,47 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
 }
 
 
-check_sample_bam <- function(samples,species=SPECIES,chr='2',start=75505857,end=75510000){
-  library('Rsamtools')
-  library(GenomicAlignments)
-  library(parallel)
-  library(ggplot2)
-  library(dplyr)
-  bamRanges=GRanges(chr, IRanges(start,end))
-
-  bamFiles <- list.files('results/final_bams/',pattern = '.bam$',full.names = T) %>%
-  grep(pattern = paste(samples,collapse = '|'),value = T)
-  bamIndexFile <- list.files('results/final_bams/',pattern = '.bam.bai',full.names = T) %>%
-  grep(pattern = paste(samples,collapse = '|'),value = T)
-  bamExperiment <-list(description="",created=date())
-  bv <- BamViews(bamFiles, bamIndicies=bamIndexFile,bamRanges=bamRanges, bamExperiment=bamExperiment)
-  reads<-readGAlignments(bv)
-
-  olap1 <- endoapply(reads, subsetByOverlaps, bamRanges)
-  olap1 <- lapply(olap1, "seqlevels<-", value=as.character(seqnames(bamRanges)))
-  cvg <- endoapply(olap1, coverage,
-  shift=-start(ranges(bamRanges[1])),
-  width=width(ranges(bamRanges[1])))
-
-  coverage_tb <- lapply(names(cvg), function(sample){
-    a=cvg[[sample]][[1]]
-    sapply(c(1:length(runLength(a))),function(x){
-      rep(runValue(a)[x],runLength(a)[x])
-    }) %>% unlist() %>% set_names(c(start(ranges(bamRanges))[1]:end(ranges(bamRanges))[1])) %>%
-      as.data.frame() %>% setNames(c('count')) %>%
-      tibble::rownames_to_column('position') %>%
-      mutate(sample=sample,position=as.numeric(position))
-  }) %>% purrr::reduce(rbind)
-  ggplot2::ggplot(data=coverage_tb, aes(x=position, y=count)) +
-  # geom_line(linetype="dashed", size=0.2) +
-    geom_area() +
-  # geom_bar(stat="identity")
-  # geom_point() +
-    facet_wrap(~sample)
-}
-
-
 # This function plots the read distribution of a chromosome region of bam files
 # It can be used as a pre-'igv' check
 # one can test the code with the following:
 # >setwd('/srv/data/results/nrf2_ich_jamie_loan/aaaaaaaaarggggghhhhh-959851d2469757607aa3e1f8b0ec1e1cc533cf42/20210805')
 # >check_sample_bam(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='mouse',chr='2',start=75505857,end=75505957) %>% plot
-check_sample_bam <- function(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='mouse',chr='2',start=75505857,end=75510000){
-  library('Rsamtools')
-  library(GenomicAlignments)
-  library(parallel)
-  library(ggplot2)
-  library(dplyr)
-  bamRanges=GRanges(chr, IRanges(start,end))
+check_sample_bam <- function(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='mouse',chr='2',start=75505857,end=75510000,bin_width=1){
+    bamRanges=GRanges(chr, IRanges(start,end))
 
-  bamFiles <- list.files('results/final_bams/',pattern = '.bam$',full.names = T) %>%
-  grep(pattern = paste(samples,collapse = '|'),value = T)
-  bamIndexFile <- list.files('results/final_bams/',pattern = '.bam.bai',full.names = T) %>%
-  grep(pattern = paste(samples,collapse = '|'),value = T)
-  bamExperiment <-list(description="",created=date())
-  bv <- BamViews(bamFiles, bamIndicies=bamIndexFile,bamRanges=bamRanges, bamExperiment=bamExperiment)
-  reads<-readGAlignments(bv)
+    bamFiles <- file.path('results/final_bams/',str_c(samples,species,'bam',sep='.'))
+    bamIndexFile <- file.path('results/final_bams/',str_c(samples,species,'bam.bai',sep='.'))
+    bamExperiment <-list(description="",created=date())
+    bv <- BamViews(bamFiles, bamIndicies=bamIndexFile,bamRanges=bamRanges, bamExperiment=bamExperiment)
+    reads<-readGAlignments(bv)
 
-  olap1 <- endoapply(reads, subsetByOverlaps, bamRanges)
-  olap1 <- lapply(olap1, "seqlevels<-", value=as.character(seqnames(bamRanges)))
-  cvg <- endoapply(olap1, coverage,
-  shift=-start(ranges(bamRanges[1])),
-  width=width(ranges(bamRanges[1])))
+    olap1 <- endoapply(reads, subsetByOverlaps, bamRanges)
+    olap1 <- lapply(olap1, "seqlevels<-", value=as.character(seqnames(bamRanges)))
+    cvg <- endoapply(olap1, coverage,
+    shift=-start(ranges(bamRanges[1])),
+    width=width(ranges(bamRanges[1])))
 
-  coverage_tb <- lapply(names(cvg), function(sample){
-    a=cvg[[sample]][[1]]
-    sapply(c(1:length(runLength(a))),function(x){
-      rep(runValue(a)[x],runLength(a)[x])
-    }) %>% unlist() %>% set_names(c(start(ranges(bamRanges))[1]:end(ranges(bamRanges))[1])) %>%
-      as.data.frame() %>% setNames(c('count')) %>%
-      tibble::rownames_to_column('position') %>%
-      mutate(sample=sample,position=as.numeric(position))
-  }) %>% purrr::reduce(rbind)
-  ggplot2::ggplot(data=coverage_tb, aes(x=position, y=count)) +
-  # geom_line(linetype="dashed", size=0.2) +
-    geom_area() +
-  # geom_bar(stat="identity")
-  # geom_point() +
-    facet_wrap(~sample)
+    coverage_tb <- lapply(names(cvg), function(sample){
+        a=cvg[[sample]][[1]]
+        sapply(c(1:length(runLength(a))),function(x){
+            rep(runValue(a)[x],runLength(a)[x])
+        }) %>% unlist() %>% as.vector() %>% set_names(c(start(ranges(bamRanges))[1]:end(ranges(bamRanges))[1])) %>%
+            as.data.frame() %>% setNames(c('count')) %>%
+            tibble::rownames_to_column('position') %>%
+            mutate(sample=sample,position=as.numeric(position))
+    }) %>% purrr::reduce(rbind)
+
+    coverage_tb %>% mutate(position=round(position/bin_width,digits = 0)) %>%
+        group_by(sample,position) %>%
+        summarise(count=sum(count)) %>% ungroup()  %>%
+        # we order the output plots by the samples
+        mutate(sample=factor(sample,ordered=T,labels =sub('\\.bam$', '',  basename(bamFiles)) ,levels = basename(bamFiles))) %>%
+        ggplot2::ggplot( aes(x=position, y=count)) +
+    # geom_line(linetype="dashed", size=0.2) +
+        geom_area() +
+    # geom_bar(stat="identity")
+    # geom_point() +
+        facet_wrap(~sample)
 }
 
 # plot avg fpkm for each comparison
@@ -2159,8 +2118,8 @@ plot_genes_fpkm <- function(result_table,genes,print_fpkm_table = FALSE) {
   options(ggrepel.max.overlaps = 20)
 
   for (index in seq(num_genes)) {
-    plot_name <- str_c('fpkm_plot_', result_table%>%filter(gene==genes[index]) %>% pull(gene_name),sep = '')
-    plot_name <- str_replace(plot_name, "-", "_")
+    plot_name <- str_c('fpkm_plot_', result_table%>%filter(gene==genes[index]) %>% pull(gene),sep = '')
+
     l <- plot_gene_fpkms(gene_identifier = genes[index],result_table = results,debug = FALSE, print_graph = FALSE,
     feature_group=TOPDEGENE_FEATURE_GROUP,plot_feature=TOPDEGENE_PLOT_FEATURE)
     l$graph <- l$graph +

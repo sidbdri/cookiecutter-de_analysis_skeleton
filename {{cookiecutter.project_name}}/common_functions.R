@@ -60,6 +60,21 @@ check_formulas <- function() {
     f <- row$formula %>% as.formula() %>% terms()
     condition <- row$condition_name
 
+    # we check factor in the design has more than 1 levels
+    sample_data<-SAMPLE_DATA %>% filter(!!parse_expr(row$filter))
+    f_levels_chec<-sapply(labels(f),function(x){sample_data %>% pull(x) %>% unique()},simplify = F)
+    if(any(sapply(f_levels_chec,length)==1)){
+        print(f_levels_chec)
+        stop('comparison ', row$comparison,': contrasts can be applied only to factors with 2 or more levels.')
+    }
+
+    # we check if design matrix if full rank
+    if(!model.matrix(row$formula%>%as.formula() , data = sample_data) %>% is.fullrank){
+        print(sample_data)
+        print(model.matrix(row$formula%>%as.formula() , data = sample_data))
+        stop('comparison ', row$comparison, ' design matrix is not full rank..., formula: ', row$formula%>%as.formula())
+    }
+
     # if there is an interaction, we check if we have the interaction detail in the INTERACTION_TABLE,
     # otherwise, we check if we have the deciding condition correctly setup
     if(any(f %>% attr( "order") > 1)){

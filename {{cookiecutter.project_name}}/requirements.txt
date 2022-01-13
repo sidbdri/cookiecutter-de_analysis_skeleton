@@ -29,7 +29,7 @@ MarkupSafe==1.1.1
 matplotlib==3.3.4
 multiqc==1.10
 networkx==2.5
-numpy==1.20.1
+numpy==1.21.0
 packaging==20.9
 pandas==1.2.3
 Pillow==9.0.0

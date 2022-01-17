@@ -7,6 +7,7 @@ RNASEQ_DIR=os.path.join(DATA_DIR, 'rnaseq')
 PICARD_DIR = os.path.join(DATA_DIR, 'picard')
 
 NUM_THREADS_PER_SAMPLE={{cookiecutter.number_threads_per_sample}}
+NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
 
 STAR_EXECUTABLE="STAR{{cookiecutter.star_version}}"
 BOWTIE2_EXECUTABLE="bowtie2-{{cookiecutter.bowtie2_version}}"

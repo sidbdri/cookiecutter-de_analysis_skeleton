@@ -2164,28 +2164,29 @@ plot_genes_fpkm <- function(result_table,genes,print_fpkm_table = FALSE) {
 }
 
 
-plot_gene_percentage <- function(count_matrix,gene_set_list){
-  total_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
-    summarise(across(everything(), ~ sum(., is.na(.), 0)))
+plot_gene_percentage <- function(count_matrix,gene_set_list,use_percentage=TRUE){
+    total_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
+        summarise(across(everything(), ~ sum(., is.na(.), 0)))
 
-  tb <- total_count_per_sample %>% tidyr::pivot_longer(cols = everything(),names_to='sample',values_to = 'total')
-  for(gs in names(gene_set_list)){
-    total_goi_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
-      dplyr::filter(rownames(.) %in% gene_set_list[[gs]]) %>%
-      summarise(across(everything(), ~ sum(., is.na(.), 0)))
-    tb %<>% left_join(total_goi_count_per_sample %>% tidyr::pivot_longer(cols = everything(),names_to='sample',values_to = gs))
-  }
+    tb <- total_count_per_sample %>% tidyr::pivot_longer(cols = everything(),names_to='sample',values_to = 'total')
+    for(gs in names(gene_set_list)){
+        total_goi_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
+            dplyr::filter(rownames(.) %in% gene_set_list[[gs]]) %>%
+            summarise(across(everything(), ~ sum(., is.na(.), 0)))
+        tb %<>% left_join(total_goi_count_per_sample %>% tidyr::pivot_longer(cols = everything(),names_to='sample',values_to = gs))
+    }
+    bar_position <- ifelse(use_percentage,'fill','stack')
 
-  p <- tb %>%
-    mutate(others=total-rowSums(across(head(names(gene_set_list),1):tail(names(gene_set_list),1)), na.rm = T)) %>%
-    dplyr::select(-total) %>%
-    tidyr::pivot_longer(cols = -sample,names_to='type',values_to='count') %>%
-    ggplot( aes(fill=type, y=count, x=sample)) +
-    geom_bar(position="stack", stat="identity") +
-    scale_y_continuous(expand = expansion(mult = c(0, .05))) +
-    theme_classic() +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
-  p
+    p <- tb %>%
+        mutate(others=total-rowSums(across(head(names(gene_set_list),1):tail(names(gene_set_list),1)), na.rm = T)) %>%
+        dplyr::select(-total) %>%
+        tidyr::pivot_longer(cols = -sample,names_to='type',values_to='count') %>%
+        ggplot( aes(fill=type, y=count, x=sample)) +
+        geom_bar(position=bar_position, stat="identity") +
+        scale_y_continuous(expand = expansion(mult = c(0, .05))) +
+        theme_classic() +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+    p
 }
 
 ontology_find_all_children_terms <- function(term,parent2children){

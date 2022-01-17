@@ -194,12 +194,16 @@ end_plot()
 
 plot_scatter_fpkm(results)
 
-start_plot('mitochondrial_percentage')
+
 mitochondrial_terms <- c('GO:0005739',ontology_find_all_children_terms('GO:0005739',as.list(GO.db::GOCCCHILDREN))) %>% unique()
 nuclear_encoded_mitochondrial_genes<-topGO::annFUN.org("CC", mapping = switch(SPECIES, mouse = "org.Mm.eg.db", rat = "org.Rn.eg.db", human = "org.Hs.eg.db"), ID = "ensembl") %>%
   extract(mitochondrial_terms) %>% unlist() %>% unique()
 mitochondrial_genes <- gene_info %>% filter(chromosome=='MT') %>% pull(gene)
-plot_gene_percentage(counts(total_dds_data), list(MT_mito=mitochondrial_genes, NUC_mito=nuclear_encoded_mitochondrial_genes)) %>% print
+start_plot('mitochondrial_gene_count')
+plot_gene_percentage(counts(total_dds_data), list(MT_mito=mitochondrial_genes, NUC_mito=nuclear_encoded_mitochondrial_genes),use_percentage = FALSE) %>% print
+end_plot()
+start_plot('mitochondrial_gene_percentage')
+plot_gene_percentage(counts(total_dds_data), list(MT_mito=mitochondrial_genes, NUC_mito=nuclear_encoded_mitochondrial_genes),use_percentage = TRUE) %>% print
 end_plot()
 
 # save results

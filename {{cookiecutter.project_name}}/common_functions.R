@@ -140,8 +140,7 @@ start_plot <- function(prefix,width=12, height=12, path=GRAPHS_DIR, num_plots=1)
   sf <- .adjust_pdf_size(num_plots)
 
   if (PLOT_TO_FILE) {
-    prefix %>%
-      str_c(path, ., "_", SPECIES, ".pdf") %>%
+    file.path(path,str_c(prefix, "_", SPECIES, ".pdf")) %>%
       pdf(width=width*sf['width'], height=height*sf['height'])
   }
 }
@@ -1179,32 +1178,6 @@ perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP",
   )
 }
 
-perform_go_analyses <- function(significant_genes, expressed_genes, comparison_name, file_prefix, species, out_dir="results/differential_expression/go/") {
-  if (significant_genes %>% nrow == 0) {
-    message("No significant genes supplied.")
-    return()
-  }
-
-  top_dir <-  file.path(out_dir,species,comparison_name)
-  if (!dir.exists(top_dir)) {
-    dir.create(top_dir, recursive = TRUE)
-  }
-
-  sapply(c("BP", "MF", "CC"), simplify = FALSE, USE.NAMES = TRUE, function(x) {
-    ret <- perform_go_analysis(expressed_genes, significant_genes, x, species, top_dir ,comparison_name)
-    
-    ret %>% 
-      extract2('go_results') %>% 
-      inner_join(GO_TERMS) %>% 
-      dplyr::mutate(Term=FullTerm) %>% 
-      dplyr::select(-FullTerm) %>%
-      dplyr::rename(annotated_in_background = Annotated, annotated_in_gene_set = Significant,
-                    expected_annotated_in_gene_set = Expected, p.value = weight_fisher) %>% # Changing column names in results
-      write_csv(file.path(top_dir, str_c(comparison_name, file_prefix, "_go_", x %>% tolower, ".csv")), na="")
-
-    ret
-  })
-}
 
 #### Reactome pathway analysis ####
 
@@ -2196,4 +2169,392 @@ ontology_find_all_children_terms <- function(term,parent2children){
       unlist() %>% discard(is.na) %>% unique)
     )
   }
+}
+
+
+run_go_analysis <- function(comparison_tbl,nc=NUM_CORES,parallel_enable=PARALLEL,job_limit=9999999){
+  
+  job_strings <- comparison_tbl%>%
+    pull(comparison) %>% expand.grid(c('all','up','down'),c("BP", "MF", "CC")) %>% 
+    tidyr::unite(col='job_string',sep = ';') %>% pull(job_string) %>% head(job_limit)
+  
+  dir.create(file.path('results/logs/R/BioParallel/GO'),recursive = T,showWarnings = F)
+  
+  if(parallel_enable){
+    message('running bioparallel in PARALLEL mode with SnowParam')
+    para<-SnowParam(workers = nc,stop.on.error=TRUE,jobname = 'topGO',progressbar = T,
+                    log=TRUE,threshold = "DEBUG",logdir = file.path('results/logs/R/BioParallel/GO'),
+                    tasks = length(job_strings))  
+  }else{
+    message('running bioparallel in NON-PARALLEL mode with SerialParam')
+    para=SerialParam(stop.on.error=TRUE,log=TRUE,threshold = "DEBUG",progressbar = T,
+                     logdir = file.path('results/logs/R/BioParallel/GO'))
+  }
+  
+  message(length(job_strings),' jobs received for GO analysis.')
+  print(job_strings)
+  
+  ret <-  bptry({
+    bplapply(job_strings,
+             run_topgo,
+             result_tbl=results,
+             p.adj.cutoff=P.ADJ.CUTOFF,
+             expressed_genes=expressed_genes,
+             species=SPECIES,
+             out_dir=file.path(OUTPUT_DIR,"enrichment_tests"),
+             parallel_enable=parallel_enable,
+             BPPARAM = para
+    ) %>% set_names(job_strings %>% strsplit(';') %>% sapply(paste0,collapse = '.'))
+  })
+  
+  check_bpresult(ret,fail_msg='GO parallel run FAIL !!!')
+  
+  ret
+}
+
+run_topgo <- function(job_string='',result_tbl,p.adj.cutoff=P.ADJ.CUTOFF,expressed_genes,species=SPECIES,out_dir=file.path(OUTPUT_DIR,"enrichment_tests"),parallel_enable){
+  sink(NULL, type = "message")
+  message( "Job started:  ", job_string)
+  if(parallel_enable){
+    source('load_packages.R')
+    source('common_functions.R')
+  }
+  futile.logger::flog.info(paste0('running topGO for:',job_string))
+  comparison_name=strsplit(job_string,split = ';') %>%unlist()%>%extract(1)
+  direction=strsplit(job_string,split = ';') %>%unlist()%>%extract(2)
+  ontology=strsplit(job_string,split = ';') %>%unlist()%>%extract(3)
+  
+  p_str <- str_c(comparison_name, '.padj')
+  l2fc_str <- str_c(comparison_name, '.l2fc')
+  result_tbl %<>% dplyr::select(gene,contains(comparison_name))
+  
+  if (direction == 'up') {
+    result_tbl %<>% 
+      filter_at( vars(p_str), any_vars(.< p.adj.cutoff)) %>% filter_at( vars(l2fc_str), any_vars(. > 0))
+  } else if((direction == 'down')) {
+    result_tbl %<>% 
+      filter_at( vars(p_str), any_vars(.< p.adj.cutoff)) %>% filter_at( vars(l2fc_str), any_vars(. < 0))
+  } else {
+    result_tbl %<>% filter_at( vars(p_str), any_vars(.< p.adj.cutoff))
+  }
+  
+  if (result_tbl %>% nrow == 0) {
+    message("No significant genes supplied.")
+    return()
+  }
+  
+  top_dir <-  file.path(out_dir,species,comparison_name)
+  if (!dir.exists(top_dir)) {
+    dir.create(top_dir, recursive = TRUE)
+  }
+  
+  ret <- perform_go_analysis(expressed_genes, result_tbl, ontology, species, top_dir ,comparison_name)
+  message( "Job finished:  ", job_string)
+  ret %>% 
+    extract2('go_results') %>% 
+    inner_join(GO_TERMS) %>% 
+    dplyr::mutate(Term=FullTerm) %>% 
+    dplyr::select(-FullTerm) %>%
+    dplyr::rename(annotated_in_background = Annotated, annotated_in_gene_set = Significant,
+                  expected_annotated_in_gene_set = Expected, p.value = weight_fisher) %>% # Changing column names in results
+    write_csv(file.path(top_dir, str_c(comparison_name, '.' , direction, "_go_", ontology %>% tolower, ".csv")), na="")
+  
+  ret
+}
+
+run_reactome_analysis <- function(comparison_tbl,nc=NUM_CORES,parallel_enable=PARALLEL,job_limit=9999999){
+  
+  job_strings <- comparison_tbl%>%
+    pull(comparison) %>% expand.grid(c('all','up','down')) %>% 
+    tidyr::unite(col='job_string',sep = ';') %>% pull(job_string) %>% head(job_limit)
+  
+  logdir=file.path('results/logs/R/BioParallel/Reactome')
+  dir.create(logdir,recursive = T,showWarnings = F)
+  
+  if(parallel_enable){
+    message('running bioparallel in PARALLEL mode with SnowParam')
+    para<-SnowParam(workers = nc,stop.on.error=TRUE,jobname = 'Reactome',progressbar = T,
+                    log=TRUE,threshold = "DEBUG",logdir = logdir, tasks = length(job_strings))
+  }else{
+    message('running bioparallel in NON-PARALLEL mode with SerialParam')
+    para=SerialParam(stop.on.error=TRUE,log=TRUE,threshold = "DEBUG",progressbar = T,logdir = logdir)
+  }
+  
+  message(length(job_strings),' jobs received for reactome analysis.')
+  print(job_strings)
+  
+  ret <-  bptry({
+    bplapply(job_strings,
+             run_reactome,
+             result_tbl=results,
+             p.adj.cutoff=P.ADJ.CUTOFF,
+             expressed_genes=expressed_genes,
+             species=SPECIES,
+             out_dir=file.path(OUTPUT_DIR,"enrichment_tests"),
+             parallel_enable=parallel_enable,
+             BPPARAM = para
+    ) %>% set_names(job_strings %>% strsplit(';') %>% sapply(paste0,collapse = '.'))
+  })
+  
+  check_bpresult(ret,fail_msg='Reactome parallel run FAIL !!!')
+  
+  ret
+}
+
+run_reactome <- function(job_string='',result_tbl,p.adj.cutoff=P.ADJ.CUTOFF,expressed_genes,species=SPECIES,out_dir=file.path(OUTPUT_DIR,"reactome"),parallel_enable){
+  if(parallel_enable){
+    source('load_packages.R')
+    source('common_functions.R')
+  }
+  futile.logger::flog.info(paste0('running Reactome for:',job_string))
+  
+  comparison_name=strsplit(job_string,split = ';') %>%unlist()%>%extract(1)
+  direction=strsplit(job_string,split = ';') %>%unlist()%>%extract(2)
+  
+  
+  p_str <- str_c(comparison_name, '.padj')
+  l2fc_str <- str_c(comparison_name, '.l2fc')
+  result_tbl %<>% dplyr::select(gene,entrez_id,contains(comparison_name))
+  
+  if (direction == 'up') {
+    result_tbl %<>% 
+      filter_at( vars(p_str), any_vars(.< p.adj.cutoff)) %>% filter_at( vars(l2fc_str), any_vars(. > 0))
+  } else if((direction == 'down')) {
+    result_tbl %<>% 
+      filter_at( vars(p_str), any_vars(.< p.adj.cutoff)) %>% filter_at( vars(l2fc_str), any_vars(. < 0))
+  } else {
+    result_tbl %<>% filter_at( vars(p_str), any_vars(.< p.adj.cutoff))
+  }
+  
+  if (result_tbl %>% nrow == 0) {
+    message("No significant genes supplied.")
+    return()
+  }
+  
+  top_dir <-  file.path(out_dir,species,comparison_name)
+  if (!dir.exists(top_dir)) {
+    dir.create(top_dir, recursive = TRUE)
+  }
+  ret <- perform_pathway_enrichment(result_tbl, expressed_genes, comparison_name, direction, species, out_dir)
+  
+  ret
+}
+
+
+run_gs_analysis <- function(comparison_tbl,nc=NUM_CORES,parallel_enable=PARALLEL,job_limit=9999999){
+  
+  job_strings <- comparison_tbl%>%
+    pull(comparison) %>% expand.grid(gene_set_categories) %>% 
+    tidyr::unite(col='job_string',sep = ';') %>% pull(job_string) %>% head(job_limit)
+  
+  dds_list <- str_c(comparison_tbl%>% pull(comparison),'dds',sep = '_') %>% 
+    lapply(get_global) %>% set_names(comparison_tbl%>% pull(comparison))
+  
+  logdir=file.path('results/logs/R/BioParallel/GS')
+  dir.create(logdir,recursive = T,showWarnings = F)
+  
+  if(parallel_enable){
+    message('running bioparallel in PARALLEL mode with SnowParam')
+    para<-SnowParam(workers = nc,stop.on.error=TRUE,jobname = 'GS',progressbar = T,
+                    log=TRUE,threshold = "DEBUG",logdir = logdir, tasks = length(job_strings))
+  }else{
+    message('running bioparallel in NON-PARALLEL mode with SerialParam')
+    para=SerialParam(stop.on.error=TRUE,log=TRUE,threshold = "DEBUG",progressbar = T,logdir = logdir)
+  }
+  
+  message(length(job_strings),' jobs received for GS analysis.')
+  print(job_strings)
+  
+  ret <-  bptry({
+    bplapply(job_strings,
+             run_gs,
+             result_tbl=results,
+             dds=dds_list,
+             list_of_gene_sets=list_of_gene_sets,
+             gene_info=gene_info,
+             species=SPECIES,
+             out_dir=file.path(OUTPUT_DIR,"gene_set_tests"),
+             parallel_enable=parallel_enable,
+             BPPARAM = para
+    ) %>% set_names(job_strings %>% strsplit(';') %>% sapply(paste0,collapse = '.'))
+  })
+  
+  check_bpresult(ret,fail_msg='Reactome parallel run FAIL !!!')
+  
+  ret
+}
+
+run_gs <- function(job_string='',result_tbl,dds_list,
+                   list_of_gene_sets,gene_info,species,out_dir,parallel_enable){
+  if(parallel_enable){
+    source('load_packages.R')
+    source('common_functions.R')
+  }
+  futile.logger::flog.info(paste0('running GS for:',job_string))
+  
+  comparison_name=strsplit(job_string,split = ';') %>%unlist()%>%extract(1)
+  category=strsplit(job_string,split = ';') %>%unlist()%>%extract(2)
+  dds <- dds_list[[comparison_name]]
+  
+  camera_results <- list_of_gene_sets[category] %>%
+    map(function(category_gene_sets) {
+      get_camera_results(dds, category_gene_sets, gene_info)
+    })
+  
+  de_res <- result_tbl %>% dplyr::select(
+    gene, gene_name, entrez_id,
+    starts_with(str_c(comparison_name, ".")),
+    -starts_with(str_c(comparison_name, ".stat")))
+  write_camera_results(
+    category, list_of_gene_sets[[category]],
+    comparison_name, species,
+    de_res, camera_results[[category]], out_dir = out_dir)
+  
+  
+  camera_results[[category]]
+}
+
+
+genrate_gs_heatmap <- function(gs_result,list_of_gene_sets,comparison_tbl=COMPARISON_TABLE,nc=NUM_CORES,parallel_enable=PARALLEL,job_limit=9999999){
+  for (gs_res in gs_result%>%names){
+    comparison_name=strsplit(gs_res,split = '.',fixed = T) %>%unlist()%>%extract(1)
+    gs_category =strsplit(gs_res,split = '.',fixed = T) %>%unlist()%>%extract(2)
+    significant_gs <- gs_result[[gs_res]]%>% filter(FDR < 0.05) %>% rownames() 
+    significant_gs_entrezs <- list_of_gene_sets[[gs_category]][significant_gs]
+    
+    #get the comparison criteria for this comparison
+    comparison_criteria <- comparison_tbl %>% filter(comparison == comparison_name) %>% dplyr::select(condition_name, condition, condition_base, filter)
+    selected_conditions <- comparison_criteria %>% dplyr::select(condition, condition_base) %>% as.character()
+    
+    # pull out samples which have the conditions in this comparison
+    # and samples which match the filter specified
+    condition_name <- comparison_criteria %>% dplyr::select(condition_name) %>% pull()
+    samples_in_comparison <- SAMPLE_DATA %>%
+      filter(!!parse_expr(condition_name) %in% selected_conditions &
+               !!(parse_expr(comparison_criteria %>% dplyr::select(filter) %>% pull()))) %>%
+      dplyr::select(sample_name, !!parse_expr(condition_name)) %>%
+      arrange(!!parse_expr(condition_name))
+    
+    samples_in_comparison %<>% mutate(fpkm_columns = str_c(sample_name, "_fpkm"))
+    fpkm_columns <- samples_in_comparison %>% pull(fpkm_columns)
+    num_samples <- length(fpkm_columns)
+    
+    # get names of FPKM data columns
+    samples_in_comparison %<>% mutate(fpkm_columns = str_c(sample_name, "_fpkm"))
+    fpkm_columns <- samples_in_comparison %>% pull(fpkm_columns)
+    num_samples <- length(fpkm_columns)
+    # construct sample annotation
+    rownames(samples_in_comparison) <- NULL
+    samples_in_comparison %<>% tibble::column_to_rownames(var = "fpkm_columns")
+    annot <- samples_in_comparison %<>% dplyr::select(-sample_name)
+    
+    job_strings <- comparison_name %>% paste0(';',gs_category) %>% 
+      expand.grid(significant_gs) %>% 
+      tidyr::unite(col='job_string',sep = ';') %>% pull(job_string) %>% head(job_limit)
+    
+    logdir=file.path('results/logs/R/BioParallel/GSheatmap')
+    dir.create(logdir,recursive = T,showWarnings = F)
+    
+    if(parallel_enable){
+      message('running bioparallel in PARALLEL mode with MultiCore')
+      para<-MulticoreParam(workers = nc,stop.on.error=TRUE,jobname = 'GS',progressbar = T,
+                           log=TRUE,threshold = "DEBUG",logdir = logdir, tasks = length(job_strings))
+    }else{
+      message('running bioparallel in NON-PARALLEL mode with SerialParam')
+      para=SerialParam(stop.on.error=TRUE,log=TRUE,threshold = "DEBUG",progressbar = T,logdir = logdir)
+    }
+    
+    message(length(job_strings),' jobs received for GS analysis.')
+    print(job_strings)
+    
+    ret <-  bptry({
+      bplapply(job_strings,
+               plot_significant_set_heatmap,
+               results_tbl=results,
+               significant_gs_entrezs=significant_gs_entrezs,
+               samples_in_comparison=samples_in_comparison,
+               annot=annot,
+               species=SPECIES,
+               BPPARAM = para
+      ) %>% set_names(job_strings %>% strsplit(';') %>% sapply(paste0,collapse = '.'))
+    })
+    
+    check_bpresult(ret,fail_msg='Reactome parallel run FAIL !!!')
+    
+    1
+  }
+}
+
+plot_significant_set_heatmap <- function(job_string='',results_tbl,significant_gs_entrezs,samples_in_comparison,annot,species){
+  futile.logger::flog.info(paste0('running heatmap for:',job_string))
+  
+  comparison_name=strsplit(job_string,split = ';') %>%unlist()%>%extract(1)
+  category=strsplit(job_string,split = ';') %>%unlist()%>%extract(2)
+  gs_name=strsplit(job_string,split = ';') %>%unlist()%>%extract(3)
+  
+  # get the significant entrez ids
+  entrez_ids <- significant_gs_entrezs[[gs_name]]
+  
+  # get the name of the column of the log 2 fold changes
+  comparison_log2fc <- paste(comparison, "l2fc", sep = '.')
+  
+  # from the global results variable, get rows and columns corresponding to significant entrez IDs
+  # and samples from the correct comparison; remove genes with no name
+  to_heatmap <- results_tbl %>%
+    dplyr::select(gene_name, entrez_id, fpkm_columns, comparison_log2fc) %>%
+    filter(entrez_id %in% entrez_ids) %>%
+    filter(!is.na(gene_name))
+  
+  # reorder
+  to_heatmap <- to_heatmap %>% arrange(desc(!!sym(comparison_log2fc)))
+  
+  # declare the path to the heatmaps, based on the gene set category and comparison
+  # create the dir if it doesnt exist
+  heatmap_path <- file.path("results/differential_expression/gene_set_tests/", species, comparison_name, category )
+  ifelse(!dir.exists(file.path(heatmap_path)), dir.create(file.path(heatmap_path), recursive = TRUE), FALSE)
+  
+  # TODO: currently, the column to rownames call complains about duplicate row names (i.e. gene names)
+  # I have removed duplicates - is this how we want to do this? Is there a better way?
+  to_heatmap_unique <- distinct(to_heatmap, gene_name, .keep_all = TRUE)
+  
+  # prepare heatmap data so the row names are the gene IDs and remove the entrez column
+  heatmap_data<-to_heatmap_unique %>% tibble::column_to_rownames(var="gene_name") %>% dplyr::select(-entrez_id, -comparison_log2fc)
+  
+  # divide each row by the mean of that row
+  heatmap_data <- t(apply(heatmap_data, 1, function(x) x/mean(x)))
+  heatmap_data <- log2(heatmap_data)
+  
+  heatmap_data[is.infinite(heatmap_data)] <- NA
+  heatmap_data[is.nan(heatmap_data)] <- NA
+  heatmap_data <- subset(heatmap_data,rowSums(!is.na(heatmap_data)) == nrow(samples_in_comparison))
+  
+  if(nrow(heatmap_data)!=0){
+    max_data <- max(heatmap_data, na.rm=TRUE)
+    min_data <- -min(heatmap_data, na.rm=TRUE)
+    range <- min(max_data, min_data)
+    
+    start_plot(prefix = gs_name, path = heatmap_path)
+    pheatmap(heatmap_data,
+             breaks = seq(-range, range, length.out = 100),
+             cluster_rows = FALSE, cluster_cols = FALSE,
+             border_color = NA, show_rownames = (heatmap_data %>% nrow()) < 100,
+             annotation_col = annot)
+    end_plot()
+  }
+}
+
+check_bpresult <- function(res,fail_msg='GO parallel run fail!!!'){
+  if(!all(bpok(res))){
+    # at least one worker node has error.
+    message(fail_msg)
+    message('Error in worker node ', which(!bpok(res)) %>% paste0(.,collapse = ','))
+    sapply(which(!bpok(res)),function(i){
+      message('Woker ',i,' error message:')
+      print(res[[i]])
+      message('Woker ',i,' error trackback:')
+      print(attr(res[[i]],'traceback'))
+    }) %>% invisible() 
+    stop(fail_msg)
+  }
+  message('parallel run looks good!')
 }

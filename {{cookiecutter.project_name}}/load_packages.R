@@ -24,6 +24,7 @@ library(conflicted)
 library(pheatmap)
 library(Rsamtools)
 library(GenomicAlignments)
+library(BiocParallel)
 
 conflict_prefer("desc", "dplyr")
 conflict_prefer("setdiff", "dplyr")

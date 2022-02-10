@@ -236,144 +236,27 @@ SUMMARY_TB %>%
   write_csv(file.path(OUTPUT_DIR, "de_gene", str_c("de_summary_", SPECIES, ".csv")), na="")
 
 #### GO enrichment analysis ####
-
-# For each comparison: 
+# For each comparison:
 #   - for the GO/Reactome analyses, we are using all/up/down regulated genes,
 #   - for GSA, we are using four gene set categories: "CURATED", "MOTIF", "GO" and "CELL_TYPE"
-# Thus we need to reduce the number of comparisons we run in parallel to ensure we are not using more cores
-# than specified. The total number of cores used after the following line will be 3 * getOption("mc.cores")
-if (PARALLEL) {
-  adjust_parallel_cores()
-}
-
 expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts = TRUE) %>%
   get_count_data()
 
-GO_results <- COMPARISON_TABLE %>%
-  pull(comparison) %>%
-  set_names(.) %>%
-  lapply_socket(X=., function(comparison_name) {
-    p_str <- str_c(comparison_name, '.padj')
-    l2fc_str <- str_c(comparison_name, '.l2fc')
-
-    results <- get_global("results")
-
-    lapply_socket(cores = 3, X = c('', '.up', '.down'), function(cmp) {
-        if (cmp == '.up') {
-          r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0)
-        } else if((cmp == '.down')) {
-          r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) < 0)
-        } else {
-          r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF)
-        }
-
-        perform_go_analyses(r, expressed_genes, comparison_name, cmp, SPECIES, out_dir = file.path(OUTPUT_DIR,"enrichment_tests"))
-      }
-    ) %>% set_names(str_c(comparison_name,c('.all','.up','.down')))
-  }
-)
+GO_results <- run_go_analysis(COMPARISON_TABLE)
 
 #### Reactome pathway analysis
-
-Reactome_results<- COMPARISON_TABLE %>%
-  pull(comparison) %>%
-  set_names(.) %>%
-  lapply_socket(X = ., function(comparison_name) {
-    p_str <- str_c(comparison_name, 'padj', sep = '.')
-    l2fc_str <- str_c(comparison_name, 'l2fc', sep = '.')
-
-    results <- get_global("results")
-
-    lapply_socket(cores = 3, X = c('', '.up', '.down'), function(cmp) {
-        if (cmp=='.up') {
-          r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) > 0)
-        } else if((cmp=='.down')) {
-          r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) < 0)
-        } else {
-          r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF)
-        }
-        perform_pathway_enrichment(r, expressed_genes, comparison_name, cmp, SPECIES, out_dir = file.path(OUTPUT_DIR,"reactome"))
-      }
-    ) %>% set_names(str_c(comparison_name,c('.all', '.up', '.down')))
-  }
-)
+Reactome_results <- run_reactome_analysis(COMPARISON_TABLE)
 
 #### Gene set enrichment analysis ####
-
 gene_set_categories <- list("CURATED", "MOTIF", "GO", "CELL_TYPE")
 
 list_of_gene_sets <- gene_set_categories %>%
   set_names(.) %>% lapply(function(category, ...) get_gene_sets(SPECIES, category))
 
-GS_results <- COMPARISON_TABLE %>%
-  pull(comparison) %>%
-  set_names(.) %>%
-  lapply_fork(X=., function(comparison_name, ...) {
-    dds <- str_c(comparison_name, 'dds', sep = '_') %>% get_global()
+GS_results <- run_gs_analysis(COMPARISON_TABLE)
 
-    camera_results <- list_of_gene_sets %>%
-      map(function(category_gene_sets) {
-        get_camera_results(dds, category_gene_sets, gene_info)
-      })
-
-    lapply_fork(cores = 3, X = seq(1:length(gene_set_categories)), function(category,...) {
-        de_res <- results %>% dplyr::select(
-          gene, gene_name, entrez_id,
-          starts_with(str_c(comparison_name, ".")),
-          -starts_with(str_c(comparison_name, ".stat")))
-        write_camera_results(
-          gene_set_categories[[category]], list_of_gene_sets[[category]],
-          comparison_name, SPECIES,
-          de_res, camera_results[[category]], out_dir = file.path(OUTPUT_DIR,"gene_set_tests"))
-      }
-    )
-
-    camera_results
-  }
-)
-
-# get entrez IDs from significantly DE gene sets
-significant_entrez_ids<-function(gene_set_category, sets_per_comparison){
-  # filter by significance
-  significant<-sets_per_comparison[[gene_set_category]] %>% filter(FDR < 0.05) %>% rownames()
-
-  # use the globally defined gene set category to get all the entrez IDs in that gene set
-  significant_entrez<-sapply(significant, function(x) list_of_gene_sets[[gene_set_category]][[x]])
-  return(significant_entrez)
-}
-
-# loop through comparisons
-for (comp in COMPARISON_TABLE$comparison) {
-  # get the gene set results from camera for that comparison
-  comparison_list <- GS_results[comp]
-
-  # because of the way it seems to be arranged, the comparison name is used to get all the
-  # gene set categories (e.g. GO, CELL TYPE etc.) for that comparison
-  gene_sets_per_comparison <- comparison_list[[comp]]
-
-  # for each gene set category, defined elsewhere globally
-  # get the entrez ids of the gene sets which are significant e.g. FDR < 0.05
-  # replace names using the gene set categories as these seem to be removed during the apply
-  significant_entrez <- sapply(gene_set_categories, significant_entrez_ids, gene_sets_per_comparison, simplify = FALSE)
-  names(significant_entrez) <- unlist(gene_set_categories)
-
-  #get the comparison criteria for this comparison
-  comparison_criteria <- COMPARISON_TABLE %>% filter(comparison == comp) %>% dplyr::select(condition_name, condition, condition_base, filter)
-  selected_conditions <- comparison_criteria %>% dplyr::select(condition, condition_base) %>% as.character()
-
-  # pull out samples which have the conditions in this comparison
-  # and samples which match the filter specified
-  condition_name <- comparison_criteria %>% dplyr::select(condition_name) %>% pull()
-  samples_in_comparison <- SAMPLE_DATA %>%
-    filter(!!parse_expr(condition_name) %in% selected_conditions &
-             !!(parse_expr(comparison_criteria %>% dplyr::select(filter) %>% pull()))) %>%
-    dplyr::select(sample_name, !!parse_expr(condition_name)) %>%
-    arrange(!!parse_expr(condition_name))
-
-  # loop over significant entrez for gene set categories
-  # plot heatmap using the sample names corresponding to the relevant comparison
-  sapply(names(significant_entrez), plot_significant_set_heatmap, significant_entrez, comp, samples_in_comparison, SPECIES)
-}
+## plot gs heatmap
+genrate_gs_heatmap(GS_results,list_of_gene_sets,COMPARISON_TABLE)
 
 #### Saving and loading the workspace ####
 

@@ -100,61 +100,8 @@ check_cell_type(results, fpkm_check_cutoff = 5, print_check_log = TRUE, print_fp
 # For debugging, it may be worth calling stop_parallel(), because the mclapply has a problem printing 
 # out stdout in rstudio; see:
 # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#forking-with-mclapply
-comparisons_results <- COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>%  lapply_fork(
-  function(comparison_name) {
-    res <- get_res(comparison_name, fpkms, SPECIES, qSVA = qSVA)
+comparisons_results <- run_deseq(COMPARISON_TABLE)
 
-    results_tb <- get_global("results") %>%
-      left_join(res[[1]], by = "gene") %>%
-      dplyr::rename(!!str_c(comparison_name, '.l2fc') := log2FoldChange,
-                    !!str_c(comparison_name, '.raw_l2fc') := raw_l2fc,
-                    !!str_c(comparison_name, '.stat') := stat,
-                    !!str_c(comparison_name, '.pval') := pvalue,
-                    !!str_c(comparison_name, '.padj') := padj)
-
-    # for interaction we remove raw_l2fc column
-    if(comparison_name %in% INTERACTION_TABLE$comparison){
-        results_tb %<>% dplyr::select(-str_c(comparison_name, '.raw_l2fc'))
-    }
-
-    P=NULL
-    if (MISASSIGNMENT_PERCENTAGE) {
-      P <- get_misassignment_percentages(comparison_name, gene_lengths)
-
-      if (!is.na(P$condition_reference_samples)) {
-        results_tb %<>% left_join(
-          P$P_condition %>%
-            dplyr::select(gene, !!str_c(comparison_name, '.perc.', COMPARISON_TABLE %>%
-                                          filter(comparison == comparison_name) %>%
-                                          pull(condition)) := p))
-      }
-
-      if (!is.na(P$condition_base_reference_samples)) {
-        results_tb %<>% left_join(
-          P$P_condition_base %>%
-            dplyr::select(gene,!!str_c(comparison_name, '.perc.', COMPARISON_TABLE %>%
-                                         filter(comparison == comparison_name) %>%
-                                         pull(condition_base)) := p))
-      }
-
-      res$summary_tb_row %<>% as.data.frame() %>%
-        mutate(Misassignment_samples_in_comparison_level_condition = P$condition_reference_samples) %>%
-        mutate(Misassignment_samples_in_base_level_condition = P$condition_base_reference_samples)
-
-    }
-
-    p_plot <- plot_pvalue_distribution(results_tb, str_c(comparison_name,'.pval'))
-
-    ## return the results and merge them later
-    list(comparison_name = comparison_name,
-         res = res$res,
-         dds = res$dds,
-         results_tb = results_tb,
-         summary_tb = res$summary_tb_row,
-         p_plot = p_plot,
-         misassignment_percentage=P)
-  }
-)
 
 if (exists(x = 'all_comparison_pvalue_distribution')) {
   rm(all_comparison_pvalue_distribution)
@@ -256,7 +203,7 @@ list_of_gene_sets <- gene_set_categories %>%
 GS_results <- run_gs_analysis(COMPARISON_TABLE)
 
 ## plot gs heatmap
-genrate_gs_heatmap(GS_results,list_of_gene_sets,COMPARISON_TABLE)
+genrate_gs_heatmap(gs_result = GS_results,result_tbl=results)
 
 #### Saving and loading the workspace ####
 

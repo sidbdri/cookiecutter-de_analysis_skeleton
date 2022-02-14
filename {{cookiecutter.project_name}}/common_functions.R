@@ -2091,7 +2091,6 @@ ontology_find_all_children_terms <- function(term,parent2children){
   }
 }
 
-
 run_go_analysis <- function(comparison_tbl,nc=NUM_CORES,parallel_enable=PARALLEL,job_limit=9999999){
   
   job_strings <- comparison_tbl%>%
@@ -2101,7 +2100,7 @@ run_go_analysis <- function(comparison_tbl,nc=NUM_CORES,parallel_enable=PARALLEL
   dir.create(file.path('results/logs/R/BioParallel/GO'),recursive = T,showWarnings = F)
   
   if(parallel_enable){
-    message('running bioparallel in PARALLEL mode with SnowParam')
+    message('running bioparallel in PARALLEL mode with SnowParam, number of cores: ', nc)
     para<-SnowParam(workers = nc,stop.on.error=TRUE,jobname = 'topGO',progressbar = T,
                     log=TRUE,threshold = "DEBUG",logdir = file.path('results/logs/R/BioParallel/GO'),
                     tasks = length(job_strings))  
@@ -2132,7 +2131,7 @@ run_go_analysis <- function(comparison_tbl,nc=NUM_CORES,parallel_enable=PARALLEL
   ret
 }
 
-run_topgo <- function(job_string='',result_tbl,p.adj.cutoff=P.ADJ.CUTOFF,expressed_genes,species=SPECIES,out_dir=file.path(OUTPUT_DIR,"enrichment_tests"),parallel_enable){
+run_topgo <- function(job_string,result_tbl,p.adj.cutoff,expressed_genes,species,out_dir,parallel_enable){
   sink(NULL, type = "message")
   message( "Job started:  ", job_string)
   if(parallel_enable){
@@ -2192,7 +2191,7 @@ run_reactome_analysis <- function(comparison_tbl,nc=NUM_CORES,parallel_enable=PA
   dir.create(logdir,recursive = T,showWarnings = F)
   
   if(parallel_enable){
-    message('running bioparallel in PARALLEL mode with SnowParam')
+    message('running bioparallel in PARALLEL mode with SnowParam, number of cores: ', nc)
     para<-SnowParam(workers = nc,stop.on.error=TRUE,jobname = 'Reactome',progressbar = T,
                     log=TRUE,threshold = "DEBUG",logdir = logdir, tasks = length(job_strings))
   }else{
@@ -2221,7 +2220,7 @@ run_reactome_analysis <- function(comparison_tbl,nc=NUM_CORES,parallel_enable=PA
   ret
 }
 
-run_reactome <- function(job_string='',result_tbl,p.adj.cutoff=P.ADJ.CUTOFF,expressed_genes,species=SPECIES,out_dir=file.path(OUTPUT_DIR,"reactome"),parallel_enable){
+run_reactome <- function(job_string,result_tbl,p.adj.cutoff,expressed_genes,species,out_dir,parallel_enable){
   if(parallel_enable){
     source('load_packages.R')
     source('common_functions.R')
@@ -2274,7 +2273,7 @@ run_gs_analysis <- function(comparison_tbl,nc=NUM_CORES,parallel_enable=PARALLEL
   dir.create(logdir,recursive = T,showWarnings = F)
   
   if(parallel_enable){
-    message('running bioparallel in PARALLEL mode with SnowParam')
+    message('running bioparallel in PARALLEL mode with SnowParam, number of cores: ', nc)
     para<-SnowParam(workers = nc,stop.on.error=TRUE,jobname = 'GS',progressbar = T,
                     log=TRUE,threshold = "DEBUG",logdir = logdir, tasks = length(job_strings))
   }else{
@@ -2304,8 +2303,7 @@ run_gs_analysis <- function(comparison_tbl,nc=NUM_CORES,parallel_enable=PARALLEL
   ret
 }
 
-run_gs <- function(job_string='',result_tbl,dds_list,
-                   list_of_gene_sets,gene_info,species,out_dir,parallel_enable){
+run_gs <- function(job_string,result_tbl,dds_list,list_of_gene_sets,gene_info,species,out_dir,parallel_enable){
   if(parallel_enable){
     source('load_packages.R')
     source('common_functions.R')
@@ -2335,71 +2333,69 @@ run_gs <- function(job_string='',result_tbl,dds_list,
 }
 
 
-genrate_gs_heatmap <- function(gs_result,list_of_gene_sets,result_tbl=results,comparison_tbl=COMPARISON_TABLE,
-                                  species=SPECIES,nc=NUM_CORES,parallel_enable=PARALLEL,job_limit=9999999){
-
-  job_strings <- gs_result%>%names %>% head(job_limit)
-
+genrate_gs_heatmap <- function(nc=NUM_CORES,parallel_enable=PARALLEL,job_limit=9999999){
+  job_strings <- GS_results%>%names %>% head(job_limit)
+  
   logdir=file.path('results/logs/R/BioParallel/GSheatmap')
   dir.create(logdir,recursive = T,showWarnings = F)
-
+  
   if(parallel_enable){
-    message('running bioparallel in PARALLEL mode with MultiCore with ', nc)
+    message('running bioparallel in PARALLEL mode with MultiCore, number of cores: ', nc)
     para<-MulticoreParam(workers = nc,stop.on.error=TRUE,jobname = 'GSheatmap',progressbar = T,
-    log=TRUE,threshold = "DEBUG",logdir = logdir, tasks = length(job_strings))
+                         log=TRUE,threshold = "DEBUG",logdir = logdir, tasks = length(job_strings))
   }else{
     message('running bioparallel in NON-PARALLEL mode with SerialParam')
     para=SerialParam(stop.on.error=TRUE,log=TRUE,threshold = "DEBUG",progressbar = T,logdir = logdir)
   }
-
+  
   message(length(job_strings),' jobs received for GSheatmap ')
   print(job_strings)
-
+  
   ret <-  bptry({
     bplapply(job_strings,
-    plot_significant_set_heatmap,
-    gs_result=gs_result,
-    list_of_gene_sets=list_of_gene_sets,
-    comparison_tbl=comparison_tbl,
-    results_tbl=result_tbl,
-    species=species,
-    BPPARAM = para
+             plot_significant_set_heatmap,
+             BPPARAM = para
     ) %>% set_names(job_strings %>% strsplit(';') %>% sapply(paste0,collapse = '.'))
   })
-
+  
   check_bpresult(ret,fail_msg='GS heatmap parallel run FAIL !!!')
-
-
+  
 }
 
 
-plot_significant_set_heatmap <- function(job_string='',gs_result,list_of_gene_sets,results_tbl,comparison_tbl,species){
+plot_significant_set_heatmap <- function(job_string){
+  
+  gs_result=GS_results
+  list_of_gene_set=list_of_gene_sets
+  results_tbl=results
+  comparison_tbl=COMPARISON_TABLE
+  species=SPECIES
+  
   futile.logger::flog.info(paste0('running heatmap for:',job_string))
-
-
+  
   comparison_name=strsplit(job_string,split = '.',fixed = T) %>%unlist()%>%extract(1)
   gs_category =strsplit(job_string,split = '.',fixed = T) %>%unlist()%>%extract(2)
-
+  
   significant_gs <- gs_result[[job_string]] %>% filter(FDR < 0.05) %>% rownames()
-  significant_gs_entrezs <- list_of_gene_sets[[gs_category]][significant_gs]
-
+  significant_gs_entrezs <- list_of_gene_set[[gs_category]][significant_gs]
+  
   #get the comparison criteria for this comparison
   comparison_criteria <- comparison_tbl %>% filter(comparison == comparison_name) %>% dplyr::select(condition_name, condition, condition_base, filter)
   selected_conditions <- comparison_criteria %>% dplyr::select(condition, condition_base) %>% as.character()
-
+  
   # pull out samples which have the conditions in this comparison
   # and samples which match the filter specified
   condition_name <- comparison_criteria %>% dplyr::select(condition_name) %>% pull()
   samples_in_comparison <- SAMPLE_DATA %>%
     filter(!!parse_expr(condition_name) %in% selected_conditions &
-    !!(parse_expr(comparison_criteria %>% dplyr::select(filter) %>% pull()))) %>%
+             !!(parse_expr(comparison_criteria %>% dplyr::select(filter) %>% pull()))) %>%
     dplyr::select(sample_name, !!parse_expr(condition_name)) %>%
     arrange(!!parse_expr(condition_name))
-
+  
   samples_in_comparison %<>% mutate(fpkm_columns = str_c(sample_name, "_fpkm"))
   fpkm_columns <- samples_in_comparison %>% pull(fpkm_columns)
   num_samples <- length(fpkm_columns)
-
+  
   # get names of FPKM data columns
   samples_in_comparison %<>% mutate(fpkm_columns = str_c(sample_name, "_fpkm"))
   fpkm_columns <- samples_in_comparison %>% pull(fpkm_columns)
@@ -2408,7 +2404,7 @@ plot_significant_set_heatmap <- function(job_string='',gs_result,list_of_gene_se
   rownames(samples_in_comparison) <- NULL
   samples_in_comparison %<>% tibble::column_to_rownames(var = "fpkm_columns")
   annot <- samples_in_comparison %<>% dplyr::select(-sample_name)
-
+  
   futile.logger::flog.info(paste0('Number of gene set to be plot: ', significant_gs_entrezs%>%names%>%length))
   lapply(significant_gs_entrezs%>%names,function(gs_name){
     futile.logger::flog.info(paste0('running heatmap for:',job_string,'/',gs_name))
@@ -2416,48 +2412,48 @@ plot_significant_set_heatmap <- function(job_string='',gs_result,list_of_gene_se
     entrez_ids <- significant_gs_entrezs[[gs_name]]
     # get the name of the column of the log 2 fold changes
     comparison_log2fc <- paste(comparison_name, "l2fc", sep = '.')
-
+    
     # from the global results variable, get rows and columns corresponding to significant entrez IDs
     # and samples from the correct comparison; remove genes with no name
     to_heatmap <- results_tbl %>%
       dplyr::select(gene_name, entrez_id, fpkm_columns, comparison_log2fc) %>%
       filter(entrez_id %in% entrez_ids) %>%
       filter(!is.na(gene_name))
-
+    
     # reorder
     to_heatmap <- to_heatmap %>% arrange(desc(!!sym(comparison_log2fc)))
-
+    
     # declare the path to the heatmaps, based on the gene set category and comparison
     # create the dir if it doesnt exist
-    heatmap_path <- file.path("results/differential_expression/gene_set_tests/", species, comparison_name, category )
+    heatmap_path <- file.path("results/differential_expression/gene_set_tests/", species, comparison_name, gs_category )
     ifelse(!dir.exists(file.path(heatmap_path)), dir.create(file.path(heatmap_path), recursive = TRUE), FALSE)
-
+    
     # TODO: currently, the column to rownames call complains about duplicate row names (i.e. gene names)
     # I have removed duplicates - is this how we want to do this? Is there a better way?
     to_heatmap_unique <- distinct(to_heatmap, gene_name, .keep_all = TRUE)
-
+    
     # prepare heatmap data so the row names are the gene IDs and remove the entrez column
     heatmap_data<-to_heatmap_unique %>% tibble::column_to_rownames(var="gene_name") %>% dplyr::select(-entrez_id, -comparison_log2fc)
-
+    
     # divide each row by the mean of that row
     heatmap_data <- t(apply(heatmap_data, 1, function(x) x/mean(x)))
     heatmap_data <- log2(heatmap_data)
-
+    
     heatmap_data[is.infinite(heatmap_data)] <- NA
     heatmap_data[is.nan(heatmap_data)] <- NA
     heatmap_data <- subset(heatmap_data,rowSums(!is.na(heatmap_data)) == nrow(samples_in_comparison))
-
+    
     if(nrow(heatmap_data)!=0){
       max_data <- max(heatmap_data, na.rm=TRUE)
       min_data <- -min(heatmap_data, na.rm=TRUE)
       range <- min(max_data, min_data)
-
+      
       start_plot(prefix = gs_name, path = heatmap_path)
       pheatmap(heatmap_data,
-      breaks = seq(-range, range, length.out = 100),
-      cluster_rows = FALSE, cluster_cols = FALSE,
-      border_color = NA, show_rownames = (heatmap_data %>% nrow()) < 100,
-      annotation_col = annot)
+               breaks = seq(-range, range, length.out = 100),
+               cluster_rows = FALSE, cluster_cols = FALSE,
+               border_color = NA, show_rownames = (heatmap_data %>% nrow()) < 100,
+               annotation_col = annot)
       end_plot()
     }
   })
@@ -2465,91 +2461,91 @@ plot_significant_set_heatmap <- function(job_string='',gs_result,list_of_gene_se
 
 
 run_deseq <- function(comparison_tbl=COMPARISON_TABLE,nc=NUM_CORES,parallel_enable=PARALLEL,job_limit=999999){
-    job_strings <- comparison_tbl%>% pull(comparison) %>% head(job_limit)
-
-    logdir=file.path('results/logs/R/BioParallel/DESeq2')
-    dir.create(logdir,recursive = T,showWarnings = F)
-
-    if(parallel_enable){
-      message('running bioparallel in PARALLEL mode with MultiCore')
-      para<-MulticoreParam(workers = nc,stop.on.error=TRUE,jobname = 'DESeq2',progressbar = T,
-      log=TRUE,threshold = "DEBUG",logdir = logdir, tasks = length(job_strings))
-    }else{
-      message('running bioparallel in NON-PARALLEL mode with SerialParam')
-      para=SerialParam(stop.on.error=TRUE,log=TRUE,threshold = "DEBUG",progressbar = T,logdir = logdir)
-    }
-
-    message(length(job_strings),' jobs received for DESeq2 analysis.')
-    print(job_strings)
-
-    ret <-  bptry({
-      bplapply(job_strings,
-      run_deseq_job,
-      parallel_enable=parallel_enable,
-      BPPARAM = para
-      ) %>% set_names(job_strings)
-    })
-
-    check_bpresult(ret,fail_msg='DESeq2 parallel run FAIL !!!')
-
-    ret
+  job_strings <- comparison_tbl%>% pull(comparison) %>% head(job_limit)
+  
+  logdir=file.path('results/logs/R/BioParallel/DESeq2')
+  dir.create(logdir,recursive = T,showWarnings = F)
+  
+  if(parallel_enable){
+    message('running bioparallel in PARALLEL mode with MultiCore')
+    para<-MulticoreParam(workers = nc,stop.on.error=TRUE,jobname = 'DESeq2',progressbar = T,
+                         log=TRUE,threshold = "DEBUG",logdir = logdir, tasks = length(job_strings))
+  }else{
+    message('running bioparallel in NON-PARALLEL mode with SerialParam')
+    para=SerialParam(stop.on.error=TRUE,log=TRUE,threshold = "DEBUG",progressbar = T,logdir = logdir)
+  }
+  
+  message(length(job_strings),' jobs received for DESeq2 analysis.')
+  print(job_strings)
+  
+  ret <-  bptry({
+    bplapply(job_strings,
+             run_deseq_job,
+             parallel_enable=parallel_enable,
+             BPPARAM = para
+    ) %>% set_names(job_strings)
+  })
+  
+  check_bpresult(ret,fail_msg='DESeq2 parallel run FAIL !!!')
+  
+  ret
 }
 
-run_deseq_job <- function(job_string='',parallel_enable){
-
-    comparison_name=job_string
-
-    res <- get_res(comparison_name, fpkms, SPECIES, qSVA = qSVA)
-    results_tb <- get_global("results") %>%
-      left_join(res[[1]], by = "gene") %>%
-      dplyr::rename(!!str_c(comparison_name, '.l2fc') := log2FoldChange,
-      !!str_c(comparison_name, '.raw_l2fc') := raw_l2fc,
-      !!str_c(comparison_name, '.stat') := stat,
-      !!str_c(comparison_name, '.pval') := pvalue,
-      !!str_c(comparison_name, '.padj') := padj)
-
-    # for interaction we remove raw_l2fc column
-    if(comparison_name %in% INTERACTION_TABLE$comparison){
-      results_tb %<>% dplyr::select(-str_c(comparison_name, '.raw_l2fc'))
-    }
-
-    P=NULL
-    if (MISASSIGNMENT_PERCENTAGE) {
-      P <- get_misassignment_percentages(comparison_name, gene_lengths)
-
-      if (!is.na(P$condition_reference_samples)) {
-        results_tb %<>% left_join(
+run_deseq_job <- function(job_string,parallel_enable){
+  
+  comparison_name=job_string
+  
+  res <- get_res(comparison_name, fpkms, SPECIES, qSVA = qSVA)
+  results_tb <- get_global("results") %>%
+    left_join(res[[1]], by = "gene") %>%
+    dplyr::rename(!!str_c(comparison_name, '.l2fc') := log2FoldChange,
+                  !!str_c(comparison_name, '.raw_l2fc') := raw_l2fc,
+                  !!str_c(comparison_name, '.stat') := stat,
+                  !!str_c(comparison_name, '.pval') := pvalue,
+                  !!str_c(comparison_name, '.padj') := padj)
+  
+  # for interaction we remove raw_l2fc column
+  if(comparison_name %in% INTERACTION_TABLE$comparison){
+    results_tb %<>% dplyr::select(-str_c(comparison_name, '.raw_l2fc'))
+  }
+  
+  P=NULL
+  if (MISASSIGNMENT_PERCENTAGE) {
+    P <- get_misassignment_percentages(comparison_name, gene_lengths)
+    
+    if (!is.na(P$condition_reference_samples)) {
+      results_tb %<>% left_join(
         P$P_condition %>%
-        dplyr::select(gene, !!str_c(comparison_name, '.perc.', COMPARISON_TABLE %>%
-          filter(comparison == comparison_name) %>%
-          pull(condition)) := p))
-      }
-
-      if (!is.na(P$condition_base_reference_samples)) {
-        results_tb %<>% left_join(
-        P$P_condition_base %>%
-        dplyr::select(gene,!!str_c(comparison_name, '.perc.', COMPARISON_TABLE %>%
-          filter(comparison == comparison_name) %>%
-          pull(condition_base)) := p))
-      }
-
-      res$summary_tb_row %<>% as.data.frame() %>%
-        mutate(Misassignment_samples_in_comparison_level_condition = P$condition_reference_samples) %>%
-        mutate(Misassignment_samples_in_base_level_condition = P$condition_base_reference_samples)
-
+          dplyr::select(gene, !!str_c(comparison_name, '.perc.', COMPARISON_TABLE %>%
+                                        filter(comparison == comparison_name) %>%
+                                        pull(condition)) := p))
     }
-
-    p_plot <- plot_pvalue_distribution(results_tb, str_c(comparison_name,'.pval'))
-
-    ## return the results and merge them later
-    list(comparison_name = comparison_name,
-    res = res$res,
-    dds = res$dds,
-    results_tb = results_tb,
-    summary_tb = res$summary_tb_row,
-    p_plot = p_plot,
-    misassignment_percentage=P)
-
+    
+    if (!is.na(P$condition_base_reference_samples)) {
+      results_tb %<>% left_join(
+        P$P_condition_base %>%
+          dplyr::select(gene,!!str_c(comparison_name, '.perc.', COMPARISON_TABLE %>%
+                                       filter(comparison == comparison_name) %>%
+                                       pull(condition_base)) := p))
+    }
+    
+    res$summary_tb_row %<>% as.data.frame() %>%
+      mutate(Misassignment_samples_in_comparison_level_condition = P$condition_reference_samples) %>%
+      mutate(Misassignment_samples_in_base_level_condition = P$condition_base_reference_samples)
+    
+  }
+  
+  p_plot <- plot_pvalue_distribution(results_tb, str_c(comparison_name,'.pval'))
+  
+  ## return the results and merge them later
+  list(comparison_name = comparison_name,
+       res = res$res,
+       dds = res$dds,
+       results_tb = results_tb,
+       summary_tb = res$summary_tb_row,
+       p_plot = p_plot,
+       misassignment_percentage=P)
+  
 }
 
 

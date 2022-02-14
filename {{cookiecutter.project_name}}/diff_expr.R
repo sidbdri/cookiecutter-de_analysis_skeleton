@@ -203,7 +203,7 @@ list_of_gene_sets <- gene_set_categories %>%
 GS_results <- run_gs_analysis(COMPARISON_TABLE)
 
 ## plot gs heatmap
-genrate_gs_heatmap(gs_result = GS_results,result_tbl=results)
+genrate_gs_heatmap()
 
 #### Saving and loading the workspace ####
 

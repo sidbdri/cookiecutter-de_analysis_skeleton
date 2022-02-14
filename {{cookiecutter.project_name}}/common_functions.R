@@ -2132,8 +2132,7 @@ run_go_analysis <- function(comparison_tbl,nc=NUM_CORES,parallel_enable=PARALLEL
 }
 
 run_topgo <- function(job_string,result_tbl,p.adj.cutoff,expressed_genes,species,out_dir,parallel_enable){
-  sink(NULL, type = "message")
-  message( "Job started:  ", job_string)
+
   if(parallel_enable){
     source('load_packages.R')
     source('common_functions.R')

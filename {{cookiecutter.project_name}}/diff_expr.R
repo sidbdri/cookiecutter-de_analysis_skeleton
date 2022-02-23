@@ -100,8 +100,10 @@ check_cell_type(results, fpkm_check_cutoff = 5, print_check_log = TRUE, print_fp
 # For debugging, it may be worth calling stop_parallel(), because the mclapply has a problem printing 
 # out stdout in rstudio; see:
 # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#forking-with-mclapply
-comparisons_results <- run_deseq(COMPARISON_TABLE)
 
+job_strings <- COMPARISON_TABLE %>% pull(comparison)
+comparisons_results <- parallelManager(job_strings,job_name='DESeq2',parallelParam='MulticoreParam',FUN='run_deseq',
+                                       results_tbl=results,fpkms=fpkms,species=SPECIES,qSVA=qSVA)
 
 if (exists(x = 'all_comparison_pvalue_distribution')) {
   rm(all_comparison_pvalue_distribution)
@@ -189,10 +191,26 @@ SUMMARY_TB %>%
 expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts = TRUE) %>%
   get_count_data()
 
-GO_results <- run_go_analysis(COMPARISON_TABLE)
 
+GO_results <- COMPARISON_TABLE%>%
+  pull(comparison) %>% expand.grid(c('all','up','down'),c("BP", "MF", "CC")) %>% 
+  tidyr::unite(col='job_string',sep = ';') %>% pull(job_string) %>%
+  parallelManager(job_strings,parallelParam='SnowParam',FUN='run_topgo',
+                  result_tbl=results,
+                  p.adj.cutoff=P.ADJ.CUTOFF,
+                  expressed_genes=expressed_genes,
+                  species=SPECIES,
+                  out_dir=file.path(OUTPUT_DIR,"enrichment_tests"))
 #### Reactome pathway analysis
-Reactome_results <- run_reactome_analysis(COMPARISON_TABLE)
+Reactome_results <- COMPARISON_TABLE%>%
+  pull(comparison) %>% expand.grid(c('all','up','down')) %>% 
+  tidyr::unite(col='job_string',sep = ';') %>% pull(job_string) %>%
+  parallelManager(job_strings,job_name='Reactome',parallelParam='SnowParam',FUN='run_reactome',
+                  result_tbl=results,
+                  p.adj.cutoff=P.ADJ.CUTOFF,
+                  expressed_genes=expressed_genes,
+                  species=SPECIES,
+                  out_dir=file.path(OUTPUT_DIR,"reactome")) 
 
 #### Gene set enrichment analysis ####
 gene_set_categories <- list("CURATED", "MOTIF", "GO", "CELL_TYPE")
@@ -200,10 +218,26 @@ gene_set_categories <- list("CURATED", "MOTIF", "GO", "CELL_TYPE")
 list_of_gene_sets <- gene_set_categories %>%
   set_names(.) %>% lapply(function(category, ...) get_gene_sets(SPECIES, category))
 
-GS_results <- run_gs_analysis(COMPARISON_TABLE)
+GS_results <- COMPARISON_TABLE %>%
+  pull(comparison) %>% expand.grid(gene_set_categories) %>% 
+  tidyr::unite(col='job_string',sep = ';') %>% pull(job_string) %>%
+  parallelManager(job_name='GS',parallelParam='SnowParam',FUN='run_gs',
+                  result_tbl=results,
+                  dds_list=dds_list,
+                  list_of_gene_sets=list_of_gene_sets,
+                  gene_info=gene_info,
+                  species=SPECIES,
+                  out_dir=file.path(OUTPUT_DIR,"gene_set_tests")) 
 
 ## plot gs heatmap
-genrate_gs_heatmap()
+GSheatmap <- GS_results %>% names %>%
+  parallelManager(job_strings,job_name='GSheatmap',parallelParam='MulticoreParam',FUN='plot_significant_set_heatmap',
+                  results_tbl=results,
+                  gs_result=GS_results,
+                  list_of_gene_set=list_of_gene_sets,
+                  comparison_tbl=COMPARISON_TABLE,
+                  species=SPECIES,
+                  out_dir=file.path(OUTPUT_DIR,"gene_set_tests")) 
 
 #### Saving and loading the workspace ####
 

@@ -2091,63 +2091,123 @@ ontology_find_all_children_terms <- function(term,parent2children){
   }
 }
 
-run_go_analysis <- function(comparison_tbl,nc=NUM_CORES,parallel_enable=PARALLEL,job_limit=9999999){
-  
-  job_strings <- comparison_tbl%>%
-    pull(comparison) %>% expand.grid(c('all','up','down'),c("BP", "MF", "CC")) %>% 
-    tidyr::unite(col='job_string',sep = ';') %>% pull(job_string) %>% head(job_limit)
-  
-  message(length(job_strings),' jobs received for GO analysis.')
+parallelManager<-function(job_strings,job_limit=999999,job_name='GO',
+                          enable_log=TRUE,log_dir=file.path('results/logs/R/BioParallel',job_name),
+                          stop.on.error=TRUE,
+                          nc=NUM_CORES,parallel_enable=PARALLEL,
+                          parallelParam=c('SnowParam','MulticoreParam','BatchtoolsParam','DoparParam','SerialParam')[1],
+                          FUN='run_topgo',...){
+  job_strings %<>% head(job_limit)
+  message(length(job_strings),' jobs received for ',  job_name , ' analysis.')
   print(job_strings)
   
-  dir.create(file.path('results/logs/R/BioParallel/GO'),recursive = T,showWarnings = F)
+  message('logs can be found at ', log_dir)
+  dir.create(log_dir,recursive = T,showWarnings = F)
   
   if(parallel_enable){
-    message('running bioparallel in PARALLEL mode with SnowParam, number of cores: ', nc)
-    para<-SnowParam(workers = nc,stop.on.error=TRUE,jobname = 'topGO',progressbar = T,
-                    log=TRUE,threshold = "DEBUG",logdir = file.path('results/logs/R/BioParallel/GO'),
-                    tasks = length(job_strings))
-    # we start the workers this way so we can reuse them to hopefully decrease some overhead of loading packages
+    message('running bioparallel in PARALLEL with <', parallelParam , '>.  number of cores: ', nc)
+    
+    para <- call(parallelParam,workers = nc,stop.on.error=stop.on.error,jobname = job_name,progressbar = T,
+                 log=enable_log,threshold = "DEBUG",logdir = log_dir,tasks = length(job_strings)) %>% eval
+    print(para)
+    
     bpstart(para)
+    
+    if(parallelParam=='SnowParam'){
+      # we start the workers this way so we can reuse them to hopefully decrease some overhead of loading packages
+      # need to load package, as in SOCK mode, workers are independent
+      # if we are reusing a worker, we dont need to repeat the package load
+      loadpackage<-tryCatch({
+        bplapply(rep('load_packages.R',length(job_strings)),source,BPPARAM = para) %>% set_names(job_strings)},
+        error = function(e){ bpstop(para);e})
+      check_bpresult(attr(loadpackage,'result'),job_name='load package in worker node')
+      
+      loadfunctions<-tryCatch({
+        bplapply(rep('common_functions.R',length(job_strings)),source,BPPARAM = para) %>% set_names(job_strings)},
+        error = function(e){ bpstop(para);e})
+      check_bpresult(attr(loadfunctions,'result'),job_name='load common_function.R in worker node')
+    }
+    
   }else{
     message('running bioparallel in NON-PARALLEL mode with SerialParam')
-    para=SerialParam(stop.on.error=TRUE,log=TRUE,threshold = "DEBUG",progressbar = T,
-                     logdir = file.path('results/logs/R/BioParallel/GO'))
+    para=SerialParam(stop.on.error=stop.on.error,log=enable_log,threshold = "DEBUG",progressbar = T,logdir = log_dir)
+    print(para)
   }
   
-  # tictoc::tic('GO run time:')
+  tictoc::tic(paste0(job_name,' run time:'))
   ret <-  tryCatch(
     {
       bplapply(job_strings,
-               run_topgo,
-               result_tbl=results,
-               p.adj.cutoff=P.ADJ.CUTOFF,
-               expressed_genes=expressed_genes,
-               species=SPECIES,
-               out_dir=file.path(OUTPUT_DIR,"enrichment_tests"),
-               parallel_enable=parallel_enable,
+               FUN,
+               ...,
                BPPARAM = para
-      ) %>% set_names(job_strings %>% strsplit(';') %>% sapply(paste0,collapse = '.'))
+      ) %>% set_names(job_strings)
     },
     error = function(e) e, finally = bpstop(para)) # we need to stop the workers when error
-  # tictoc::toc()
+  tictoc::toc()
   
-  check_bpresult(attr(ret,'result'),fail_msg='GO parallel run FAIL !!!')
-  
+  check_bpresult(attr(ret,'result'),job_name=job_name)
   ret
 }
 
-run_topgo <- function(job_string='',result_tbl,p.adj.cutoff,expressed_genes,species,out_dir,parallel_enable){
-  # to debug the function, we redirect message so we can print from each worker
-  # sink(NULL, type = "message")
-  # message(thing_you_want_to_print)
+run_deseq <- function(job_string,results_tbl,fpkms,species,qSVA,...){
   
-  if(parallel_enable){
-    # we check if we need to load package, as in SOCK mode, workers are independent
-    # if we are reusing a worker, we dont need to repeat the package load
-    source('load_packages.R')
-    source('common_functions.R')
+  comparison_name=job_string
+  
+  res <- get_res(comparison_name, fpkms, species, qSVA = qSVA)
+  results_tb <- results_tbl %>%
+    left_join(res[[1]], by = "gene") %>%
+    dplyr::rename(!!str_c(comparison_name, '.l2fc') := log2FoldChange,
+                  !!str_c(comparison_name, '.raw_l2fc') := raw_l2fc,
+                  !!str_c(comparison_name, '.stat') := stat,
+                  !!str_c(comparison_name, '.pval') := pvalue,
+                  !!str_c(comparison_name, '.padj') := padj)
+  
+  # for interaction we remove raw_l2fc column
+  if(comparison_name %in% INTERACTION_TABLE$comparison){
+    results_tb %<>% dplyr::select(-str_c(comparison_name, '.raw_l2fc'))
   }
+  
+  P=NULL
+  if (MISASSIGNMENT_PERCENTAGE) {
+    P <- get_misassignment_percentages(comparison_name, gene_lengths)
+    
+    if (!is.na(P$condition_reference_samples)) {
+      results_tb %<>% left_join(
+        P$P_condition %>%
+          dplyr::select(gene, !!str_c(comparison_name, '.perc.', COMPARISON_TABLE %>%
+                                        filter(comparison == comparison_name) %>%
+                                        pull(condition)) := p))
+    }
+    
+    if (!is.na(P$condition_base_reference_samples)) {
+      results_tb %<>% left_join(
+        P$P_condition_base %>%
+          dplyr::select(gene,!!str_c(comparison_name, '.perc.', COMPARISON_TABLE %>%
+                                       filter(comparison == comparison_name) %>%
+                                       pull(condition_base)) := p))
+    }
+    
+    res$summary_tb_row %<>% as.data.frame() %>%
+      mutate(Misassignment_samples_in_comparison_level_condition = P$condition_reference_samples) %>%
+      mutate(Misassignment_samples_in_base_level_condition = P$condition_base_reference_samples)
+    
+  }
+  
+  p_plot <- plot_pvalue_distribution(results_tb, str_c(comparison_name,'.pval'))
+  
+  ## return the results and merge them later
+  list(comparison_name = comparison_name,
+       res = res$res,
+       dds = res$dds,
+       results_tb = results_tb,
+       summary_tb = res$summary_tb_row,
+       p_plot = p_plot,
+       misassignment_percentage=P)
+  
+}
+
+run_topgo <- function(job_string,result_tbl,p.adj.cutoff,expressed_genes,species,out_dir,...){
   
   # we can output log like this
   futile.logger::flog.info(paste0('running topGO for:',job_string))
@@ -2195,57 +2255,9 @@ run_topgo <- function(job_string='',result_tbl,p.adj.cutoff,expressed_genes,spec
   ret
 }
 
-run_reactome_analysis <- function(comparison_tbl,nc=NUM_CORES,parallel_enable=PARALLEL,job_limit=9999999){
-  
-  job_strings <- comparison_tbl%>%
-    pull(comparison) %>% expand.grid(c('all','up','down')) %>% 
-    tidyr::unite(col='job_string',sep = ';') %>% pull(job_string) %>% head(job_limit)
-  
-  message(length(job_strings),' jobs received for reactome analysis.')
-  print(job_strings)
-  
-  logdir=file.path('results/logs/R/BioParallel/Reactome')
-  dir.create(logdir,recursive = T,showWarnings = F)
-  
-  if(parallel_enable){
-    message('running bioparallel in PARALLEL mode with SnowParam, number of cores: ', nc)
-    para<-SnowParam(workers = nc,stop.on.error=TRUE,jobname = 'Reactome',progressbar = T,
-                    log=TRUE,threshold = "DEBUG",logdir = logdir, tasks = length(job_strings))
-    bpstart(para)
-  }else{
-    message('running bioparallel in NON-PARALLEL mode with SerialParam')
-    para=SerialParam(stop.on.error=TRUE,log=TRUE,threshold = "DEBUG",progressbar = T,logdir = logdir)
-  }
-  
-  # tictoc::tic('Reactome run time:')
-  ret <-  tryCatch(
-    {
-      bplapply(job_strings,
-               run_reactome,
-               result_tbl=results,
-               p.adj.cutoff=P.ADJ.CUTOFF,
-               expressed_genes=expressed_genes,
-               species=SPECIES,
-               out_dir=file.path(OUTPUT_DIR,"enrichment_tests"),
-               parallel_enable=parallel_enable,
-               BPPARAM = para
-      ) %>% set_names(job_strings %>% strsplit(';') %>% sapply(paste0,collapse = '.'))
-    },
-    error = function(e) e, finally = bpstop(para))
-  # tictoc::toc()
-  check_bpresult(attr(ret,'result'),fail_msg='Reactome parallel run FAIL !!!')
-  
-  ret
-}
 
-run_reactome <- function(job_string='',result_tbl,p.adj.cutoff,expressed_genes,species,out_dir,parallel_enable){
+run_reactome <- function(job_string,result_tbl,p.adj.cutoff,expressed_genes,species,out_dir,...){
   
-  if(parallel_enable){
-    # we check if we need to load package
-    # if we are reusing a worker, we dont need to repeat the package load
-    source('load_packages.R')
-    source('common_functions.R')
-  }
   futile.logger::flog.info(paste0('running Reactome for:',job_string))
   
   comparison_name=strsplit(job_string,split = ';') %>%unlist()%>%extract(1)
@@ -2281,62 +2293,7 @@ run_reactome <- function(job_string='',result_tbl,p.adj.cutoff,expressed_genes,s
 }
 
 
-run_gs_analysis <- function(comparison_tbl,nc=NUM_CORES,parallel_enable=PARALLEL,job_limit=9999999){
-  
-  job_strings <- comparison_tbl%>%
-    pull(comparison) %>% expand.grid(gene_set_categories) %>% 
-    tidyr::unite(col='job_string',sep = ';') %>% pull(job_string) %>% head(job_limit)
-  
-  message(length(job_strings),' jobs received for GS analysis.')
-  print(job_strings)
-  
-  dds_list <- str_c(comparison_tbl%>% pull(comparison),'dds',sep = '_') %>% 
-    lapply(get_global) %>% set_names(comparison_tbl%>% pull(comparison))
-  
-  logdir=file.path('results/logs/R/BioParallel/GS')
-  dir.create(logdir,recursive = T,showWarnings = F)
-  
-  if(parallel_enable){
-    message('running bioparallel in PARALLEL mode with SnowParam, number of cores: ', nc)
-    para<-SnowParam(workers = nc,stop.on.error=TRUE,jobname = 'GS',progressbar = T,
-                    log=TRUE,threshold = "DEBUG",logdir = logdir, tasks = length(job_strings))
-    register(para) 
-    bpstart(para)
-  }else{
-    message('running bioparallel in NON-PARALLEL mode with SerialParam')
-    para=SerialParam(stop.on.error=TRUE,log=TRUE,threshold = "DEBUG",progressbar = T,logdir = logdir)
-  }
-  
-  # tictoc::tic('GS run time:')
-  ret <-  tryCatch(
-    {
-      bplapply(job_strings,
-               run_gs,
-               result_tbl=results,
-               dds_list=dds_list,
-               list_of_gene_sets=list_of_gene_sets,
-               gene_info=gene_info,
-               species=SPECIES,
-               out_dir=file.path(OUTPUT_DIR,"gene_set_tests"),
-               parallel_enable=parallel_enable,
-               BPPARAM = para
-      ) %>% set_names(job_strings %>% strsplit(';') %>% sapply(paste0,collapse = '.'))
-    },
-    error = function(e) e, finally = bpstop(para))
-  # tictoc::toc()
-  
-  check_bpresult(attr(ret,'result'),fail_msg='GS parallel run FAIL !!!')
-  
-  ret
-}
-
-run_gs <- function(job_string,result_tbl,dds_list,list_of_gene_sets,gene_info,species,out_dir,parallel_enable){
-  if(parallel_enable){
-    # we check if we need to load package
-    # if we are reusing a worker, we dont need to repeat the package load
-    source('load_packages.R')
-    source('common_functions.R')
-  }
+run_gs <- function(job_string,result_tbl,dds_list,list_of_gene_sets,gene_info,species,out_dir,...){
   
   futile.logger::flog.info(paste0('running GS for:',job_string))
   
@@ -2362,44 +2319,7 @@ run_gs <- function(job_string,result_tbl,dds_list,list_of_gene_sets,gene_info,sp
   camera_results[[category]]
 }
 
-genrate_gs_heatmap <- function(nc=NUM_CORES,parallel_enable=PARALLEL,job_limit=9999999){
-  job_strings <- GS_results%>%names %>% head(job_limit)
-  
-  message(length(job_strings),' jobs received for GSheatmap ')
-  print(job_strings)
-  
-  logdir=file.path('results/logs/R/BioParallel/GSheatmap')
-  dir.create(logdir,recursive = T,showWarnings = F)
-  
-  if(parallel_enable){
-    message('running bioparallel in PARALLEL mode with MultiCore, number of cores: ', nc)
-    para<-MulticoreParam(workers = nc,stop.on.error=TRUE,jobname = 'GSheatmap',progressbar = T,
-                         log=TRUE,threshold = "DEBUG",logdir = logdir, tasks = length(job_strings))
-  }else{
-    message('running bioparallel in NON-PARALLEL mode with SerialParam')
-    para=SerialParam(stop.on.error=TRUE,log=TRUE,threshold = "DEBUG",progressbar = T,logdir = logdir)
-  }
-  
-  
-  ret <-  bptry({
-    bplapply(job_strings,
-             plot_significant_set_heatmap,
-             BPPARAM = para
-    ) %>% set_names(job_strings %>% strsplit(';') %>% sapply(paste0,collapse = '.'))
-  })
-  
-  check_bpresult(ret,fail_msg='GS heatmap parallel run FAIL !!!')
-  
-}
-
-
-plot_significant_set_heatmap <- function(job_string){
-  
-  gs_result=GS_results
-  list_of_gene_set=list_of_gene_sets
-  results_tbl=results
-  comparison_tbl=COMPARISON_TABLE
-  species=SPECIES
+plot_significant_set_heatmap <- function(job_string,gs_result,list_of_gene_set,results_tbl,comparison_tbl,species,out_dir,...){
   
   futile.logger::flog.info(paste0('running heatmap for:',job_string))
   
@@ -2455,7 +2375,7 @@ plot_significant_set_heatmap <- function(job_string){
     
     # declare the path to the heatmaps, based on the gene set category and comparison
     # create the dir if it doesnt exist
-    heatmap_path <- file.path("results/differential_expression/gene_set_tests/", species, comparison_name, gs_category )
+    heatmap_path <- file.path(out_dir, species, comparison_name, gs_category )
     ifelse(!dir.exists(file.path(heatmap_path)), dir.create(file.path(heatmap_path), recursive = TRUE), FALSE)
     
     # TODO: currently, the column to rownames call complains about duplicate row names (i.e. gene names)
@@ -2490,99 +2410,10 @@ plot_significant_set_heatmap <- function(job_string){
 }
 
 
-run_deseq <- function(comparison_tbl=COMPARISON_TABLE,nc=NUM_CORES,parallel_enable=PARALLEL,job_limit=999999){
-  job_strings <- comparison_tbl%>% pull(comparison) %>% head(job_limit)
-  
-  logdir=file.path('results/logs/R/BioParallel/DESeq2')
-  dir.create(logdir,recursive = T,showWarnings = F)
-  
-  if(parallel_enable){
-    message('running bioparallel in PARALLEL mode with MultiCore')
-    para<-MulticoreParam(workers = nc,stop.on.error=TRUE,jobname = 'DESeq2',progressbar = T,
-                         log=TRUE,threshold = "DEBUG",logdir = logdir, tasks = length(job_strings))
-  }else{
-    message('running bioparallel in NON-PARALLEL mode with SerialParam')
-    para=SerialParam(stop.on.error=TRUE,log=TRUE,threshold = "DEBUG",progressbar = T,logdir = logdir)
-  }
-  
-  message(length(job_strings),' jobs received for DESeq2 analysis.')
-  print(job_strings)
-  
-  ret <-  bptry({
-    bplapply(job_strings,
-             run_deseq_job,
-             parallel_enable=parallel_enable,
-             BPPARAM = para
-    ) %>% set_names(job_strings)
-  })
-  
-  check_bpresult(ret,fail_msg='DESeq2 parallel run FAIL !!!')
-  
-  ret
-}
-
-run_deseq_job <- function(job_string,parallel_enable){
-  
-  comparison_name=job_string
-  
-  res <- get_res(comparison_name, fpkms, SPECIES, qSVA = qSVA)
-  results_tb <- get_global("results") %>%
-    left_join(res[[1]], by = "gene") %>%
-    dplyr::rename(!!str_c(comparison_name, '.l2fc') := log2FoldChange,
-                  !!str_c(comparison_name, '.raw_l2fc') := raw_l2fc,
-                  !!str_c(comparison_name, '.stat') := stat,
-                  !!str_c(comparison_name, '.pval') := pvalue,
-                  !!str_c(comparison_name, '.padj') := padj)
-  
-  # for interaction we remove raw_l2fc column
-  if(comparison_name %in% INTERACTION_TABLE$comparison){
-    results_tb %<>% dplyr::select(-str_c(comparison_name, '.raw_l2fc'))
-  }
-  
-  P=NULL
-  if (MISASSIGNMENT_PERCENTAGE) {
-    P <- get_misassignment_percentages(comparison_name, gene_lengths)
-    
-    if (!is.na(P$condition_reference_samples)) {
-      results_tb %<>% left_join(
-        P$P_condition %>%
-          dplyr::select(gene, !!str_c(comparison_name, '.perc.', COMPARISON_TABLE %>%
-                                        filter(comparison == comparison_name) %>%
-                                        pull(condition)) := p))
-    }
-    
-    if (!is.na(P$condition_base_reference_samples)) {
-      results_tb %<>% left_join(
-        P$P_condition_base %>%
-          dplyr::select(gene,!!str_c(comparison_name, '.perc.', COMPARISON_TABLE %>%
-                                       filter(comparison == comparison_name) %>%
-                                       pull(condition_base)) := p))
-    }
-    
-    res$summary_tb_row %<>% as.data.frame() %>%
-      mutate(Misassignment_samples_in_comparison_level_condition = P$condition_reference_samples) %>%
-      mutate(Misassignment_samples_in_base_level_condition = P$condition_base_reference_samples)
-    
-  }
-  
-  p_plot <- plot_pvalue_distribution(results_tb, str_c(comparison_name,'.pval'))
-  
-  ## return the results and merge them later
-  list(comparison_name = comparison_name,
-       res = res$res,
-       dds = res$dds,
-       results_tb = results_tb,
-       summary_tb = res$summary_tb_row,
-       p_plot = p_plot,
-       misassignment_percentage=P)
-  
-}
-
-
-check_bpresult <- function(res,fail_msg='GO parallel run fail!!!'){
+check_bpresult <- function(res,job_name='GO'){
   if(!all(bpok(res))){
     # at least one worker node has error.
-    message(fail_msg)
+    message(job_name, 'parallel run fail!!!')
     message('Error in worker node ', which(!bpok(res)) %>% paste0(.,collapse = ','))
     sapply(which(!bpok(res)),function(i){
       message('Woker ',i,' error message:')
@@ -2590,7 +2421,7 @@ check_bpresult <- function(res,fail_msg='GO parallel run fail!!!'){
       message('Woker ',i,' error trackback:')
       print(attr(res[[i]],'traceback'))
     }) %>% invisible() 
-    stop(fail_msg)
+    stop(job_name, 'parallel run fail!!!')
   }
-  message('parallel run looks good!')
+  message(job_name,' parallel run looks good!')
 }

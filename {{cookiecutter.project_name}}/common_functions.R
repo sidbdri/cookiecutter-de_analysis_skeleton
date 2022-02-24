@@ -55,6 +55,7 @@ get_gene_lengths <- function(species) {
 }
 
 check_formulas <- function() {
+  need_fix=FALSE
   for (r in COMPARISON_TABLE %>% rownames()) {
     row <- COMPARISON_TABLE[r,]
     f <- row$formula %>% as.formula() %>% terms()
@@ -65,7 +66,8 @@ check_formulas <- function() {
     f_levels_chec<-sapply(labels(f),function(x){sample_data %>% pull(x) %>% unique()},simplify = F)
     if(any(sapply(f_levels_chec,length)==1)){
         print(f_levels_chec)
-        stop('comparison ', row$comparison,': contrasts can be applied only to factors with 2 or more levels.')
+        warning('comparison ', row$comparison,': contrasts can be applied only to factors with 2 or more levels.')
+        next
     }
 
     # we check if design matrix if full rank
@@ -92,6 +94,7 @@ check_formulas <- function() {
       }
     }
   }
+  if(need_fix) stop('Please fix the problem and try again.')
 }
 
 check_samples <- function(){

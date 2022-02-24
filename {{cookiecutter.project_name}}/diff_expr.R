@@ -101,9 +101,10 @@ check_cell_type(results, fpkm_check_cutoff = 5, print_check_log = TRUE, print_fp
 # out stdout in rstudio; see:
 # http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html#forking-with-mclapply
 
-job_strings <- COMPARISON_TABLE %>% pull(comparison)
-comparisons_results <- parallelManager(job_strings,job_name='DESeq2',parallelParam='MulticoreParam',FUN='run_deseq',
-                                       results_tbl=results,fpkms=fpkms,species=SPECIES,qSVA=qSVA)
+
+comparisons_results <- COMPARISON_TABLE %>% pull(comparison) %>%
+                  parallelManager(job_name='DESeq2',parallelParam='MulticoreParam',FUN='run_deseq',
+                  results_tbl=results,fpkms=fpkms,species=SPECIES,qSVA=qSVA)
 
 if (exists(x = 'all_comparison_pvalue_distribution')) {
   rm(all_comparison_pvalue_distribution)
@@ -195,7 +196,7 @@ expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts = TRUE)
 GO_results <- COMPARISON_TABLE%>%
   pull(comparison) %>% expand.grid(c('all','up','down'),c("BP", "MF", "CC")) %>% 
   tidyr::unite(col='job_string',sep = ';') %>% pull(job_string) %>%
-  parallelManager(job_strings,parallelParam='SnowParam',FUN='run_topgo',
+  parallelManager(parallelParam='SnowParam',FUN='run_topgo',
                   result_tbl=results,
                   p.adj.cutoff=P.ADJ.CUTOFF,
                   expressed_genes=expressed_genes,
@@ -205,7 +206,7 @@ GO_results <- COMPARISON_TABLE%>%
 Reactome_results <- COMPARISON_TABLE%>%
   pull(comparison) %>% expand.grid(c('all','up','down')) %>% 
   tidyr::unite(col='job_string',sep = ';') %>% pull(job_string) %>%
-  parallelManager(job_strings,job_name='Reactome',parallelParam='SnowParam',FUN='run_reactome',
+  parallelManager(job_name='Reactome',parallelParam='SnowParam',FUN='run_reactome',
                   result_tbl=results,
                   p.adj.cutoff=P.ADJ.CUTOFF,
                   expressed_genes=expressed_genes,
@@ -231,7 +232,7 @@ GS_results <- COMPARISON_TABLE %>%
 
 ## plot gs heatmap
 GSheatmap <- GS_results %>% names %>%
-  parallelManager(job_strings,job_name='GSheatmap',parallelParam='MulticoreParam',FUN='plot_significant_set_heatmap',
+  parallelManager(job_name='GSheatmap',parallelParam='MulticoreParam',FUN='plot_significant_set_heatmap',
                   results_tbl=results,
                   gs_result=GS_results,
                   list_of_gene_set=list_of_gene_sets,

@@ -140,7 +140,7 @@ start_plot <- function(prefix,width=12, height=12, path=GRAPHS_DIR, num_plots=1)
   sf <- .adjust_pdf_size(num_plots)
 
   if (PLOT_TO_FILE) {
-    file.path(path,str_c(prefix, "_", SPECIES, ".pdf")) %>%
+    file.path(path, str_c(prefix, "_", SPECIES, ".pdf")) %>%
       pdf(width=width*sf['width'], height=height*sf['height'])
   }
 }
@@ -2103,6 +2103,11 @@ parallelManager<-function(job_strings,job_limit=999999,job_name='GO',
   
   message('logs can be found at ', log_dir)
   dir.create(log_dir,recursive = T,showWarnings = F)
+
+  if(length(job_strings) < nc){
+    message('the number of cores is set to ', nc, 'but there are less jobs than cores, thus reduce the number of cores to the number of jobs...')
+    nc = length(job_strings)
+  }
   
   if(parallel_enable){
     message('running bioparallel in PARALLEL with <', parallelParam , '>.  number of cores: ', nc)
@@ -2110,22 +2115,27 @@ parallelManager<-function(job_strings,job_limit=999999,job_name='GO',
     para <- call(parallelParam,workers = nc,stop.on.error=stop.on.error,jobname = job_name,progressbar = T,
                  log=enable_log,threshold = "DEBUG",logdir = log_dir,tasks = length(job_strings)) %>% eval
     print(para)
-    
-    bpstart(para)
-    
+
+
     if(parallelParam=='SnowParam'){
+      message('init workers...')
+      bpstart(para)
       # we start the workers this way so we can reuse them to hopefully decrease some overhead of loading packages
       # need to load package, as in SOCK mode, workers are independent
       # if we are reusing a worker, we dont need to repeat the package load
-      loadpackage<-tryCatch({
-        bplapply(rep('load_packages.R',length(job_strings)),source,BPPARAM = para) %>% set_names(job_strings)},
-        error = function(e){ bpstop(para);e})
-      check_bpresult(attr(loadpackage,'result'),job_name='load package in worker node')
-      
-      loadfunctions<-tryCatch({
-        bplapply(rep('common_functions.R',length(job_strings)),source,BPPARAM = para) %>% set_names(job_strings)},
-        error = function(e){ bpstop(para);e})
-      check_bpresult(attr(loadfunctions,'result'),job_name='load common_function.R in worker node')
+      prepare_worker<-function(...){
+        source('load_packages.R')
+        source('common_functions.R')
+        'success'
+      }
+      message('preloading packages and sourcing required functions in workers...')
+      loadpackage<-tryCatch({bplapply(c(1:nc),prepare_worker,BPPARAM = para)},
+          error = function(e){ bpstop(para);e})
+      check_bpresult(attr(loadpackage,'result'),job_name='load package/source common_function in worker node')
+    }
+
+    if(parallelParam=='MulticoreParam'){
+      message('no need to prepare workers for MulticoreParam...')
     }
     
   }else{
@@ -2133,7 +2143,8 @@ parallelManager<-function(job_strings,job_limit=999999,job_name='GO',
     para=SerialParam(stop.on.error=stop.on.error,log=enable_log,threshold = "DEBUG",progressbar = T,logdir = log_dir)
     print(para)
   }
-  
+
+  message('running jobs in workers....')
   tictoc::tic(paste0(job_name,' run time:'))
   ret <-  tryCatch(
     {
@@ -2299,7 +2310,7 @@ run_gs <- function(job_string,result_tbl,dds_list,list_of_gene_sets,gene_info,sp
   
   comparison_name=strsplit(job_string,split = ';') %>%unlist()%>%extract(1)
   category=strsplit(job_string,split = ';') %>%unlist()%>%extract(2)
-  dds <- dds_list[[comparison_name]]
+  dds <- dds_list[[str_c(comparison_name,'dds',sep = '_')]]
   
   camera_results <- list_of_gene_sets[category] %>%
     map(function(category_gene_sets) {
@@ -2323,8 +2334,8 @@ plot_significant_set_heatmap <- function(job_string,gs_result,list_of_gene_set,r
   
   futile.logger::flog.info(paste0('running heatmap for:',job_string))
   
-  comparison_name=strsplit(job_string,split = '.',fixed = T) %>%unlist()%>%extract(1)
-  gs_category =strsplit(job_string,split = '.',fixed = T) %>%unlist()%>%extract(2)
+  comparison_name=strsplit(job_string,split = ';',fixed = T) %>%unlist()%>%extract(1)
+  gs_category =strsplit(job_string,split = ';',fixed = T) %>%unlist()%>%extract(2)
   
   significant_gs <- gs_result[[job_string]] %>% filter(FDR < 0.05) %>% rownames()
   significant_gs_entrezs <- list_of_gene_set[[gs_category]][significant_gs]

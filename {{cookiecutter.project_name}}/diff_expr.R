@@ -224,7 +224,7 @@ GS_results <- COMPARISON_TABLE %>%
   tidyr::unite(col='job_string',sep = ';') %>% pull(job_string) %>%
   parallelManager(job_name='GS',parallelParam='SnowParam',FUN='run_gs',
                   result_tbl=results,
-                  dds_list=dds_list,
+                  dds_list=str_c(COMPARISON_TABLE%>% pull(comparison),'dds',sep = '_') %>% set_names(.) %>% lapply(get_global),
                   list_of_gene_sets=list_of_gene_sets,
                   gene_info=gene_info,
                   species=SPECIES,

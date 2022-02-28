@@ -22,8 +22,6 @@ library(knitr)
 library(patchwork)
 library(conflicted)
 library(pheatmap)
-library(Rsamtools)
-library(GenomicAlignments)
 
 conflict_prefer("desc", "dplyr")
 conflict_prefer("setdiff", "dplyr")

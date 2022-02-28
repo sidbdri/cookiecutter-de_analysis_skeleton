@@ -2049,6 +2049,9 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
 # >setwd('/srv/data/results/nrf2_ich_jamie_loan/aaaaaaaaarggggghhhhh-959851d2469757607aa3e1f8b0ec1e1cc533cf42/20210805')
 # >check_sample_bam(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='mouse',chr='2',start=75505857,end=75505957) %>% plot
 check_sample_bam <- function(samples=c('14_KO_Ma_ICH','14_KO_Mg_ICH'),species='mouse',chr='2',start=75505857,end=75510000,bin_width=1){
+    library(Rsamtools)
+    library(GenomicAlignments)
+
     bamRanges=GRanges(chr, IRanges(start,end))
 
     bamFiles <- file.path('results/final_bams/',str_c(samples,species,'bam',sep='.'))

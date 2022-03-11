@@ -1,9 +1,4 @@
-source("load_packages.R")
-source("common_functions.R")
-
-SPECIES <- "unknown_species"
-P.ADJ.CUTOFF <- 0.05
-NUM_CORES <- 30
+source("meta_data_functions.R")
 
 #### Sample definition ####
 

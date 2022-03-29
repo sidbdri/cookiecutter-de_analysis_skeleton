@@ -1,32 +1,21 @@
 source("load_packages.R")
+source("meta_data_mouse.R")
 
 library("WGCNA")
 library("sva")
 
 #### Hard coding for specific experiments
 
+# code your trait of interest as an integer
+SAMPLE_DATA %<>% mutate(
+  condition1_int = as.integer(sample_type == "Input"),
+  condition2_int = as.integer(sample_type == "IP"))
 
-SAMPLE_NAMES <- c("C57", "Ola") %>%
-  outer(c("P31", "P76"), str_c, sep="_") %>% 
-  as.vector() %>%
-  outer(c("1", "2", "3"), str_c, sep="_") %>%
-  t %>%
-  as.vector
+genes_tsv <- str_c("data/", "mouse", "_ensembl_104/genes.tsv") # Can vary with species and Ensembl versions
 
-SAMPLE_DATA <- data.frame(
-  sample_name=SAMPLE_NAMES,
-  condition1=rep(c('C57', 'Ola', 'C57', 'Ola'), each = 3),
-  condition2=rep(c('P31', 'P76'), each = 6),
-  row.names=SAMPLE_NAMES
-)
-
-SAMPLE_DATA %<>% mutate( 
-  condition1_int = as.integer(condition1 == "Ola"),
-  condition2_int = as.integer(condition2 == "P76"))
-
-genes_tsv <- str_c("data/", "mouse", "_ensembl_91/genes.tsv") # Can vary with species and Ensembl versions
-
-##### FUNCTIONS
+########################################
+#              FUNCTIONS               #
+########################################
 
 RESULTS_DIR <- "results/wgcna/"
 
@@ -86,7 +75,7 @@ plot_soft_threshold_graphs <- function(expression_data) {
 }
 
 perform_wgcna <- function(expression_data, power=16) {
-  MAX_BLOCK_SIZE <- 46340 - 1 # Limit set by WGCNA - sqrt(2^31)
+  MAX_BLOCK_SIZE <- 20000
   
   net = expression_data %>% t %>% 
     blockwiseModules(power = power, networkType = "signed", 
@@ -345,7 +334,7 @@ mod_numbers <- module_eigengenes %>% names %>% substring(3)
 
 output <- NULL
 
-for (module in seq(0, module_eigengenes %>% colnames %>% length - 1)) {
+for (module in seq(1, module_eigengenes %>% colnames %>% length)) {
   genes_in_module <- modules_to_genes==module
   module_column <- str_c("MM", module)
   
@@ -386,7 +375,7 @@ output %<>%
 # (ii)  Plot of per-condition eigengene values 
 # (iii) Perform GO analyses for genes in module
 
-for (module in seq(0, module_eigengenes %>% colnames %>% length - 1)) {
+for (module in seq(1, module_eigengenes %>% colnames %>% length)) {
     plot_gene_module_variable_correlations(
     module, modules_to_genes, module_eigengenes,
     gene_eigengene_correlations, gene_condition1_correlations,

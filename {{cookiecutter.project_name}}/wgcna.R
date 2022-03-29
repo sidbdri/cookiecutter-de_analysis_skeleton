@@ -334,7 +334,7 @@ mod_numbers <- module_eigengenes %>% names %>% substring(3)
 
 output <- NULL
 
-for (module in seq(1, module_eigengenes %>% colnames %>% length)) {
+for (module in seq(0, module_eigengenes %>% colnames %>% length - 1)) {
   genes_in_module <- modules_to_genes==module
   module_column <- str_c("MM", module)
   
@@ -375,7 +375,7 @@ output %<>%
 # (ii)  Plot of per-condition eigengene values 
 # (iii) Perform GO analyses for genes in module
 
-for (module in seq(1, module_eigengenes %>% colnames %>% length)) {
+for (module in seq(0, module_eigengenes %>% colnames %>% length - 1)) {
     plot_gene_module_variable_correlations(
     module, modules_to_genes, module_eigengenes,
     gene_eigengene_correlations, gene_condition1_correlations,

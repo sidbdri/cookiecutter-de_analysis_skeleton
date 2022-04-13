@@ -20,7 +20,7 @@ genes_tsv <- str_c("data/", "mouse", "_ensembl_104/genes.tsv") # Can vary with s
 RESULTS_DIR <- "results/wgcna/"
 
 read_counts <- function(sample) {
-  counts_file_name <- str_c("results/read_counts/", sample, ".counts")
+  counts_file_name <- paste(paste("results/read_counts/read_counts/", sample, sep=""), SPECIES, "counts", sep=".")
   counts_file_name %>% read_tsv(col_names=c("gene", str_c(sample)))
 }
 

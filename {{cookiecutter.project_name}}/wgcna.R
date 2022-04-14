@@ -271,6 +271,8 @@ perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix)
 
 #####
 
+SAMPLE_NAMES<-rownames(SAMPLE_DATA)
+
 get_dds <- function() {
   count_data <- SAMPLE_NAMES %>%
     map(read_counts) %>%

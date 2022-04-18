@@ -38,6 +38,7 @@ conflict_prefer("parSapply", "parallel")
 conflict_prefer("extract", "magrittr")
 conflict_prefer("strsplit", "base")
 conflict_prefer("cor", "WGCNA")
+conflict_prefer("rename", "dplyr")
 
 sessionInfo()
 

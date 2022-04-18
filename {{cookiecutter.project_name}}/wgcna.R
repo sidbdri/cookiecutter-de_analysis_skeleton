@@ -203,7 +203,7 @@ plot_module_eigengene_values <- function(module, module_eigengenes, write_to_fil
         width=800, height=800)
   }
   
-  p <- ggplot(data=plot_info, aes_string(x="condition1", y=str_c("ME", module))) + 
+  p <- ggplot(data=plot_info, aes_string(x="condition1_int", y=str_c("ME", module))) +
     geom_point()
   print(p)
   

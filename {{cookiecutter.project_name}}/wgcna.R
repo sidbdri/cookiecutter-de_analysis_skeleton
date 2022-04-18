@@ -11,7 +11,7 @@ SAMPLE_DATA %<>% mutate(
   condition1_int = as.integer(sample_type == "Input"),
   condition2_int = as.integer(sample_type == "IP"))
 
-genes_tsv <- str_c("data/", "mouse", "_ensembl_104/genes.tsv") # Can vary with species and Ensembl versions
+genes_tsv <- str_c("data/", SPECIES, "_ensembl_{{cookiecutter.ensembl_version}}/genes.tsv") # Can vary with species and Ensembl versions
 
 ########################################
 #              FUNCTIONS               #

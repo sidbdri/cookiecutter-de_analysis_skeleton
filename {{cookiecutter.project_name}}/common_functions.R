@@ -1251,7 +1251,7 @@ perform_pathway_enrichment <- function(significant_genes, expressed_genes,
 #### Gene set enrichment analysis ####
 
 get_gene_sets <- function(species, gene_set_name) {
-    str_c("data/",species,"_ensembl_{{cookiecutter.ensembl_version}}/msigdb/v7.0/", gene_set_name, ".all.v7.0.entrez.gmt.Rdata") %>% readRDS
+    str_c("data/",species,"_ensembl_{{cookiecutter.ensembl_version}}/msigdb/v{{cookiecutter.msigdb_version}}/", gene_set_name, ".all.v7.0.entrez.gmt.Rdata") %>% readRDS
 }
 
 get_camera_results <- function(dds, gene_sets, gene_info) {

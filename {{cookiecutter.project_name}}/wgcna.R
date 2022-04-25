@@ -1,37 +1,26 @@
 source("load_packages.R")
+source("meta_data_mouse.R")
 
 library("WGCNA")
 library("sva")
 
 #### Hard coding for specific experiments
 
+# code your trait of interest as an integer
+SAMPLE_DATA %<>% mutate(
+  condition1_int = as.integer(sample_type == "Input"),
+  condition2_int = as.integer(sample_type == "IP"))
 
-SAMPLE_NAMES <- c("C57", "Ola") %>%
-  outer(c("P31", "P76"), str_c, sep="_") %>% 
-  as.vector() %>%
-  outer(c("1", "2", "3"), str_c, sep="_") %>%
-  t %>%
-  as.vector
+genes_tsv <- str_c("data/", SPECIES, "_ensembl_{{cookiecutter.ensembl_version}}/genes.tsv") # Can vary with species and Ensembl versions
 
-SAMPLE_DATA <- data.frame(
-  sample_name=SAMPLE_NAMES,
-  condition1=rep(c('C57', 'Ola', 'C57', 'Ola'), each = 3),
-  condition2=rep(c('P31', 'P76'), each = 6),
-  row.names=SAMPLE_NAMES
-)
-
-SAMPLE_DATA %<>% mutate( 
-  condition1_int = as.integer(condition1 == "Ola"),
-  condition2_int = as.integer(condition2 == "P76"))
-
-genes_tsv <- str_c("data/", "mouse", "_ensembl_91/genes.tsv") # Can vary with species and Ensembl versions
-
-##### FUNCTIONS
+########################################
+#              FUNCTIONS               #
+########################################
 
 RESULTS_DIR <- "results/wgcna/"
 
 read_counts <- function(sample) {
-  counts_file_name <- str_c("results/read_counts/", sample, ".counts")
+  counts_file_name <- paste(paste("results/read_counts/", sample, sep=""), SPECIES, "counts", sep=".")
   counts_file_name %>% read_tsv(col_names=c("gene", str_c(sample)))
 }
 
@@ -86,7 +75,7 @@ plot_soft_threshold_graphs <- function(expression_data) {
 }
 
 perform_wgcna <- function(expression_data, power=16) {
-  MAX_BLOCK_SIZE <- 46340 - 1 # Limit set by WGCNA - sqrt(2^31)
+  MAX_BLOCK_SIZE <- 20000
   
   net = expression_data %>% t %>% 
     blockwiseModules(power = power, networkType = "signed", 
@@ -214,7 +203,7 @@ plot_module_eigengene_values <- function(module, module_eigengenes, write_to_fil
         width=800, height=800)
   }
   
-  p <- ggplot(data=plot_info, aes_string(x="condition1", y=str_c("ME", module))) + 
+  p <- ggplot(data=plot_info, aes_string(x="condition1_int", y=str_c("ME", module))) +
     geom_point()
   print(p)
   
@@ -281,6 +270,8 @@ perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix)
 }
 
 #####
+
+SAMPLE_NAMES<-rownames(SAMPLE_DATA)
 
 get_dds <- function() {
   count_data <- SAMPLE_NAMES %>%

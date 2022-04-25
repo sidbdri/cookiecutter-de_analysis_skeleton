@@ -25,7 +25,7 @@ remove_gene_column <- function(count_data) {
 
 get_gene_info <- function(species) {
   species %>%
-    str_c("data/", ., "_ensembl_105/genes.tsv") %>% 
+    str_c("data/", ., "_ensembl_{{cookiecutter.ensembl_version}}/genes.tsv") %>%
     read_tsv(col_names = c("gene", "description", "chromosome", "gene_name", "entrez_id", "gene_type"),
              col_types = list(chromosome = col_character())) %>% 
     group_by(gene) %>% 
@@ -35,7 +35,7 @@ get_gene_info <- function(species) {
 
 get_gene_lengths <- function(species) {
   species %>% 
-    str_c("data/", ., "_ensembl_105/gene_lengths.csv") %>% 
+    str_c("data/", ., "_ensembl_{{cookiecutter.ensembl_version}}/gene_lengths.csv") %>%
     read_csv
 }
 

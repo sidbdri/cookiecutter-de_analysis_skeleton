@@ -425,7 +425,7 @@ read_de_results <- function(filename, num_samples, num_conditions, num_compariso
 #### Transcript-level D. E. analyses ####
 
 get_transcripts_to_genes <- function(species = 'human') {
-  str_c("data/", species , "_ensembl_105/tx2gene.tsv") %>%
+  str_c("data/", species , "_ensembl_{{cookiecutter.ensembl_version}}/tx2gene.tsv") %>%
     read_delim(delim = " ", col_names = c("transcript", "gene"))
 }
 

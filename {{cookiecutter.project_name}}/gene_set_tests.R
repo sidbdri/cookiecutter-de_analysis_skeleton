@@ -1,5 +1,5 @@
 get_gene_sets <- function(species, gene_set_name) {
-  str_c("data/",species,"_ensembl_105/msigdb/v7.0/", gene_set_name, ".all.v7.0.entrez.gmt.Rdata") %>% readRDS
+  str_c("data/",species,"_ensembl_{{cookiecutter.ensembl_version}}/msigdb/v{{cookiecutter.msigdb_version}}/", gene_set_name, ".all.v{{cookiecutter.msigdb_version}}.entrez.gmt.Rdata") %>% readRDS
 }
 
 get_run_gene_set_analysis_job_strings <- function(comparison_table, gene_set_categories) {

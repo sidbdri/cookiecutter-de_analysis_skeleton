@@ -1,4 +1,4 @@
-NUM_CORES <- 30
+NUM_CORES <- {{cookiecutter.number_total_threads}}
 
 set_num_cores <- function(cores) {
   set_global(cores, "NUM_CORES")
@@ -22,6 +22,7 @@ run_jobs <- function(job_strings,
                      job_function='run_topgo',
                      job_source = NULL,
                      parallelParam=c('SnowParam','MulticoreParam')[1],
+                     nc=NUM_CORES, # might be better to pass the NUM_CORES
                      ...) {
 
   message(length(job_strings),' jobs received for ', job_function)
@@ -31,7 +32,7 @@ run_jobs <- function(job_strings,
   message('logs can be found at ', log_dir)
   dir.create(log_dir, recursive = T, showWarnings = F)
   
-  nc <- NUM_CORES
+  # nc <- NUM_CORES
   if (length(job_strings) < nc) {
     message('the number of cores is set to ', nc, ', but there are fewer jobs than cores; reduce the number of cores...')
     nc = length(job_strings)

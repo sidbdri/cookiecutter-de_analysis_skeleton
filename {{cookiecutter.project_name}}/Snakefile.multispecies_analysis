@@ -44,7 +44,8 @@ rule sambamba_sort:
 rule bams:
     input:
         sargasso_bams = expand("results/sargasso/filtered_reads/{sample}___{species}___filtered.bam", sample=SAMPLES, species=SPECIES),
-        indexed_bams = expand("results/final_bams/{sample}.{species}.bam", sample=SAMPLES, species=SPECIES)
+        indexed_bams = expand("results/final_bams/{sample}.{species}.bam", sample=SAMPLES, species=SPECIES),
+        salmon_quant = expand("results/salmon_quant/{species}/{sample}/quant.sf", sample=SAMPLES, species=SPECIES)
 
 rule multiqc:
     input:
@@ -60,3 +61,44 @@ rule multiqc:
         multiqc --interactive -d -f -m featureCounts -m {{ "star" if cookiecutter.data_type=="rnaseq" else "bowtie" }} -m fastqc -m salmon -m kallisto -m sargasso -m picard {params.input_dir}
         """
 
+rule bam2fastq:
+    input:
+        per_species_bam = "results/final_bams/{sample}.{species}.bam"
+    output:
+        fq_1 = "results/bam2fastq/{species}/{sample}.{species}_1.fastq.gz",
+        fq_2 = "results/bam2fastq/{species}/{sample}.{species}_2.fastq.gz"
+    params:
+        picard=PICARD_EXECUTABLE,
+        fastq_dir="results/bam2fastq/{species}"
+    log:
+        "results/logs/bam2fastq/{species}.{sample}.log"
+    threads: 1
+    shell:
+        """
+        java -jar {params.picard} SamToFastq -I {input.per_species_bam} -F {params.fastq_dir}/{wildcards.sample}.{wildcards.species}_1.fastq -F2 {params.fastq_dir}/{wildcards.sample}.{wildcards.species}_2.fastq
+        (cd {params.fastq_dir} && gzip {wildcards.sample}.{wildcards.species}_1.fastq)
+        (cd {params.fastq_dir} && gzip {wildcards.sample}.{wildcards.species}_2.fastq)
+        """
+
+rule salmon:
+    input:
+        fq_1 = "results/bam2fastq/{species}/{sample}.{species}_1.fastq.gz",
+        fq_2 = "results/bam2fastq/{species}/{sample}.{species}_2.fastq.gz"
+    output:
+        quant_file_tx="results/salmon_quant/{species}/{sample}/quant.sf",
+        quant_file_gene="results/salmon_quant/{species}/{sample}/quant.genes.sf"
+    params:
+        index = lambda wildcards: SALMON_INDEX[wildcards.species],
+        salmon = SALMON_EXECUTABLE,
+        gtf = lambda wildcards: gtf_dict[wildcards.species],
+        output_dir = "results/salmon_quant/{species}/{sample}",
+        read1_suffix=READ1_SUFFIX,
+        read2_suffix=READ2_SUFFIX
+    log: "results/logs/salmon/{species}.{sample}.log"
+    threads: NUM_THREADS_PER_SAMPLE
+    shell:
+        """
+        {params.salmon} quant -i {params.index} -l A --validateMappings -1 {input.fq_1} -2 {input.fq_2} \
+            -o {params.output_dir} --seqBias --gcBias -p {threads} \
+            -g {params.gtf}  > {log} 2>&1
+        """

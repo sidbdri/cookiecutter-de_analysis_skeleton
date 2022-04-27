@@ -14,6 +14,9 @@ BOWTIE2_EXECUTABLE="bowtie2-{{cookiecutter.bowtie2_version}}"
 FASTQC_EXECUTABLE="fastqc{{cookiecutter.fastqc_version}}"
 FEATURECOUNTS_EXECUTABLE="featureCounts{{cookiecutter.featurecounts_version}}"
 PICARD_EXECUTABLE="/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar"
+SALMON_EXECUTABLE="salmon{{cookiecutter.salmon_version}}"
+KALLISTO_EXECUTABLE="kallisto{{cookiecutter.kallisto_version}}"
+
 {% if cookiecutter.paired_end_read == "yes" %}
 FEATURECOUNTS_PAIRD_END_FLAG = '-p --countReadPairs'
 {% else %}
@@ -24,6 +27,7 @@ SPECIES=[]
 ENSEMBL_DIR=[]
 MAPPER_INDEX=[]
 BOWTIE_INDEX=[]
+SALMON_INDEX={}
 GTF_FILE=[]
 REF_FLAT=[]
 
@@ -42,6 +46,7 @@ else:
     MAPPER_INDEX.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/BOWTIE2_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.bowtie2_version}}" % DATA_DIR)
 GTF_FILE.append("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/{{cookiecutter.gtf_files[s]}}" % DATA_DIR)
 REF_FLAT.append("%s/{{ s }}/{{cookiecutter.rff_files[s]}}" % PICARD_DIR)
+SALMON_INDEX["{{ s }}"]=("%s/{{ s }}_ensembl_{{cookiecutter.ensembl_version}}/SALMON_indices/{{cookiecutter.assembly_names[s]}}_{{cookiecutter.salmon_version}}" % DATA_DIR)
 {% endfor %}
 
 

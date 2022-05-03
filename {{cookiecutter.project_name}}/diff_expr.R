@@ -23,11 +23,13 @@ qSVA <- TRUE
 qSVA <- FALSE
 {% endif %}
 
-OUTPUT_DIR <- 'results/differential_expression/'
-dir.create(file.path(OUTPUT_DIR, "de_gene"), recursive = TRUE)
-
-GRAPHS_DIR <- 'results/differential_expression/graphs/'
+OUTPUT_DIR <- file.path('results','differential_expression')
+DE_OUT_DIR=file.path(OUTPUT_DIR, "de_tx")
+GRAPHS_DIR <- file.path(OUTPUT_DIR, "graphs")
+dir.create(DE_OUT_DIR, recursive = TRUE)
 dir.create(GRAPHS_DIR, recursive = TRUE)
+
+
 
 #### Differential gene expression ####
 
@@ -198,7 +200,7 @@ results %>%
     gene, gene_name, chromosome, description, entrez_id, gene_type,
     gene_length, max_transcript_length,
     everything(), -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(file.path(OUTPUT_DIR, "de_gene", str_c("deseq2_results_count_", SPECIES, ".csv")), na = "")
+  write_csv(file.path(DE_OUT_DIR, str_c("deseq2_results_count_", SPECIES, ".csv")), na = "")
 
 results %>%
   dplyr::select(
@@ -212,10 +214,10 @@ results %>%
       as.vector() %>%
       unique(),
     -dplyr::ends_with(".stat")) %>%
-  write_csv(file.path(OUTPUT_DIR, "de_gene", str_c("deseq2_results_fpkm_", SPECIES, ".csv")), na = "")
+  write_csv(file.path(DE_OUT_DIR, str_c("deseq2_results_fpkm_", SPECIES, ".csv")), na = "")
 
 SUMMARY_TB %>%
-  write_csv(file.path(OUTPUT_DIR, "de_gene", str_c("de_summary_", SPECIES, ".csv")), na = "")
+  write_csv(file.path(DE_OUT_DIR, str_c("de_summary_", SPECIES, ".csv")), na = "")
 
 #### GO enrichment analysis ####
 
@@ -285,7 +287,7 @@ if (!dir.exists(rws)) {
   dir.create(rws, recursive = TRUE)
 }
 
-save(list = ls() %>% grep(x = ., pattern='comparisons_results', value = T,invert = T),
+  save(list = ls() %>% grep(x = ., pattern='comparisons_results', value = T,invert = T),
      file = str_c(rws, "diff_expr_", SPECIES,".RData"))
 
 ## Load the save workspace to get all objects back for analysis

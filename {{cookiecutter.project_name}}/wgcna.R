@@ -1,77 +1,60 @@
 source("load_packages.R")
-source("meta_data_mouse.R")
+
+SPECIES <- "unknown_species"
+source(str_c('meta_data_', SPECIES, '.R'))
 
 library("WGCNA")
-library("sva")
 
 #### Hard coding for specific experiments
 
-# code your trait of interest as an integer
+# code your trait of interest as an integer, e.g.
 SAMPLE_DATA %<>% mutate(
-  condition1_int = as.integer(sample_type == "Input"),
-  condition2_int = as.integer(sample_type == "IP"))
-
-genes_tsv <- str_c("data/", SPECIES, "_ensembl_{{cookiecutter.ensembl_version}}/genes.tsv") # Can vary with species and Ensembl versions
+  condition1_int = as.integer(sex == "Female"),
+  condition2_int = as.integer(treatment == "Control"))
 
 ########################################
 #              FUNCTIONS               #
 ########################################
 
 RESULTS_DIR <- "results/wgcna/"
+dir.create(RESULTS_DIR, recursive = TRUE)
 
 read_counts <- function(sample) {
-  counts_file_name <- paste(paste("results/read_counts/", sample, sep=""), SPECIES, "counts", sep=".")
-  counts_file_name %>% read_tsv(col_names=c("gene", str_c(sample)))
+  counts_file_name <- paste(paste("results/read_counts/", sample, sep = ""), SPECIES, "counts", sep = ".")
+  counts_file_name %>% 
+    read_tsv(col_names = c("gene", str_c(sample)))
 }
 
-remove_gene_column <- function(count_data) {
-count_data %>% tibble::column_to_rownames(var="gene")
-}
-
-get_deseq2_dataset <- function(count_data, sample_data, filter_low_counts=TRUE, 
-                               design_formula=~condition1) {
+get_dds <- function() {
+  count_data <- SAMPLE_NAMES %>%
+    map(read_counts) %>%
+    purrr::reduce(inner_join) %>%
+    tibble::column_to_rownames(var="gene")
   
-  dds <- DESeqDataSetFromMatrix(countData=count_data, colData=sample_data, design=design_formula)
-  
-  if (filter_low_counts) {
-    dds <- dds[rowSums(counts(dds)) > 1, ]
-  }
-  
+  dds <- DESeqDataSetFromMatrix(countData = count_data, colData = SAMPLE_DATA, design = ~1)
+  dds <- dds[rowSums(counts(dds)) > 1, ]
   dds %>% DESeq
 }
 
-plot_heat_map <- function(expression_data, sample_data) {
-  distsRL <- expression_data %>% t %>% dist
-
-  mat <- distsRL %>% as.matrix()
-  rownames(mat) <- colnames(mat) <- sample_data %>% row.names
-
-  hc <- distsRL %>% hclust
-  hmcol <- colorRampPalette(brewer.pal(9, "GnBu"))(100)
-  heatmap.2(mat, Rowv=hc %>% as.dendrogram, 
-            symm=TRUE, trace="none",
-            col = hmcol %>% rev, margin=c(10, 10))
-}
-
 plot_soft_threshold_graphs <- function(expression_data) {
-  powers = c(c(1:10), seq(from = 12, to=30, by=2))
+  powers = c(c(1:10), seq(from = 12, to = 30, by = 2))
   
   sft <- expression_data %>% t %>% 
-    pickSoftThreshold(powerVector=powers, networkType="signed", blockSize=100000, verbose=5)
+    pickSoftThreshold(powerVector = powers, networkType = "signed", blockSize = 100000, verbose = 5)
   
   signed_r2 <- -sign(sft$fitIndices[,3])*sft$fitIndices[,2]
   mean_connectivity <- sft$fitIndices[,5]
   
   plot(powers, signed_r2,
-       xlab="Soft Threshold (power)",ylab="Scale Free Topology Model Fit,signed R^2",type="n",
+       xlab = "Soft Threshold (power)", ylab = "Scale Free Topology Model Fit,signed R^2", type = "n",
        main = paste("Scale independence"));
-  text(powers, signed_r2,labels=powers,col="red");
-  abline(h=0.90,col="red")
+  text(powers, signed_r2, labels = powers, col = "red")
+  abline(h = 0.90, col = "red")
   
   plot(powers, mean_connectivity,
-       xlab="Soft Threshold (power)",ylab="Mean Connectivity", type="n",
+       xlab = "Soft Threshold (power)", ylab = "Mean Connectivity", type = "n",
        main = paste("Mean connectivity"))
-  text(powers, mean_connectivity, labels=powers, col="red")  
+  text(powers, mean_connectivity, labels = powers, col = "red")  
 }
 
 perform_wgcna <- function(expression_data, power=16) {
@@ -100,7 +83,7 @@ get_experimental_variables <- function() {
 
 get_eigengene_variable_correlations <- function(module_eigengenes) {
   exp_vars <- get_experimental_variables()
-  eigengene_exp_vars_correlation <- module_eigengenes %>% WGCNA::cor(exp_vars, use='p')
+  eigengene_exp_vars_correlation <- module_eigengenes %>% WGCNA::cor(exp_vars, use = 'p')
   correlation_p_vals <- eigengene_exp_vars_correlation %>% corPvalueStudent(SAMPLE_DATA %>% nrow)
   
   list(eigengene_exp_vars_correlation, correlation_p_vals)
@@ -117,8 +100,8 @@ display_eigengene_variable_correlations <- function(
   dim(textMatrix) <- dim(eigengene_exp_vars_correlation)
   
   if (write_to_file) {
-    png(filename=str_c(RESULTS_DIR, "eigengene_correlation.png"),
-        width=800, height=800)
+    png(filename = str_c(RESULTS_DIR, "eigengene_correlation.png"),
+        width = 800, height = 800)
   }
   
   labeledHeatmap(Matrix = eigengene_exp_vars_correlation,
@@ -146,8 +129,8 @@ get_gene_eigengene_correlations <- function(expression_data, module_eigengenes) 
   correlation_p_vals %<>% as.data.frame
   
   modNames <- module_eigengenes %>% names %>% substring(3)
-  names(gene_eigengene_correlations) <- "MM" %>% paste(modNames, sep="")
-  names(correlation_p_vals) <- "p.MM" %>% paste(modNames, sep="")
+  names(gene_eigengene_correlations) <- "MM" %>% paste(modNames, sep = "")
+  names(correlation_p_vals) <- "p.MM" %>% paste(modNames, sep = "")
   
   list(gene_eigengene_correlations, correlation_p_vals)
 }
@@ -162,8 +145,8 @@ get_gene_variable_correlations <- function(expression_data, variable, var_name) 
   correlations %<>% as.data.frame 
   correlation_p_vals %<>% as.data.frame
   
-  names(correlations) <- paste("GC.", variable %>% names, sep="")
-  names(correlation_p_vals) <- paste("p.GC.", variable %>% names, sep="")
+  names(correlations) <- paste("GC.", variable %>% names, sep = "")
+  names(correlation_p_vals) <- paste("p.GC.", variable %>% names, sep = "")
   
   list(correlations, correlation_p_vals)
 }
@@ -176,11 +159,11 @@ plot_gene_module_variable_correlations <- function(
   mod_names <- module_eigengenes %>% names %>% substring(3)
   
   module_column <- module %>% match(mod_names)
-  genes_in_module <- modules_to_genes==module
+  genes_in_module <- modules_to_genes == module
   
   if (write_to_file) {
-    png(filename=str_c(RESULTS_DIR, "M", module, "_", var_name, "_correlation.png"),
-        width=800, height=800)
+    png(filename = str_c(RESULTS_DIR, "M", module, "_", var_name, "_correlation.png"),
+        width = 800, height = 800)
   }
   
   verboseScatterplot(gene_eigengene_correlations[genes_in_module, module_column],
@@ -195,16 +178,38 @@ plot_gene_module_variable_correlations <- function(
   }
 }
 
-plot_module_eigengene_values <- function(module, module_eigengenes, write_to_file=FALSE) {
+plot_module_eigengene_values <- function(module, module_eigengenes, var_name, write_to_file=FALSE) {
   plot_info <- module_eigengenes %>% cbind(SAMPLE_DATA %>% tibble::rownames_to_column(var="name"))
   
   if (write_to_file) {
-    png(filename=str_c(RESULTS_DIR, "M", module, "_eigengene_values.png"),
-        width=800, height=800)
+    png(filename = str_c(RESULTS_DIR, "M", module, "_", var_name, "_eigengene_values.png"),
+        width = 800, height = 800)
   }
   
-  p <- ggplot(data=plot_info, aes_string(x="condition1_int", y=str_c("ME", module))) +
-    geom_point()
+  p <- ggplot(data = plot_info, aes_string(x = str_c(var_name, "_int"), y = str_c("ME", module))) +
+    geom_point() +
+    theme_classic()
+  
+  print(p)
+  
+  if (write_to_file) {
+    dev.off() 
+  }
+}
+
+plot_module_eigengene_values_per_sample <- function(module, module_eigengenes, write_to_file=FALSE) {
+  plot_info <- module_eigengenes %>% cbind(SAMPLE_DATA %>% tibble::rownames_to_column(var="name"))
+  
+  if (write_to_file) {
+    png(filename = str_c(RESULTS_DIR, "M", module, "_eigengene_per_sample.png"),
+        width = 800, height = 800)
+  }
+  
+  p <- ggplot(data=plot_info, aes_string(x = "sample_name", y = str_c("ME", module))) +
+    geom_point() +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = -90, hjust = 0))
+  
   print(p)
   
   if (write_to_file) {
@@ -217,17 +222,21 @@ get_genes_for_module <- function(module, modules_to_genes, gene_eigengene_correl
   
   gene_eigengene_correlations %>% 
     as.data.frame %>% 
-    tibble::rownames_to_column(var="gene") %>% 
+    tibble::rownames_to_column(var = "gene") %>% 
+    extract(modules_to_genes == module,) %>%
     inner_join(gene_info) %>%
     dplyr::select_("gene", "gene_name", "description", "chromosome", column) %>%
-    extract(genes_in_module <- modules_to_genes==module,) %>%
     arrange_(paste0("desc(", column, ")"))
 }
 
-get_gene_info <- function(species = 'mouse') {
-  read_tsv(genes_tsv,
-    col_names = c("gene", "description", "chromosome", "gene_name", "entrez_id"),
-    col_types = list(chromosome = col_character()))
+get_gene_info <- function(species) {
+  species %>%
+    str_c("data/", ., "_ensembl_106/genes.tsv") %>% 
+    read_tsv(col_names = c("gene", "description", "chromosome", "gene_name", "entrez_id", "gene_type"),
+             col_types = list(chromosome = col_character())) %>% 
+    group_by(gene) %>% 
+    filter(row_number() == 1) %>% 
+    ungroup
 }
 
 get_significant_genes <- function(term, GOdata, gene_info) {
@@ -239,23 +248,28 @@ get_significant_genes <- function(term, GOdata, gene_info) {
     filter(gene %in% significant_genes_for_term) %>% 
     dplyr::select(gene_name) %>% 
     extract2(1) %>% 
-    paste(collapse=", ")
+    paste(collapse = ", ")
 }
 
 perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP") {
   gene_list <- (gene_universe$gene %in% significant_genes$gene) %>% as.integer %>% factor
   names(gene_list) <- gene_universe$gene
   
-  go_data <- new("topGOdata", ontology=ontology, allGenes=gene_list,
-                 annot=annFUN.org, mapping="org.Mm.eg.db", ID="Ensembl")
+  mapping <- switch(SPECIES,
+                    mouse = "org.Mm.eg.db",
+                    rat = "org.Rn.eg.db",
+                    human = "org.Hs.eg.db")
   
-  result_fisher <- go_data %>% runTest(algorithm="weight01", statistic="fisher")
+  go_data <- new("topGOdata", ontology = ontology, allGenes = gene_list,
+                 annot = annFUN.org, mapping = mapping, ID = "Ensembl")
+  
+  result_fisher <- go_data %>% runTest(algorithm = "weight01", statistic = "fisher")
   result_fisher %>% print
   
-  go_results <- go_data %>% GenTable(weight_fisher=result_fisher, orderBy="weight_fisher", topNodes=150)
+  go_results <- go_data %>% GenTable(weight_fisher = result_fisher, orderBy = "weight_fisher", topNodes = 150)
   
   go_results$Genes <- sapply(go_results[,c('GO.ID')], 
-                             function(x) get_significant_genes(x, go_data, get_gene_info("mouse")))
+                             function(x) get_significant_genes(x, go_data, get_gene_info(SPECIES)))
   
   go_results
 }
@@ -271,25 +285,13 @@ perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix)
 
 #####
 
-SAMPLE_NAMES<-rownames(SAMPLE_DATA)
-
-get_dds <- function() {
-  count_data <- SAMPLE_NAMES %>%
-    map(read_counts) %>%
-    purrr::reduce(inner_join) %>%
-    remove_gene_column()
-  
-  get_deseq2_dataset(
-    count_data, SAMPLE_DATA, design_formula=~1)
-}
-
-#####
+SAMPLE_NAMES <- rownames(SAMPLE_DATA)
 
 # Use DESeq2 to calculate normalised counts
 dds <- get_dds()
 
 # Set a threshold to exclude lowly expressed genes
-expressed_genes <- rowSums(counts(dds, norm=T)) > 100
+expressed_genes <- rowSums(counts(dds, norm = T)) > 100
 
 # Perform variance stabilizing transformation on counts, so that they can be input to WGCNA
 vst <- dds %>% varianceStabilizingTransformation
@@ -305,8 +307,6 @@ wgcna_network <- gene_expression %>% perform_wgcna(power = 20)
 modules_to_genes <- wgcna_network[[1]]
 module_eigengenes <- wgcna_network[[2]]
 
-
-
 # Calculate correlations between module eigengenes and experimental variables
 eigengene_variable_correlation_data <- get_eigengene_variable_correlations(module_eigengenes)
 eigengene_variable_correlations <- eigengene_variable_correlation_data[[1]]
@@ -314,13 +314,13 @@ eigengene_variable_correlation_p_vals <- eigengene_variable_correlation_data[[2]
 
 display_eigengene_variable_correlations(
   eigengene_variable_correlations, eigengene_variable_correlation_p_vals,
-  write_to_file=F)
+  write_to_file = F)
 
 # Calculate correlations between gene expression and module eigengenes
 gene_eigengene_correlation_data <- get_gene_eigengene_correlations(
   gene_expression, module_eigengenes)
 
-gene_eigengene_correlations <-gene_eigengene_correlation_data[[1]]
+gene_eigengene_correlations <- gene_eigengene_correlation_data[[1]]
 
 # Calculate correlations between gene expression and experimental variables
 gene_condition1_correlation_data <- gene_expression %>% 
@@ -337,7 +337,7 @@ mod_numbers <- module_eigengenes %>% names %>% substring(3)
 output <- NULL
 
 for (module in seq(0, module_eigengenes %>% colnames %>% length - 1)) {
-  genes_in_module <- modules_to_genes==module
+  genes_in_module <- modules_to_genes == module
   module_column <- str_c("MM", module)
   
   gecs_for_module <- gene_eigengene_correlations[genes_in_module, ] %>%
@@ -351,21 +351,21 @@ for (module in seq(0, module_eigengenes %>% colnames %>% length - 1)) {
   }
 }
 
-output %<>% tibble::rownames_to_column(var="gene") %>%
+output %<>% tibble::rownames_to_column(var = "gene") %>%
   inner_join(gene_expression %>% 
                as.data.frame %>% 
-               tibble::rownames_to_column(var="gene") %>%
+               tibble::rownames_to_column(var = "gene") %>%
                cbind(modules_to_genes) %>% 
-               mutate(module=str_c(modules_to_genes)) %>% 
+               mutate(module = str_c(modules_to_genes)) %>% 
                dplyr::select(gene, module))
 
 output %<>% 
-  inner_join(gene_condition1_correlations %>% tibble::rownames_to_column(var="gene")) %>% 
-  inner_join(gene_condition2_correlations %>% tibble::rownames_to_column(var="gene")) %>% 
-  rename(condition1_cor=GC.condition1, condition2_cor=GC.condition2)
+  inner_join(gene_condition1_correlations %>% tibble::rownames_to_column(var = "gene")) %>% 
+  inner_join(gene_condition2_correlations %>% tibble::rownames_to_column(var = "gene")) %>% 
+  rename(condition1_cor = GC.condition1, condition2_cor = GC.condition2)
 
-mouse_gene_info <- get_gene_info(species = "mouse")
-output %<>% inner_join(mouse_gene_info) 
+gene_info <- get_gene_info(SPECIES)
+output %<>% inner_join(gene_info) 
 
 output %<>% 
   dplyr::select(gene, gene_name, description, chromosome, module, 
@@ -377,19 +377,26 @@ output %<>%
 # (ii)  Plot of per-condition eigengene values 
 # (iii) Perform GO analyses for genes in module
 
+gene_universe <- expressed_genes %>% as.data.frame %>% tibble::rownames_to_column(var="gene")
+colnames(gene_universe) <- c("gene", "expressed")
+gene_universe %<>% filter(expressed == TRUE)
+
 for (module in seq(0, module_eigengenes %>% colnames %>% length - 1)) {
-    plot_gene_module_variable_correlations(
+  plot_gene_module_variable_correlations(
     module, modules_to_genes, module_eigengenes,
     gene_eigengene_correlations, gene_condition1_correlations,
-    "condition1", write_to_file=TRUE) 
-  
-    plot_gene_module_variable_correlations(
+    "condition1", write_to_file = TRUE)
+
+  plot_gene_module_variable_correlations(
     module, modules_to_genes, module_eigengenes,
     gene_eigengene_correlations, gene_condition2_correlations,
-    "condition2", write_to_file=TRUE) 
+    "condition2", write_to_file = TRUE)
+
+  plot_module_eigengene_values(module, module_eigengenes, "condition1", write_to_file = TRUE)
+  plot_module_eigengene_values(module, module_eigengenes, "condition2", write_to_file = TRUE)
   
-  plot_module_eigengene_values(module, module_eigengenes, write_to_file=TRUE)
+  plot_module_eigengene_values_per_sample(module, module_eigengenes, write_to_file = TRUE)
   
-  get_genes_for_module(module, modules_to_genes, gene_eigengene_correlations, mouse_gene_info) %>% 
-    perform_go_analyses(expressed_genes %>% as.data.frame %>% tibble::rownames_to_column(var="gene"), str_c("M", module))
+  get_genes_for_module(module, modules_to_genes, gene_eigengene_correlations, gene_info) %>%
+    perform_go_analyses(gene_universe, str_c("M", module))
 }

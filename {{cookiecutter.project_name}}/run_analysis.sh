@@ -86,6 +86,10 @@ exit;
 Rscript diff_expr_{{ s }}.R
 {% endfor %}
 
+{% for s in cookiecutter.species.split(' ') %}
+#Rscript wgcna_{{ s }}.R
+{% endfor %}
+
 # Generate Shiny app
 echo Generating Shiny app
 bash ./generate_shiny.sh

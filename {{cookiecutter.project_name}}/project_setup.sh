@@ -34,6 +34,7 @@ sed 's/unknown_species/{{ s }}/' ./meta_data.R > meta_data_{{ s }}.R
 sed 's/unknown_species/{{ s }}/' ./diff_expr.R > diff_expr_{{ s }}.R
 sed 's/unknown_species/{{ s }}/' ./diff_expr_tx.R > diff_expr_tx_{{ s }}.R
 sed 's/unknown_species/{{ s }}/' ./rMATS.R > rMATS_{{ s }}.R
+sed 's/unknown_species/{{ s }}/' ./wgcna.R > wgcna_{{ s }}.R
 {% endfor %}
 
 # remove the template

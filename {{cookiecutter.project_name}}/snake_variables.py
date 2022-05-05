@@ -15,9 +15,9 @@ FASTQC_EXECUTABLE="fastqc{{cookiecutter.fastqc_version}}"
 FEATURECOUNTS_EXECUTABLE="featureCounts{{cookiecutter.featurecounts_version}}"
 PICARD_EXECUTABLE="/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar"
 {% if cookiecutter.paired_end_read == "yes" %}
-FEATURECOUNTS_PAIRD_END_FLAG = '-p --countReadPairs'
+FEATURECOUNTS_PAIRED_END_FLAG = '-p --countReadPairs'
 {% else %}
-FEATURECOUNTS_PAIRD_END_FLAG = ''
+FEATURECOUNTS_PAIRED_END_FLAG = ''
 {% endif %}
 
 SPECIES=[]

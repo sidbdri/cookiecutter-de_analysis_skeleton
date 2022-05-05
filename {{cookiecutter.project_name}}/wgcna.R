@@ -19,15 +19,9 @@ SAMPLE_DATA %<>% mutate(
 RESULTS_DIR <- "results/wgcna/"
 dir.create(RESULTS_DIR, recursive = TRUE)
 
-read_counts <- function(sample) {
-  counts_file_name <- paste(paste("results/read_counts/", sample, sep = ""), SPECIES, "counts", sep = ".")
-  counts_file_name %>% 
-    read_tsv(col_names = c("gene", str_c(sample)))
-}
-
 get_dds <- function() {
   count_data <- SAMPLE_NAMES %>%
-    map(read_counts) %>%
+    map(read_counts, SPECIES) %>%
     purrr::reduce(inner_join) %>%
     tibble::column_to_rownames(var="gene")
   
@@ -229,55 +223,11 @@ get_genes_for_module <- function(module, modules_to_genes, gene_eigengene_correl
     arrange_(paste0("desc(", column, ")"))
 }
 
-get_gene_info <- function(species) {
-  species %>%
-    str_c("data/", ., "_ensembl_106/genes.tsv") %>% 
-    read_tsv(col_names = c("gene", "description", "chromosome", "gene_name", "entrez_id", "gene_type"),
-             col_types = list(chromosome = col_character())) %>% 
-    group_by(gene) %>% 
-    filter(row_number() == 1) %>% 
-    ungroup
-}
-
-get_significant_genes <- function(term, GOdata, gene_info) {
-  genes_for_term <- GOdata %>% genesInTerm(term) %>% extract2(1)
-  significant_genes <- GOdata %>% sigGenes
-  significant_genes_for_term <- genes_for_term %>% intersect(significant_genes)
-  
-  gene_info %>% 
-    filter(gene %in% significant_genes_for_term) %>% 
-    dplyr::select(gene_name) %>% 
-    extract2(1) %>% 
-    paste(collapse = ", ")
-}
-
-perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP") {
-  gene_list <- (gene_universe$gene %in% significant_genes$gene) %>% as.integer %>% factor
-  names(gene_list) <- gene_universe$gene
-  
-  mapping <- switch(SPECIES,
-                    mouse = "org.Mm.eg.db",
-                    rat = "org.Rn.eg.db",
-                    human = "org.Hs.eg.db")
-  
-  go_data <- new("topGOdata", ontology = ontology, allGenes = gene_list,
-                 annot = annFUN.org, mapping = mapping, ID = "Ensembl")
-  
-  result_fisher <- go_data %>% runTest(algorithm = "weight01", statistic = "fisher")
-  result_fisher %>% print
-  
-  go_results <- go_data %>% GenTable(weight_fisher = result_fisher, orderBy = "weight_fisher", topNodes = 150)
-  
-  go_results$Genes <- sapply(go_results[,c('GO.ID')], 
-                             function(x) get_significant_genes(x, go_data, get_gene_info(SPECIES)))
-  
-  go_results
-}
-
 perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix) {
   c("BP", "MF", "CC") %>% walk(
     function(x) {
-      perform_go_analysis(expressed_genes, significant_genes, x) %>%
+      perform_go_analysis(expressed_genes, significant_genes, x, SPECIES) %>% 
+        extract2(1) %>% 
         write_csv(str_c(RESULTS_DIR, file_prefix, "_go_", x %>% tolower, ".csv"),na = "")
     }
   )

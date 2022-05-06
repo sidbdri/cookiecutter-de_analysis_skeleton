@@ -4,20 +4,14 @@ SPECIES <- "unknown_species"
 source(str_c('meta_data_', SPECIES, '.R'))
 
 library("WGCNA")
+conflict_prefer("cor", "WGCNA")
 
-#### Hard coding for specific experiments
-
-# code your trait of interest as an integer, e.g.
-SAMPLE_DATA %<>% mutate(
-  condition1_int = as.integer(sex == "Female"),
-  condition2_int = as.integer(treatment == "Control"))
+RESULTS_DIR <- "results/wgcna/"
+dir.create(RESULTS_DIR, recursive = TRUE)
 
 ########################################
 #              FUNCTIONS               #
 ########################################
-
-RESULTS_DIR <- "results/wgcna/"
-dir.create(RESULTS_DIR, recursive = TRUE)
 
 get_dds <- function() {
   count_data <- SAMPLE_NAMES %>%
@@ -72,7 +66,13 @@ perform_wgcna <- function(expression_data, power=16) {
 }
 
 get_experimental_variables <- function() {
-  SAMPLE_DATA %>% dplyr::select(condition1_int, condition2_int) 
+  vars <- SAMPLE_DATA %>% dplyr::select(all_of(WGCNA_EXPERIMENTAL_VARIABLES))
+  
+  for (var in WGCNA_EXPERIMENTAL_VARIABLES) {
+    vars %<>% mutate(!!var := !!parse_expr(var) %>% as.factor() %>% as.integer())
+  }
+  
+  vars
 }
 
 get_eigengene_variable_correlations <- function(module_eigengenes) {
@@ -180,7 +180,7 @@ plot_module_eigengene_values <- function(module, module_eigengenes, var_name, wr
         width = 800, height = 800)
   }
   
-  p <- ggplot(data = plot_info, aes_string(x = str_c(var_name, "_int"), y = str_c("ME", module))) +
+  p <- ggplot(data = plot_info, aes_string(x = str_c(var_name), y = str_c("ME", module))) +
     geom_point() +
     theme_classic()
   
@@ -273,13 +273,13 @@ gene_eigengene_correlation_data <- get_gene_eigengene_correlations(
 gene_eigengene_correlations <- gene_eigengene_correlation_data[[1]]
 
 # Calculate correlations between gene expression and experimental variables
-gene_condition1_correlation_data <- gene_expression %>% 
-  get_gene_variable_correlations(SAMPLE_DATA$condition1_int, "condition1")
-gene_condition1_correlations <- gene_condition1_correlation_data[[1]]
-
-gene_condition2_correlation_data <- gene_expression %>% 
-  get_gene_variable_correlations(SAMPLE_DATA$condition2_int, "condition2")
-gene_condition2_correlations <- gene_condition2_correlation_data[[1]]
+gene_variable_correlations <- WGCNA_EXPERIMENTAL_VARIABLES %>% 
+  map(function(var) {
+    gene_expression %>% 
+      get_gene_variable_correlations(SAMPLE_DATA %>% pull(!!parse_expr(var)) %>% as.factor() %>% as.integer(), var) %>% 
+      extract2(1)
+  }
+)
 
 # Construct table of per-gene info for output
 mod_numbers <- module_eigengenes %>% names %>% substring(3)
@@ -309,17 +309,16 @@ output %<>% tibble::rownames_to_column(var = "gene") %>%
                mutate(module = str_c(modules_to_genes)) %>% 
                dplyr::select(gene, module))
 
-output %<>% 
-  inner_join(gene_condition1_correlations %>% tibble::rownames_to_column(var = "gene")) %>% 
-  inner_join(gene_condition2_correlations %>% tibble::rownames_to_column(var = "gene")) %>% 
-  rename(condition1_cor = GC.condition1, condition2_cor = GC.condition2)
+for (gv_cor in gene_variable_correlations) {
+  output %<>% inner_join(gv_cor %>% tibble::rownames_to_column(var = "gene"))
+}
 
 gene_info <- get_gene_info(SPECIES)
 output %<>% inner_join(gene_info) 
 
 output %<>% 
   dplyr::select(gene, gene_name, description, chromosome, module, 
-                eigengene_cor, condition1_cor, condition2_cor) %>% 
+                eigengene_cor, starts_with("GC")) %>% 
   write_csv(str_c(RESULTS_DIR, "genes_to_modules.csv"),na = "")
 
 # For each module:
@@ -332,19 +331,15 @@ colnames(gene_universe) <- c("gene", "expressed")
 gene_universe %<>% filter(expressed == TRUE)
 
 for (module in seq(0, module_eigengenes %>% colnames %>% length - 1)) {
-  plot_gene_module_variable_correlations(
-    module, modules_to_genes, module_eigengenes,
-    gene_eigengene_correlations, gene_condition1_correlations,
-    "condition1", write_to_file = TRUE)
+  for (i in seq_along(WGCNA_EXPERIMENTAL_VARIABLES)) {
+    plot_gene_module_variable_correlations(
+      module, modules_to_genes, module_eigengenes,
+      gene_eigengene_correlations, gene_variable_correlations[[i]],
+      WGCNA_EXPERIMENTAL_VARIABLES[i], write_to_file = TRUE)
+    
+    plot_module_eigengene_values(module, module_eigengenes, WGCNA_EXPERIMENTAL_VARIABLES[i], write_to_file = TRUE)
+  }
 
-  plot_gene_module_variable_correlations(
-    module, modules_to_genes, module_eigengenes,
-    gene_eigengene_correlations, gene_condition2_correlations,
-    "condition2", write_to_file = TRUE)
-
-  plot_module_eigengene_values(module, module_eigengenes, "condition1", write_to_file = TRUE)
-  plot_module_eigengene_values(module, module_eigengenes, "condition2", write_to_file = TRUE)
-  
   plot_module_eigengene_values_per_sample(module, module_eigengenes, write_to_file = TRUE)
   
   get_genes_for_module(module, modules_to_genes, gene_eigengene_correlations, gene_info) %>%

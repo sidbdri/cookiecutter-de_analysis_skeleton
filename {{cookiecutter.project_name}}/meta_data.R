@@ -192,3 +192,9 @@ GENE_MARKERS <- tribble(
   "ENSG00000067048", "ENSMUSG00000069045", "ENSRNOG00000002501", "Ddx3y", "sex",
   "ENSG00000229807", "ENSMUSG00000086503", "", "Xist", "sex"
 )
+
+#### WGCNA ####
+
+# After performing WGCNA, look for correlations between module eigengenes etc. and these variables from
+# the SAMPLE_DATA table
+WGCNA_EXPERIMENTAL_VARIABLES = c("sex", "treatment")

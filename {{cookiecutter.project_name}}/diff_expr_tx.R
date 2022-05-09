@@ -1,18 +1,25 @@
+source("load_packages.R")
+source("utility_functions.R")
+source("parallel.R")
+source("qc.R")
+source("deseq.R")
+source("enrichment_tests.R")
+source("gene_set_tests.R")
+source("reactome.R")
+
 SPECIES <- "unknown_species"
-META_DATA=str_c('meta_data_',SPECIES,'.R')
-source(META_DATA)
+source(str_c('meta_data_', SPECIES, '.R'))
 
-# Note that when comparisons are run in parallel in RStudio, the output is silent and the R session 
-# will be hung until all sub-processes finish or are terminated. When running on the command line, 
-# we will see the output but in a random order from each core. Thus, we might want to turn off 
-# parallel when debugging in RStudio.
-start_parallel(nrow(COMPARISON_TABLE))
-#stop_parallel()
-
-TX_LEVEL <- FALSE
-ID_COLUMN <- ifelse(TX_LEVEL,'transcript','gene')
-QUANT_METHOD <- 'salmon'
 USE_TX <- TRUE
+TX_LEVEL <- TRUE
+QUANT_METHOD <- 'salmon'
+
+# to run jobs in serial, for debugging
+# set_num_cores(1)
+
+P.ADJ.CUTOFF <- 0.05
+PLOT_TO_FILE <- TRUE
+MISASSIGNMENT_PERCENTAGE <- MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% nrow() > 0
 
 {% if cookiecutter.qSVA !="no" %}
 qSVA <- TRUE
@@ -20,316 +27,297 @@ qSVA <- TRUE
 qSVA <- FALSE
 {% endif %}
 
-MISASSIGNMENT_PRECENTAGE = MISASSIGNMENT_SAMPLE_REFERENCE_TABLE %>% nrow() >0
+OUTPUT_DIR <- file.path('results','differential_expression_tx')
+DE_OUT_DIR=file.path(OUTPUT_DIR, "de_tx")
+GRAPHS_DIR <- file.path(OUTPUT_DIR, "graphs")
+dir.create(DE_OUT_DIR, recursive = TRUE)
+dir.create(GRAPHS_DIR, recursive = TRUE)
 
-PLOT_TO_FILE <- TRUE
+#### Differential gene expression ####
 
-OUTPUT_DIR <- 'results/differential_expression/de_tx'
-if (!dir.exists(OUTPUT_DIR)) dir.create(OUTPUT_DIR,recursive=TRUE)
+## Check read distribution for sample region
+## For a large region or large number of samples, increase the bin_width to 10, 100 or 1000
+## For multiple samples, the plot will order by the input samples order
 
-GRAPHS_DIR <- 'results/differential_expression/graphs_tx/'
-if (!dir.exists(GRAPHS_DIR)) dir.create(GRAPHS_DIR, recursive=TRUE)
+# g <- check_sample_bam(samples=SAMPLE_DATA  %>% arrange(CultureType) %>% pull(sample_name),
+#                       species=SPECIES,chr='2',start= 75505857,end=75534985,bin_width = 1000)
+# plot(g)
+# # g + scale_y_continuous(trans='log10')
 
-#####
+## Create dds and vst objects containing all samples
+total_dds_data <- get_total_dds_tximport(SAMPLE_DATA, SPECIES, QUANT_METHOD, TX_LEVEL,design_formula = ~1)
+total_vst <- total_dds_data %>% varianceStabilizingTransformation()
 
-total_dds_data <- get_total_dds_tximport(SAMPLE_DATA, QUANT_METHOD, TX_LEVEL)
-total_vst <- total_dds_data %>% varianceStabilizingTransformation
+## Main PCA plot of all samples
 
-start_plot("pca_all_samples_tx")
-total_vst %>% plot_pca(intgroup = FEATURES_FOR_ALL_SAMPLES_PCA) %>% print()
+start_plot("pca_all_samples")
+total_vst %>% plot_pca(intgroup = FEATURES_FOR_ALL_SAMPLES_PCA,
+                       output_data_table_path = file.path(GRAPHS_DIR, str_c('pca_all_samples_', SPECIES, '.csv'))) %>% print()
 end_plot()
 
+## PCA plots showing, individually, every feature defined in the SAMPLE_DATA table
 
-num_features <- SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>% length()
-start_plot("pca_all_features_all_samples_tx")
-if(exists(x = 'patchworkplot')) rm(patchworkplot)
-#This is to plot individually every feature defined in the SAMPLE_DATA table
+# scale the pdf base on number of features to be plotted
+num_features <- SAMPLE_DATA %>%
+  dplyr::select(-contains('species'), -contains('sample_name')) %>%
+  colnames() %>%
+  length()
+
+start_plot("pca_all_features_all_samples",num_plots = num_features)
+
+if (global_exists('patchworkplot')) {
+  rm_global('patchworkplot')
+}
+
 SAMPLE_DATA %>% dplyr::select(-species,-sample_name) %>% colnames() %>%
-    walk(function(feature){
-        total_vst %>% plot_pca(intgroup=c(feature),FALSE) %>%
-        add_to_patchwork(plot_var_name='patchworkplot')
-})
-patchworkplot
+  walk(function(feature) {
+    total_vst %>%
+      plot_pca(intgroup = c(feature), FALSE) %>%
+      add_to_patchwork(plot_var_name = 'patchworkplot')
+  })
+
+patchworkplot %>% print()
 end_plot()
 
+## Heatmap of all samples
 
-start_plot("heatmap_all_tx")
+start_plot("heatmap_all_samples")
 total_vst %>% plot_heat_map(
-  SAMPLE_DATA %>% 
+  SAMPLE_DATA %>%
     tibble::rownames_to_column("tmp_sample_name") %>%
-    tidyr::unite(col='sample_info', c(tmp_sample_name, FEATURES_FOR_ALL_SAMPLES_HEATMAP),
-                 sep = ":", remove = FALSE) %>% 
+    tidyr::unite(col = 'sample_info', c(tmp_sample_name, FEATURES_FOR_ALL_SAMPLES_HEATMAP),
+                 sep = ":", remove = FALSE) %>%
     extract2("sample_info"))
 end_plot()
 
-start_plot("count_distribution_norm_tx")
-plot_count_distribution(total_dds_data, norm=F)
+## Plots of distributions of normalised and raw counts
+
+start_plot("count_distribution_norm")
+plot_count_distribution(total_dds_data, norm = T)
 end_plot()
 
-start_plot("count_distribution_tx")
-plot_count_distribution(total_dds_data, norm=T)
+start_plot("count_distribution")
+plot_count_distribution(total_dds_data, norm = F)
 end_plot()
 
-#####
+## Plot percentage of mitochondrial RNA in each sample
 
 gene_info <- get_gene_info(SPECIES)
-gene_lengths <- get_gene_lengths(SPECIES)
+mitochondrial_genes <- gene_info %>% filter(chromosome == 'MT') %>% pull(gene)
+nuclear_encoded_mitochondrial_genes <- get_nuclear_encoded_mitochondrial_genes()
 
+start_plot('mitochondrial_gene_count')
+plot_gene_percentage(counts(total_dds_data),
+                     list(MT_mito = mitochondrial_genes, NUC_mito = nuclear_encoded_mitochondrial_genes),
+                     use_percentage = FALSE) %>% print
+end_plot()
+
+start_plot('mitochondrial_gene_percentage')
+plot_gene_percentage(counts(total_dds_data),
+                     list(MT_mito = mitochondrial_genes, NUC_mito = nuclear_encoded_mitochondrial_genes),
+                     use_percentage = TRUE) %>% print
+end_plot()
+
+## Initialise a D.E. results object containing gene information, counts and FPKMs
+gene_lengths <- get_gene_lengths(SPECIES)
 results <- total_dds_data %>% get_count_data()
 
-## Result table contains transcript id, thus now suitable to use this for function check_cell_type
-txi <- get_tximport(SAMPLE_DATA, QUANT_METHOD, TX_LEVEL)
-tpms <- txi$abundance %>% 
-  as.data.frame() %>%
-  rename_all(funs(str_c(., "_tpm")))
+txi <- get_tximport(SAMPLE_DATA, SPECIES, QUANT_METHOD, TX_LEVEL)
+tpms <- txi$abundance %>% as.data.frame() %>%
+  rename_all(.funs=list(~str_c(., "_fpkm"))) %>%
+  tibble::rownames_to_column('gene') %>%
+  left_join(get_avg_tpm(.),by='gene')
 
 if (TX_LEVEL) {
   #The gene column here is acturally transcript.
-  tpms %<>% tibble::rownames_to_column('gene') 
-  tpms %<>% left_join(get_avg_tpm(., TX_LEVEL)) %>%
-    rename(transcript=gene)
-  
+  tpms %<>% rename(transcript=gene)
+
   results %<>% rename(transcript=gene) %>%
-    left_join(txi$Length %>% 
-                rename(transcript_length=length) %>% 
-                tibble::rownames_to_column('transcript')) %>%
-    left_join(get_transcripts_to_genes(SPECIES)) %>%
-    left_join(tpms) %>%
-    left_join(gene_info) %>%
-    left_join(gene_lengths)
-  
+    left_join(txi$Length %>% rename(transcript_length=length) %>%
+                tibble::rownames_to_column('transcript'),by='transcript') %>%
+    left_join(get_transcripts_to_genes(SPECIES),by='transcript') %>%
+    left_join(tpms,by='transcript') %>%
+    left_join(gene_info,by='gene') %>%
+    left_join(gene_lengths,by='gene')
+
   # number of transcripts
   results %<>% left_join(
-    results %>%
-      dplyr::select(gene,transcript) %>%
-      group_by(gene) %>% summarise(number_of_transcript = n()))
+    results %>% dplyr::select(gene,transcript) %>%
+      group_by(gene) %>% summarise(number_of_transcript = n()),by='gene')
 } else {
-    tpms %<>% tibble::rownames_to_column('gene') %>%
-        inner_join(get_transcripts_to_genes(SPECIES)) %>%
-        left_join(get_avg_tpm(tpms,TX_LEVEL))
-
-    results %<>%
-        left_join(tpms) %>%
-        left_join(gene_info) %>%
-        left_join(gene_lengths)
+  results %<>%
+    left_join(tpms,by='gene') %>%
+    left_join(gene_info,by='gene') %>%
+    left_join(gene_lengths,by='gene')
 }
 
+## Generate plots of the FPKMs of marker genes in the samples
+check_cell_type(results, fpkm_check_cutoff = 5, print_check_log = TRUE, print_fpkm_table = F)
 
+## Perform gene-level differential expression
+comparisons_results <- COMPARISON_TABLE %>%
+  pull(comparison) %>%
+  run_jobs_with_shared_memory(job_function = 'run_deseq',
+                              job_source = 'deseq.R',
+                              results_tbl = results,
+                              fpkms = tpms,
+                              species = SPECIES,
+                              qSVA = qSVA,
+                              use_tx=USE_TX,
+                              quant_method=QUANT_METHOD,
+                              tx_level=TX_LEVEL)
 
-# run all get_res() functions and add to main "results" object
-if(exists(x = 'all_comparison_pvalue_distribution')) rm(all_comparison_pvalue_distribution)
-comparisons_results<-COMPARISON_TABLE %>% pull(comparison) %>% lapply_fork (
-  function(comparison_name) {
-    res <- get_res(comparison_name, tpms, use_tx=USE_TX, 
-                   quant_method=QUANT_METHOD, tx_level=TX_LEVEL)
-    
-    results_tb <- get_global("results") %>%
-      left_join(res[[1]]) %>%
-      dplyr::rename(!!str_c(comparison_name, '.l2fc') := log2FoldChange,
-                    !!str_c(comparison_name, '.raw_l2fc') := raw_l2fc,
-                    !!str_c(comparison_name, '.stat') := stat,
-                    !!str_c(comparison_name, '.pval') := pvalue,
-                    !!str_c(comparison_name, '.padj') := padj)
-    
-    ##work out misassigned percentage
-    if(MISASSIGNMENT_PRECENTAGE){
-      # not tested 
-      # P<-get_misassigned_percentage(comparison_name)
-      # 
-      # results_sargasso %<>% left_join(P$P_condition %>% dplyr::select(gene,!!str_c(comparison_name, '.perc.',COMPARISON_TABLE %>% filter(comparison==comparison_name) %>% pull(condition)) := p))
-      # results_sargasso %<>% left_join(P$P_condition_base %>% dplyr::select(gene,!!str_c(comparison_name, '.perc.',COMPARISON_TABLE %>% filter(comparison==comparison_name) %>% pull(condition_base)) := p))
-      # 
-      # SUMMARY_TB <- get_global("SUMMARY_TB") %>%
-      #   mutate(Misassignment_samples_in_comparison_level_condition = ifelse(Comparison == comparison_name,P$condition_reference_samples %>% str_c(collapse = ','),Misassignment_samples_in_comparison_level_condition)) %>%
-      #   mutate(Misassignment_samples_in_base_level_condition = ifelse(Comparison == comparison_name,P$condition_base_reference_samples %>% str_c(collapse = ','),Misassignment_samples_in_base_level_condition)) %>% 
-      #   set_global("SUMMARY_TB")
-    }
-    
-    p_plot<-plot_pvalue_distribution(results_tb, str_c(comparison_name,'.pval'))
-    
-    ## return the results and merge them later
-    list(comparison_name = comparison_name,
-         res = res$res,
-         dds = res$dds,
-         results_tb = results_tb %>% dplyr::select(ID_COLUMN,contains('.')),
-         summary_tb = res$summary_tb_row,
-         p_plot = p_plot)
-  }
-)
+## Merge all D.E. results into the main results table
+if (global_exists('all_comparison_pvalue_distribution')) {
+  rm(all_comparison_pvalue_distribution)
+}
 
-if(exists(x = 'all_comparison_pvalue_distribution')) rm(all_comparison_pvalue_distribution)
-
-lapply(comparisons_results,function(cmp){
-  ## merge the cmp result table into global results table
+lapply(comparisons_results, function(cmp) {
+  # merge the comparison results tables into global results table
   get_global("results") %>%
-    left_join(cmp$results_tb) %>% 
+    left_join(cmp$results_tb %>% dplyr::select(gene,any_of('transcript'),contains('.'))) %>%
     set_global("results")
-  
-  ## merge the cmp summary table into global SUMMARY_TABLE
+
+  # merge the comparison summary tables into global SUMMARY_TABLE
   get_global("SUMMARY_TB") %>%
-    rbind(cmp$summary_tb %>% as.data.frame(stringsAsFactors=FALSE)) %>%
+    rbind(cmp$summary_tb %>% as.data.frame(stringsAsFactors = FALSE)) %>%
     set_global("SUMMARY_TB")
-  
-  ## merge the p value plots
-  add_to_patchwork(cmp$p_plot,plot_var_name='all_comparison_pvalue_distribution')
-  
-  ## export the res
+
+  # merge the p value plots
+  add_to_patchwork(cmp$p_plot, plot_var_name = 'all_comparison_pvalue_distribution')
+
+  # plot top DE gene for each comparison
+  start_plot(str_c('top_de_genes_fpkm_',cmp$comparison_name))
+  plot_genes_fpkm(results,results %>% arrange(across(str_c(cmp$comparison_name,'.padj',sep = ''))) %>% head(4) %>% pull(gene),print_fpkm_table = F)
+  end_plot()
+
+  # export the res and dds
+  # commnet out for now.
+  # see https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/83
   # cmp$res %>% set_global(cmp$comparison %>% str_c('res', sep = '_'))
   cmp$dds %>% set_global(cmp$comparison %>% str_c('dds', sep = '_'))
-  
+  cmp$misassignment_percentage %>% set_global(cmp$comparison %>% str_c('misassignment_percentage', sep = '_'))
   'success'
-}) %>% invisible()  ##so lappy will not print out useless merging message
+})
+
+## Plot distributions of p-values for each comparison
 
 start_plot("all_comparison_pvalue_distribution")
 all_comparison_pvalue_distribution
 end_plot()
 
-# save results
-columns_included <- ifelse(TX_LEVEL,
-                            c('transcript', 'transcript_length', 'gene', 'number_of_transcript'),
-                            c('gene','gene_length', 'max_transcript_length'))
+## Create scatter plots of average FPKMs for each comparison
+
+plot_scatter_fpkm(results)
+
+## Save results to file
+## we change the _fpkm back to _tpm
+results %<>% rename_at(.vars = vars(contains('_fpkm')),.funs=function(x){gsub(x = x,pattern = '_fpkm',replacement =  "_tpm")})
+
 
 if (COMPARISON_TABLE %>% pull(group) %>% unique() %>% length() > 1) {
-  save_results_by_group(results,USE_TX)
+  save_results_by_group(results)
 }
 
 results %>%
   dplyr::select(
-    columns_included, gene_name, chromosome, description, entrez_id, gene_type, everything(),
-    -dplyr::contains("_tpm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_count_", SPECIES, "_tx_", ID_COLUMN, "_", QUANT_METHOD, ".csv"),na = "")
+    any_of(c('transcript', 'transcript_length', 'gene', 'number_of_transcript','gene_length','max_transcript_length')),
+    gene_name, chromosome, description, entrez_id, gene_type,
+    everything(), -dplyr::contains("_tpm"), -dplyr::ends_with(".stat")) %>%
+  write_csv(file.path(DE_OUT_DIR, str_c("deseq2_results_count_", SPECIES, ".csv")), na = "")
+
 
 results %>%
   dplyr::select(
-    columns_included, gene_name, chromosome, description, entrez_id, gene_type,
+    any_of(c('transcript', 'transcript_length', 'gene', 'number_of_transcript','gene_length','max_transcript_length')),
+    gene_name, chromosome, description, entrez_id, gene_type,
     dplyr::contains("_tpm"),
     COMPARISON_TABLE %>%
       pull(comparison) %>%
-      sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep =''))) %>% 
+      sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep = ''))) %>%
       unlist() %>%
       as.vector() %>%
       unique(),
-    -dplyr::ends_with(".stat")
-  ) %>%
-  write_csv(str_c(OUTPUT_DIR, "/deseq2_results_tpm_", SPECIES, "_tx_",ID_COLUMN, "_", QUANT_METHOD, ".csv"),na = "")
+    -dplyr::ends_with(".stat")) %>%
+  write_csv(file.path(DE_OUT_DIR, str_c("deseq2_results_tpm_", SPECIES, ".csv")), na = "")
 
 SUMMARY_TB %>%
-  write_csv(str_c(OUTPUT_DIR, "/de_summary_", SPECIES, "_tx_",ID_COLUMN, "_", QUANT_METHOD, ".csv"),na = "")
+  write_csv(file.path(DE_OUT_DIR, str_c("de_summary_", SPECIES, ".csv")), na = "")
 
+if(!TX_LEVEL){
+  #### GO enrichment analysis ####
+  expressed_genes <-
+    get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts = TRUE) %>%
+      get_count_data()
 
+  GO_results <- COMPARISON_TABLE %>%
+    get_run_topgo_job_strings() %>%
+    run_jobs_with_separate_memory(job_function = 'run_topgo',
+                                  job_source = "enrichment_tests.R",
+                                  result_tbl = results,
+                                  p.adj.cutoff = P.ADJ.CUTOFF,
+                                  expressed_genes = expressed_genes,
+                                  species = SPECIES,
+                                  out_dir = file.path(OUTPUT_DIR, "enrichment_tests"))
 
-# library (knitr)
-# sink(str_c("results/differential_expression/de_summary_",
-#             SPECIES,"_tx_",tx_level_str,"_",QUANT_METHOD,".md"))
-# kable(SUMMARY_TB, format = 'markdown')
-# sink()
+  #### Reactome pathway analysis ####
 
-#####
+  Reactome_results <- COMPARISON_TABLE %>%
+    get_run_reactome_job_strings() %>%
+    run_jobs_with_separate_memory(job_function = 'run_reactome',
+                                  job_source = "reactome.R",
+                                  result_tbl = results,
+                                  p.adj.cutoff = P.ADJ.CUTOFF,
+                                  expressed_genes = expressed_genes,
+                                  species = SPECIES,
+                                  out_dir = file.path(OUTPUT_DIR, "reactome"))
 
-# For each comparison: 
-#   - for the GO/Reactome analyses, we are using all/up/down regulated genes,
-#   - for GSA, we are using four gene set categories: "CURATED", "MOTIF", "GO" and "CELL_TYPE"
-# Thus we need to reduce the number of comparisons we run in parallel to ensure we are not using more cores
-# than specified. The total number of cores used after the following line will be 3 * getOption("mc.cores")
-if(PARALLEL) adjust_parallel_cores()
+  #### Gene set enrichment analysis ####
 
-##### GO and GSA analyses
+  gene_set_categories <- list("CURATED", "MOTIF", "GO", "CELL_TYPE", "MSIGDB_CELL_TYPE")
 
-if (!USE_TX | !TX_LEVEL) {
-  expressed_genes <- get_total_dds(SAMPLE_DATA, SPECIES, filter_low_counts=TRUE) %>% 
-    get_count_data()
-  
-  GO_results <- COMPARISON_TABLE %>% 
-    pull(comparison) %>% 
-    set_names(.) %>% 
-    lapply_socket(X=., function(comparison_name) {
-      p_str <- str_c(comparison_name, '.padj')
-      l2fc_str <- str_c(comparison_name, '.l2fc')
-    
-    results <- get_global("results")
-    
-    lapply_socket(cores=3,X=c('','.up','.down'),function(cmp){
-      if(cmp=='.up'){
-        r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) > 0)
-      }else if((cmp=='.down')){
-        r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF & get(l2fc_str) < 0)
-      }else{
-        r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF)
-      }
-      perform_go_analyses(r, expressed_genes, comparison_name, cmp, SPECIES, out_dir="results/differential_expression/go_tx/")
-    }) %>% set_names(str_c(comparison_name,c('.all','.up','.down')))
-  })
-  
-  ##### Gene set enrichment analysis
-  
-  gene_set_categories <- list("CURATED", "MOTIF", "GO", "CELL_TYPE")
-  
-  list_of_gene_sets <- gene_set_categories %>% lapply_fork(cores=length(gene_set_categories), X=., function(category,...) get_gene_sets(SPECIES, category))
-  
-  GS_results <- COMPARISON_TABLE %>% pull(comparison) %>% lapply_fork(X=., function(comparison_name,...) {
-    dds <- str_c(comparison_name, 'dds', sep = '_') %>% get_global()
-    
-    camera_results <- list_of_gene_sets %>% 
-      map(function(category_gene_sets) {
-        get_camera_results(dds, category_gene_sets, gene_info)
-      })
-    
-    camera_results %>% set_global(str_c(comparison_name, 'camera_results', sep = '_'))
-    
-    
-    lapply_fork(cores = 3, X = seq(1:length(gene_set_categories)), function(category,...) {
-      de_res <- results %>% dplyr::select(
-        gene, gene_name, entrez_id, 
-        starts_with(str_c(comparison_name, ".")), 
-        -starts_with(str_c(comparison_name, ".stat")))  
-      write_camera_results(
-        gene_set_categories[[category]], list_of_gene_sets[[category]], 
-        comparison_name, SPECIES,
-        de_res, camera_results[[category]], out_dir="results/differential_expression/gsa_tx/")
-    }) 
-    camera_results
-  })
-  ##### Reactome pathway analysis
-  
-  Reactome_results<- COMPARISON_TABLE %>% 
-    pull(comparison) %>% 
-    set_names(.) %>% 
-    lapply_socket(X = ., function(comparison_name) {
-      p_str <- str_c(comparison_name, 'padj', sep = '.')
-      l2fc_str <- str_c(comparison_name, 'l2fc', sep = '.')
-      
-      results <- get_global("results")
-      
-      lapply_socket(cores = 3, X = c('', '.up', '.down'), function(cmp) {
-        if (cmp=='.up') {
-          r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) > 0)
-        } else if((cmp=='.down')) {
-          r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF  & get(l2fc_str) < 0)
-        } else {
-          r <- results %>% filter(get(p_str) < P.ADJ.CUTOFF)
-        }
-        perform_pathway_enrichment(r, expressed_genes, comparison_name, cmp, SPECIES, out_dir="results/differential_expression/reactome_tx/")
-      }
-      ) %>% set_names(str_c(comparison_name,c('.all', '.up', '.down')))
-    }
-    )
+  list_of_gene_sets <- gene_set_categories %>%
+    set_names(.) %>%
+    lapply(function(category, ...) get_gene_sets(SPECIES, category))
+
+  gene_set_analysis_results <- COMPARISON_TABLE %>%
+    get_run_gene_set_analysis_job_strings(gene_set_categories) %>%
+    run_jobs_with_separate_memory(job_function = 'run_gene_set_analysis',
+                                  job_source = 'gene_set_tests.R',
+                                  result_tbl = results,
+                                  dds_list = str_c(COMPARISON_TABLE %>% pull(comparison), 'dds', sep = '_') %>%
+                                    set_names(.) %>%
+                                    lapply(get_global),
+                                  list_of_gene_sets = list_of_gene_sets,
+                                  gene_info = gene_info,
+                                  species = SPECIES,
+                                  out_dir = file.path(OUTPUT_DIR, "gene_set_tests"))
+
+  gene_set_analysis_heatmaps <- gene_set_analysis_results %>%
+    names %>%
+    run_jobs_with_shared_memory(job_function = 'plot_significant_set_heatmap',
+                                # we change the name back to _fpkm as the plot_significant_set_heatmap expect the result table to have fpkm column
+                                results_tbl = results %>% rename_at(.vars = vars(contains('_tpm')),.funs=function(x){gsub(x = x,pattern = '_tpm',replacement =  "_fpkm")}),
+                                gs_result = gene_set_analysis_results,
+                                list_of_gene_set = list_of_gene_sets,
+                                comparison_tbl = COMPARISON_TABLE,
+                                species = SPECIES,
+                                out_dir = file.path(OUTPUT_DIR, "gene_set_tests"))
 }
 
-# results %>% plot_gene_set(list_of_gene_sets[[3]], "GO_<go_term>", "condition.stat")
-# results %>% get_gene_set_results(list_of_gene_sets[[3]], "GO_<go_term>", "condition.pval") %>% head
 
-##### Saving and loading the workspace
+#### Saving and loading the workspace ####
 
-# Save the objects in the workspace for future analysis
+## Save the objects in the workspace for future analysis
 
 rws <- "results/Rworkspace/"
 if (!dir.exists(rws)) {
-  dir.create(rws,recursive=TRUE)
+  dir.create(rws, recursive = TRUE)
 }
 
 save(list = ls() %>% grep(x = ., pattern='comparisons_results', value = T,invert = T),
-     file = str_c(rws,"diff_expr_tx.RData"))
+     file = str_c(rws, "diff_expr_", SPECIES,"_transcript.RData"))
 
-# Load the save workspace to get all objects back for analysis
+## Load the save workspace to get all objects back for analysis
 
 # load_rs_data()

@@ -84,11 +84,11 @@ exit;
 
 {% for s in cookiecutter.species.split(' ') %}
 Rscript diff_expr_{{ s }}.R
+Rscript diff_expr_tx_{{ s }}.R
+Rscript wgcna_{{ s }}.R
 {% endfor %}
 
-{% for s in cookiecutter.species.split(' ') %}
-#Rscript wgcna_{{ s }}.R
-{% endfor %}
+
 
 # Generate Shiny app
 echo Generating Shiny app

@@ -17,7 +17,7 @@
     "species": "mouse rat human",
     "star_version": "2.7.9a",
     "bowtie2_version": "2.4.4",
-    "salmon_version": "0.12.0",
+    "salmon_version": "1.8.0",
     "kallisto_version": "0.45.0",
     "featurecounts_version": "2.0.2",
     "picard_version": "2.25.6",

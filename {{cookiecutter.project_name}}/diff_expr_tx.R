@@ -175,7 +175,7 @@ if (global_exists('all_comparison_pvalue_distribution')) {
 lapply(comparisons_results, function(cmp) {
   # merge the comparison results tables into global results table
   get_global("results") %>%
-    left_join(cmp$results_tb %>% dplyr::select(gene,any_of('transcript'),contains('.')),by='gene') %>%
+    left_join(cmp$results_tb %>% dplyr::select(gene,any_of('transcript'),contains('.'))) %>%
     set_global("results")
 
   # merge the comparison summary tables into global SUMMARY_TABLE
@@ -231,9 +231,18 @@ results %>%
   dplyr::select(
     any_of(c('transcript', 'transcript_length', 'gene', 'number_of_transcript','gene_length','max_transcript_length')),
     gene_name, chromosome, description, entrez_id, gene_type,
-    everything(), -dplyr::contains("_tpm"), -dplyr::ends_with(".stat")) %>%
-  write_csv(file.path(DE_OUT_DIR, str_c("deseq2_results_count_", SPECIES, ".csv")), na = "")
+    dplyr::contains("_tpm"),
+    COMPARISON_TABLE %>%
+      pull(comparison) %>%
+      sapply(FUN = function(x) results %>% colnames() %>% str_which(str_c("^", x, sep = ''))) %>%
+      unlist() %>%
+      as.vector() %>%
+      unique(),
+    -dplyr::ends_with(".stat")) %>%
+  write_csv(file.path(DE_OUT_DIR, str_c("deseq2_results_tpm_", SPECIES, ".csv")), na = "")
 
+SUMMARY_TB %>%
+  write_csv(file.path(DE_OUT_DIR, str_c("de_summary_", SPECIES, ".csv")), na = "")
 
 if(!TX_LEVEL){
   #### GO enrichment analysis ####

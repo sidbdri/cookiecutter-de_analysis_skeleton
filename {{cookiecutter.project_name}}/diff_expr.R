@@ -24,7 +24,7 @@ qSVA <- FALSE
 {% endif %}
 
 OUTPUT_DIR <- file.path('results','differential_expression')
-DE_OUT_DIR=file.path(OUTPUT_DIR, "de_tx")
+DE_OUT_DIR=file.path(OUTPUT_DIR, "de_gene")
 GRAPHS_DIR <- file.path(OUTPUT_DIR, "graphs")
 dir.create(DE_OUT_DIR, recursive = TRUE)
 dir.create(GRAPHS_DIR, recursive = TRUE)

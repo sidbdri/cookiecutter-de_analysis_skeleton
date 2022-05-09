@@ -67,7 +67,7 @@ generate_rmats_count_cmd <- function(sample_data,species,cmp_name){
     pull(replicates) %>%
     write(b1)
   
-  cmd_count <- str_c( str_c("cd", RMATS_402,sep=' '), " && python rmats.py",
+  cmd_count <- str_c( str_c("cd", RMATS_410,sep=' '), " && python rmats.py",
                "--b1", b1, 
                "--b2", b2,
                "--gtf", str_c("data/",dir(path = "data/", pattern = str_c(species,"_ensembl_*"))) %>% 
@@ -77,15 +77,15 @@ generate_rmats_count_cmd <- function(sample_data,species,cmp_name){
                "--nthread",rMAT_PARA_nthread,
                "--tstat",rMAT_PARA_tstat,
                "--readLength", rMAT_PARA_readLength,
-               "--statoff",
+               #"--statoff",
                "--cstat", rMAT_PARA_cstat,
                "--libType",libType,
                sep = " "
   )
-  
-  cmd_stat <- generate_rmats_stat_cmd(species,cmp_name)
 
-  cmd = str_c( cmd_count," && ",cmd_stat, sep ="")
+  #cmd_stat <- generate_rmats_stat_cmd(species,cmp_name)
+
+  #cmd = str_c( cmd_count," && ",cmd_stat, sep ="")
 
   cmd
 }

@@ -87,6 +87,10 @@ Rscript diff_expr_{{ s }}.R
 {% endfor %}
 
 {% for s in cookiecutter.species.split(' ') %}
+#Rscript rMATS_{{ s }}.R
+{% endfor %}
+
+{% for s in cookiecutter.species.split(' ') %}
 #Rscript wgcna_{{ s }}.R
 {% endfor %}
 

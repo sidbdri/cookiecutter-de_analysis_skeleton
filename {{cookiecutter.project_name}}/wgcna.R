@@ -1,4 +1,6 @@
 source("load_packages.R")
+source("enrichment_tests.R")
+source("utility_functions.R")
 
 SPECIES <- "unknown_species"
 source(str_c('meta_data_', SPECIES, '.R'))

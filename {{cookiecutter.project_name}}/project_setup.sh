@@ -39,7 +39,7 @@ sed 's/unknown_species/{{ s }}/' ./wgcna.R > wgcna_{{ s }}.R
 {% endfor %}
 
 # remove the template
-rm ./diff_expr.R ./meta_data.R ./rMATS.R  ./diff_expr_tx.R
+rm ./diff_expr.R ./meta_data.R ./rMATS.R  ./diff_expr_tx.R ./wgcna.R
 
 echo "Init git"
 git init

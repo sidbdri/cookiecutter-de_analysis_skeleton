@@ -18,7 +18,7 @@ def run_featurecounts(strand_setting):
         os.makedirs(read_counts_folder)
     test_bam, test_gtf = pick_first_sample()
     outfile = os.path.join(read_counts_folder, "counts_temp.%s.out" % strand_setting)
-    call("%s %s -T 4 -a %s -o %s -s %s %s" % (FEATURECOUNTS_EXECUTABLE, FEATURECOUNTS_PAIRD_END_FLAG, test_gtf, outfile, strand_setting, test_bam), shell=True)
+    call("%s %s -T 4 -a %s -o %s -s %s %s" % (FEATURECOUNTS_EXECUTABLE, FEATURECOUNTS_PAIRED_END_FLAG, test_gtf, outfile, strand_setting, test_bam), shell=True)
     outfile_old = ".".join([outfile, "summary"])
     outfile_new = ".".join([outfile, "testsummary"])
     call("mv %s %s" % (outfile_old, outfile_new), shell=True)

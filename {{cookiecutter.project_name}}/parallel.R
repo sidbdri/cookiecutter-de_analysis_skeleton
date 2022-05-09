@@ -84,7 +84,7 @@ run_jobs <- function(job_strings,
   }
   
   message('running jobs in workers....')
-  # tictoc::tic(paste0(job_name,' run time:'))
+  tictoc::tic(paste0(job_function,' run time:'))
   ret <-  tryCatch(
     {
       bplapply(job_strings,
@@ -94,7 +94,7 @@ run_jobs <- function(job_strings,
       ) %>% set_names(job_strings)
     },
     error = function(e) e, finally = bpstop(para)) # we need to stop the workers when error
-  # tictoc::toc()
+  tictoc::toc()
   
   check_bpresult(attr(ret, 'result'), job_name = job_function)
   ret

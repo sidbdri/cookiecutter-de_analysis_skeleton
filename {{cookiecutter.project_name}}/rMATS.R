@@ -1,9 +1,12 @@
+source("load_packages.R")
+
 SPECIES <- "unknown_species"
-META_DATA=str_c('meta_data_',SPECIES,'.R')
+META_DATA <- str_c('meta_data_',SPECIES,'.R')
 source(META_DATA)
 
-RMATS_402 = '/opt/rMATS.4.0.2'
-RMATS_325 = '/opt/rMATS.3.2.5/MATS/rMATS_Paired.sh'
+RMATS_410 <- '/opt/rmats-turbo'
+RMATS_402 <- '/opt/rMATS.4.0.2'
+RMATS_325 <- '/opt/rMATS.3.2.5/MATS/rMATS_Paired.sh'
 
 rMAT_PARA_t = 'paired'
 # This is for rMATS4 statistics. We are not using this at the moment.

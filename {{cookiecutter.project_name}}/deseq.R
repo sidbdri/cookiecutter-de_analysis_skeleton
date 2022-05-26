@@ -422,7 +422,7 @@ get_tximport <- function(sample_data, species, tx_level = TRUE) {
   quant_files <- str_c("results/salmon_quant/", species, "/",  quant_dirs, "/quant.sf")
   names(quant_files) <- quant_dirs
 
-  txi <- tximport(quant_files, txOut = tx_level,
+  txi <- tximport(quant_files, type = "salmon", txOut = tx_level,
                   tx2gene = get_transcripts_to_genes(species), dropInfReps = TRUE)
 
   txi$Length <- read.csv(quant_files[1],sep = '\t',stringsAsFactors = FALSE) %>%

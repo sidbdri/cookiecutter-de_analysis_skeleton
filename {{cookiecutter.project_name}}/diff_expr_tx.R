@@ -12,7 +12,6 @@ source(str_c('meta_data_', SPECIES, '.R'))
 
 USE_TX <- TRUE
 TX_LEVEL <- TRUE
-QUANT_METHOD <- 'salmon'
 
 # to run jobs in serial, for debugging
 # set_num_cores(1)
@@ -45,7 +44,7 @@ dir.create(GRAPHS_DIR, recursive = TRUE)
 # # g + scale_y_continuous(trans='log10')
 
 ## Create dds and vst objects containing all samples
-total_dds_data <- get_total_dds_tximport(SAMPLE_DATA, SPECIES, QUANT_METHOD, TX_LEVEL,design_formula = ~1)
+total_dds_data <- get_total_dds_tximport(SAMPLE_DATA, SPECIES, TX_LEVEL,design_formula = ~1)
 total_vst <- total_dds_data %>% varianceStabilizingTransformation()
 
 ## Main PCA plot of all samples
@@ -122,7 +121,7 @@ end_plot()
 gene_lengths <- get_gene_lengths(SPECIES)
 results <- total_dds_data %>% get_count_data()
 
-txi <- get_tximport(SAMPLE_DATA, SPECIES, QUANT_METHOD, TX_LEVEL)
+txi <- get_tximport(SAMPLE_DATA, SPECIES, TX_LEVEL)
 tpms <- txi$abundance %>% as.data.frame() %>%
   rename_all(.funs=list(~str_c(., "_fpkm"))) %>%
   tibble::rownames_to_column('gene') %>%
@@ -164,7 +163,6 @@ comparisons_results <- COMPARISON_TABLE %>%
                               species = SPECIES,
                               qSVA = qSVA,
                               use_tx=USE_TX,
-                              quant_method=QUANT_METHOD,
                               tx_level=TX_LEVEL)
 
 ## Merge all D.E. results into the main results table

@@ -1,8 +1,8 @@
 SALMON <- "salmon"
 
-run_deseq <- function(comparison_name, results_tbl, fpkms, species, qSVA, use_tx=FALSE, quant_method='salmon', tx_level=FALSE, ...){
+run_deseq <- function(comparison_name, results_tbl, fpkms, species, qSVA, use_tx=FALSE, tx_level=FALSE, ...){
 
-  res <- get_res(comparison_name, fpkms, species, qSVA = qSVA, use_tx=use_tx, quant_method=quant_method, tx_level=tx_level)
+  res <- get_res(comparison_name, fpkms, species, qSVA = qSVA, use_tx=use_tx, tx_level=tx_level)
 
   results_tb <- results_tbl %>%
     left_join(res[[1]]) %>%
@@ -58,7 +58,7 @@ run_deseq <- function(comparison_name, results_tbl, fpkms, species, qSVA, use_tx
 
 # Get differential expression results for a given comparison name
 get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
-                    use_tx=FALSE, quant_method='salmon', tx_level=FALSE, alpha=0.05) {
+                    use_tx=FALSE, tx_level=FALSE, alpha=0.05) {
 
   comparison_table <- COMPARISON_TABLE
   x=comparison_table %>% filter(comparison == comparison_name)
@@ -80,7 +80,7 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
   }
 
   if (use_tx) {
-    txi <- get_tximport(sample_data, species, quant_method, tx_level)
+    txi <- get_tximport(sample_data, species, tx_level)
     dds <- DESeqDataSetFromTximport(txi, sample_data, x$formula %>% as.formula())
     dds <- dds[rowSums(counts(dds)) > 1, ]
     dds <- DESeq(dds, betaPrior = TRUE)
@@ -329,7 +329,7 @@ save_results_by_group <- function(results,use_tx=FALSE) {
           gene_name, chromosome, description, entrez_id, gene_type, everything(),
           -dplyr::contains("_tpm"), -dplyr::ends_with(".stat"),
           -matches(n_comparisons), -all_of((samples_to_exclude))) %>%
-        write_csv(file.path(DE_OUT_DIR, str_c(g, "_deseq2_results_count_", SPECIES, "_tx_",QUANT_METHOD,".csv")), na="")
+        write_csv(file.path(DE_OUT_DIR, str_c(g, "_deseq2_results_count_", SPECIES, "_tx_salmon.csv")), na="")
       
       tpm_output <- results %>%
         dplyr::select(
@@ -353,10 +353,10 @@ save_results_by_group <- function(results,use_tx=FALSE) {
         tpm_output %<>% dplyr::select(-one_of(avg_to_exclude %>% str_c('_avg_tpm')))
       }
       
-      tpm_output %>% write_csv(file.path(DE_OUT_DIR, str_c(g ,"_deseq2_results_tpm_", SPECIES, "_tx_",QUANT_METHOD,".csv")), na="")
+      tpm_output %>% write_csv(file.path(DE_OUT_DIR, str_c(g ,"_deseq2_results_tpm_", SPECIES, "_tx_salmon.csv")), na="")
       
       SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
-        write_csv(file.path(DE_OUT_DIR, str_c(g ,"_de_summary_", SPECIES, "_tx_",QUANT_METHOD,".csv")), na="")
+        write_csv(file.path(DE_OUT_DIR, str_c(g ,"_de_summary_", SPECIES, "_tx_salmon.csv")), na="")
     }else{
       # non-tx
       results %>%
@@ -414,47 +414,16 @@ get_transcripts_to_genes <- function(species = 'human') {
     read_delim(delim = " ", col_names = c("transcript", "gene"), col_types = cols())
 }
 
-get_transcript_quant_file <- function(quant_method) {
-  if (quant_method == SALMON) {
-    "quant.sf"
-  } else if (quant_method == KALLISTO) {
-    "abundance.tsv"
-  }
-}
-
-get_salmon_tpms <- function(sample) {
-  sample %>%
-    str_c("results/salmon_quant/", ., "/quant.genes.sf") %>%
-    read_tsv %>%
-    dplyr::select(Name, TPM) %>%
-    rename_(.dots = setNames(names(.), c("gene", str_c(sample, "_tpm"))))
-}
-
-get_kallisto_tpms <- function(sample) {
-  transcript_tpms <- sample %>%
-    str_c("results/kallisto_quant/", ., "/abundance.tsv") %>%
-    read_tsv %>%
-    dplyr::select(target_id, tpm)
-
-  transcript_tpms %<>% inner_join(get_transcripts_to_genes(SPECIES), by = c("target_id"="transcript"))
-
-  transcript_tpms %>%
-    group_by(gene) %>%
-    summarise(tpm = sum(tpm)) %>%
-    rename_(.dots = setNames(names(.), c("gene", str_c(sample, "_tpm"))))
-}
-
-get_tximport <- function(sample_data, species, quant_method='salmon', tx_level = TRUE) {
-  quant_file <- get_transcript_quant_file(quant_method)
+get_tximport <- function(sample_data, species, tx_level = TRUE) {
   quant_dirs <- sample_data %>%
     tibble::rownames_to_column(var = "tmp") %>%
     pull("tmp")
 
-  quant_files <- str_c("results/",quant_method,"_quant/", species, "/",  quant_dirs, "/", quant_file)
+  quant_files <- str_c("results/salmon_quant/", species, "/",  quant_dirs, "/quant.sf")
   names(quant_files) <- quant_dirs
 
-  txi <- tximport(quant_files, type=quant_method, txOut = tx_level,
-                  tx2gene=get_transcripts_to_genes(species), dropInfReps = TRUE)
+  txi <- tximport(quant_files, txOut = tx_level,
+                  tx2gene = get_transcripts_to_genes(species), dropInfReps = TRUE)
 
   txi$Length <- read.csv(quant_files[1],sep = '\t',stringsAsFactors = FALSE) %>%
     dplyr::select(id = 1, length = 2) %>%
@@ -464,8 +433,8 @@ get_tximport <- function(sample_data, species, quant_method='salmon', tx_level =
   txi
 }
 
-get_total_dds_tximport <- function(sample_data, species, quant_method = 'salmon', tx_level = TRUE, design_formula=~1) {
-  txi <- get_tximport(sample_data, species, quant_method, tx_level)
+get_total_dds_tximport <- function(sample_data, species, tx_level = TRUE, design_formula=~1) {
+  txi <- get_tximport(sample_data, species, tx_level)
 
   total_dds <- DESeqDataSetFromTximport(txi, sample_data, design_formula)
   total_dds <- DESeq(total_dds)

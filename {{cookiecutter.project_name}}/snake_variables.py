@@ -15,7 +15,6 @@ FASTQC_EXECUTABLE="fastqc{{cookiecutter.fastqc_version}}"
 FEATURECOUNTS_EXECUTABLE="featureCounts{{cookiecutter.featurecounts_version}}"
 PICARD_EXECUTABLE="/opt/picard-tools-{{cookiecutter.picard_version}}/picard.jar"
 SALMON_EXECUTABLE="salmon{{cookiecutter.salmon_version}}"
-KALLISTO_EXECUTABLE="kallisto{{cookiecutter.kallisto_version}}"
 
 {% if cookiecutter.paired_end_read == "yes" %}
 FEATURECOUNTS_PAIRED_END_FLAG = '-p --countReadPairs'

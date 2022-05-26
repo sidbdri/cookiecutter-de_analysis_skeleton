@@ -99,24 +99,6 @@ start_plot("count_distribution")
 plot_count_distribution(total_dds_data, norm = F)
 end_plot()
 
-## Plot percentage of mitochondrial RNA in each sample
-
-gene_info <- get_gene_info(SPECIES)
-mitochondrial_genes <- gene_info %>% filter(chromosome == 'MT') %>% pull(gene)
-nuclear_encoded_mitochondrial_genes <- get_nuclear_encoded_mitochondrial_genes()
-
-start_plot('mitochondrial_gene_count')
-plot_gene_percentage(counts(total_dds_data),
-                     list(MT_mito = mitochondrial_genes, NUC_mito = nuclear_encoded_mitochondrial_genes),
-                     use_percentage = FALSE) %>% print
-end_plot()
-
-start_plot('mitochondrial_gene_percentage')
-plot_gene_percentage(counts(total_dds_data),
-                     list(MT_mito = mitochondrial_genes, NUC_mito = nuclear_encoded_mitochondrial_genes),
-                     use_percentage = TRUE) %>% print
-end_plot()
-
 ## Initialise a D.E. results object containing gene information, counts and FPKMs
 gene_lengths <- get_gene_lengths(SPECIES)
 results <- total_dds_data %>% get_count_data()
@@ -149,9 +131,6 @@ if (TX_LEVEL) {
     left_join(gene_info,by='gene') %>%
     left_join(gene_lengths,by='gene')
 }
-
-## Generate plots of the FPKMs of marker genes in the samples
-check_cell_type(results, fpkm_check_cutoff = 5, print_check_log = TRUE, print_fpkm_table = F)
 
 ## Perform gene-level differential expression
 comparisons_results <- COMPARISON_TABLE %>%

@@ -65,6 +65,13 @@ INTERACTION_TABLE <- tribble(
   #"LBC_THp_BA17_Good_vs_Poor_interaction","sex","M","F","cognitive","Good","Poor"
 )
 
+# tell rMATS which comparison contains paired samples, and the column name in the SAMPLE_DATA which indicates the pairing
+# only need to include those comparisons which have sample level pairing
+RMAT_SAMPLE_PARI_TABLE <- tribble(
+  ~comparison, ~pair_column,
+  # "P10_Ctx_KO_vs_WT","pair"
+)
+
 # to make sure comparison name does not start with a number https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/142
 check_comparison_name()
 

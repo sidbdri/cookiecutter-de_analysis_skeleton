@@ -83,16 +83,16 @@ fi
 exit;
 
 {% for s in cookiecutter.species.split(' ') %}
-Rscript diff_expr_{{ s }}.R
-Rscript diff_expr_tx_{{ s }}.R
+Rscript diff_expr_{{ s }}.R | tee ${LOG_DIR}/R/diff_expr_{{ s }}.log
+Rscript diff_expr_tx_{{ s }}.R | tee ${LOG_DIR}/R/diff_expr_tx_{{ s }}.log
 {% endfor %}
 
 {% for s in cookiecutter.species.split(' ') %}
-#Rscript rMATS_{{ s }}.R
+#Rscript rMATS_{{ s }}.R | tee ${LOG_DIR}/R/rMATS_{{ s }}.log
 {% endfor %}
 
 {% for s in cookiecutter.species.split(' ') %}
-#Rscript wgcna_{{ s }}.R
+#Rscript wgcna_{{ s }}.R  | tee ${LOG_DIR}/R/wgcna_{{ s }}.log
 {% endfor %}
 
 # Generate Shiny app

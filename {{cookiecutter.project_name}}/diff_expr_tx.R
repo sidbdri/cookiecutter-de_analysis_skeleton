@@ -101,6 +101,7 @@ end_plot()
 
 ## Initialise a D.E. results object containing gene information, counts and FPKMs
 gene_lengths <- get_gene_lengths(SPECIES)
+gene_info <- get_gene_info(SPECIES)
 results <- total_dds_data %>% get_count_data()
 
 txi <- get_tximport(SAMPLE_DATA, SPECIES, TX_LEVEL)

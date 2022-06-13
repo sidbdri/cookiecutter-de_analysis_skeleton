@@ -70,9 +70,30 @@ perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP",
   # result_classic <- go_data %>% runTest('classic', 'fisher')
   # result_elim <- go_data %>% runTest('elim', 'fisher')
   result_weight %>% print()
+
+  # this could refactor somehow so the GO/REACTOME use the same function
+  # but currently the parallel code only source one file, we need to change that
+  # so GO/REACTOME source the same file containing this function.
+  .calculate_odd_ratio_go <- function(go_data,go_result,term){
+    # @numM: number of gene annotated to the term
+    # @total_anotated: total number of gene (gene universe)
+    # @numHits: number of gene annotated to the term AND in the significant list
+    # @numSig: total number of significant gene
+    c(numM,numHits,expected) %<-% termStat(go_data, term)%>%unlist
+    c(total_anotated,numSig) %<-% go_result@geneData[c("Annotated","Significant")]
+
+    # method 1
+    # (numHits/(numM - numHits)) / ((numSig - numHits)/(total_anotated - numM - numSig + numHits))
+    # method 2
+    contMat <- cbind(sig = c(numHits, numSig - numHits),
+                     notSig = c(numM - numHits, total_anotated - numM - numSig + numHits)) %>%
+      set_rownames(c("anno", "notAnno"))
+    odd.ratio <- fisher.test(contMat) %>% extract2('estimate') %>% unname()
+    odd.ratio
+  }
   
   go_results <- go_data %>% GenTable(weight_fisher = result_weight, orderBy = "weight_fisher", topNodes = 150)
-  
+  go_results$odd_ratio <- sapply(go_results[,c('GO.ID')], function(x) .calculate_odd_ratio_go(go_data,result_weight, term=x))
   gene_info <- get_gene_info(species)
   go_results$Genes <- sapply(go_results[,c('GO.ID')], function(x) get_significant_genes(x, go_data, gene_info))
   
@@ -95,3 +116,5 @@ get_significant_genes <- function(term, GOdata, gene_info) {
     extract2(1) %>% 
     paste(collapse = ", ")
 }
+
+

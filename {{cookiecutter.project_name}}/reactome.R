@@ -56,20 +56,45 @@ perform_pathway_enrichment <- function(significant_genes, expressed_genes,
     gene = gene_list, organism = species, universe = as.character(universe), 
     pvalueCutoff = 0.1, readable = T) %>%
     as.data.frame()
-  
+
+  # workout odd ratio
+  .calculate_odd_ratio <- function(numM,total_anotated,numHits,numSig){
+    # @numM: number of gene annotated to the term
+    # @total_anotated: total number of gene (gene universe)
+    # @numHits: number of gene annotated to the term AND in the significant list
+    # @numSig: total number of significant gene
+
+    # method 1
+    # (numHits/(numM - numHits)) / ((numSig - numHits)/(total_anotated - numM - numSig + numHits))
+    # method 2
+    contMat <- cbind(sig = c(numHits, numSig - numHits),
+                     notSig = c(numM - numHits, total_anotated - numM - numSig + numHits)) %>%
+      set_rownames(c("anno", "notAnno"))
+    odd.ratio <- fisher.test(contMat) %>% extract2('estimate') %>% unname()
+    odd.ratio
+  }
+  odd_ratio <- pathways %>% tidyr::separate(col = 'GeneRatio', into=c('numHits','numSig')) %>%
+    tidyr::separate(col = 'BgRatio', into=c('numM','total_anotated')) %>%
+    dplyr::select(ID,numHits,numSig,numM,total_anotated) %>%
+    dplyr::mutate(across(c(2,3,4,5),as.numeric)) %>%
+    rowwise() %>% mutate(odd_ratio=.calculate_odd_ratio(numM,total_anotated,numHits,numSig)) %>%
+    pull(odd_ratio)
+  pathways %<>% mutate(odd_ratio=odd_ratio) %>%
+    dplyr::select(ID,Description,odd_ratio,everything())
+
   top_dir <-  file.path(out_dir,species,comparison_name)
   if (!dir.exists(top_dir)) {
     dir.create(top_dir, recursive = TRUE)
   }
   
   ret <- data.frame()
-  
+
   if (pathways %>% nrow() > 0) {
     pathways %>%
-      dplyr::select(ID, Description, GeneRatio, BgRatio, pvalue, p.adjust, geneID) %>%
+      dplyr::select(ID, Description, GeneRatio, BgRatio, odd_ratio, pvalue, p.adjust, geneID) %>%
       write_csv(file.path(top_dir, str_c(comparison_name, file_prefix, "_reactome.csv")), na = "")
-    
-    ret <- pathways %>% dplyr::select(ID, Description, GeneRatio, BgRatio, pvalue, p.adjust, geneID)
+
+    ret <- pathways %>% dplyr::select(ID, Description, GeneRatio, BgRatio, odd_ratio, pvalue, p.adjust, geneID)
   }
   
   ret

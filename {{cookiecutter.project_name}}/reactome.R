@@ -73,14 +73,17 @@ perform_pathway_enrichment <- function(significant_genes, expressed_genes,
     odd.ratio <- fisher.test(contMat) %>% extract2('estimate') %>% unname()
     odd.ratio
   }
-  odd_ratio <- pathways %>% tidyr::separate(col = 'GeneRatio', into=c('numHits','numSig')) %>%
-    tidyr::separate(col = 'BgRatio', into=c('numM','total_anotated')) %>%
-    dplyr::select(ID,numHits,numSig,numM,total_anotated) %>%
-    dplyr::mutate(across(c(2,3,4,5),as.numeric)) %>%
-    rowwise() %>% mutate(odd_ratio=.calculate_odd_ratio(numM,total_anotated,numHits,numSig)) %>%
-    pull(odd_ratio)
-  pathways %<>% mutate(odd_ratio=odd_ratio) %>%
-    dplyr::select(ID,Description,odd_ratio,everything())
+
+  if (pathways %>% nrow() > 0) {
+    odd_ratio <- pathways %>% tidyr::separate(col = 'GeneRatio', into=c('numHits','numSig')) %>%
+      tidyr::separate(col = 'BgRatio', into=c('numM','total_anotated')) %>%
+      dplyr::select(ID,numHits,numSig,numM,total_anotated) %>%
+      dplyr::mutate(across(c(2,3,4,5),as.numeric)) %>%
+      rowwise() %>% mutate(odd_ratio=.calculate_odd_ratio(numM,total_anotated,numHits,numSig)) %>%
+      pull(odd_ratio)
+    pathways %<>% mutate(odd_ratio=odd_ratio) %>%
+      dplyr::select(ID,Description,odd_ratio,everything())
+  }
 
   top_dir <-  file.path(out_dir,species,comparison_name)
   if (!dir.exists(top_dir)) {

@@ -93,7 +93,10 @@ perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP",
   }
   
   go_results <- go_data %>% GenTable(weight_fisher = result_weight, orderBy = "weight_fisher", topNodes = 150)
-  go_results$odd_ratio <- sapply(go_results[,c('GO.ID')], function(x) .calculate_odd_ratio_go(go_data,result_weight, term=x))
+  if (go_results %>% nrow() > 0) {
+    go_results$odd_ratio <- sapply(go_results[,c('GO.ID')], function(x) .calculate_odd_ratio_go(go_data,result_weight, term=x))
+  }
+
   gene_info <- get_gene_info(species)
   go_results$Genes <- sapply(go_results[,c('GO.ID')], function(x) get_significant_genes(x, go_data, gene_info))
   

@@ -74,7 +74,7 @@ perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP",
   # this could refactor somehow so the GO/REACTOME use the same function
   # but currently the parallel code only source one file, we need to change that
   # so GO/REACTOME source the same file containing this function.
-  .calculate_odd_ratio_go <- function(go_data,go_result,term){
+  .calculate_odds_ratio_go <- function(go_data,go_result,term){
     # @numM: number of gene annotated to the term
     # @total_anotated: total number of gene (gene universe)
     # @numHits: number of gene annotated to the term AND in the significant list
@@ -94,7 +94,7 @@ perform_go_analysis <- function(gene_universe, significant_genes, ontology="BP",
   
   go_results <- go_data %>% GenTable(weight_fisher = result_weight, orderBy = "weight_fisher", topNodes = 150)
   if (go_results %>% nrow() > 0) {
-    go_results$odd_ratio <- sapply(go_results[,c('GO.ID')], function(x) .calculate_odd_ratio_go(go_data,result_weight, term=x))
+    go_results$odds_ratio <- sapply(go_results[,c('GO.ID')], function(x) .calculate_odds_ratio_go(go_data,result_weight, term=x))
   }
 
   gene_info <- get_gene_info(species)

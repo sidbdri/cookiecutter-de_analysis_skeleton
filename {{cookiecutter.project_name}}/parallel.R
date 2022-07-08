@@ -105,6 +105,7 @@ check_bpresult <- function(res,job_name) {
     # at least one worker node has error.
     message(job_name, 'parallel run failed')
     message('Error in worker node ', which(!bpok(res)) %>% paste0(., collapse = ','))
+    message('Error log can be found at: ', paste0('results/logs/R/BioParallel/',job_name))
     sapply(which(!bpok(res)), function(i) {
       message('Worker ',i,' error message:')
       print(res[[i]])

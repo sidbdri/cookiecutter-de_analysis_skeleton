@@ -469,9 +469,11 @@ plot_scatter_fpkm <- function(results){
   COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>% lapply(function(comparison_name){
     x <- COMPARISON_TABLE %>% filter(comparison == comparison_name)
     same_in_base <- SAMPLE_DATA %>%
+      filter(!!parse_expr(x$filter)) %>%
       filter(!!parse_expr(x$condition_name) == x$condition_base) %>%
       pull(sample_name) %>% str_c('_fpkm',sep = '')
     same_in_condition <- SAMPLE_DATA %>%
+      filter(!!parse_expr(x$filter)) %>%
       filter(!!parse_expr(x$condition_name) == x$condition) %>%
       pull(sample_name) %>% str_c('_fpkm',sep = '')
     
@@ -485,9 +487,12 @@ plot_scatter_fpkm <- function(results){
     result_for_plot$avg_fpkm_condition <- result_for_plot %>% dplyr::select(one_of(same_in_condition)) %>%
       mutate(avg_1 = rowMeans(.)) %>% pull(avg_1)
     
+    result_for_plot %<>% filter(avg_fpkm_condition > 0 & avg_fpkm_base > 0)
+    
     start_plot(str_c("scatter_fpkm_", x$comparison))
     p <- result_for_plot %>%
       ggplot(aes(x = avg_fpkm_condition, y = avg_fpkm_base)) +
+      geom_point(data = result_for_plot %>% dplyr::filter(is.na(padj)), shape = 4, colour = "grey", alpha = 0.5) +
       geom_point(data = result_for_plot %>% dplyr::filter(padj >= P.ADJ.CUTOFF), shape = 4, colour = "black", alpha = 0.25) +
       geom_point(data = result_for_plot %>% dplyr::filter(padj < P.ADJ.CUTOFF & l2fc > 0), shape = 4, colour = "red") +
       geom_point(data = result_for_plot %>% dplyr::filter(padj < P.ADJ.CUTOFF & l2fc < 0), shape = 4, colour = "blue") +

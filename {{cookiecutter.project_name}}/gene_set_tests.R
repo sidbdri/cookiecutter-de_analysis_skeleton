@@ -10,16 +10,17 @@ get_run_gene_set_analysis_job_strings <- function(comparison_table, gene_set_cat
     pull(job_string)
 }
 
-run_gene_set_analysis <- function(job_string, result_tbl, dds_list, list_of_gene_sets, gene_info,species, out_dir, ...) {
+run_gene_set_analysis <- function(job_string, result_tbl, comparison_table, vst_list, list_of_gene_sets, gene_info,species, out_dir, ...) {
   
   futile.logger::flog.info(paste0('running GS for:',job_string))
   
   c(comparison_name, category) %<-% (strsplit(job_string, split = ';') %>% unlist())
-  dds <- dds_list[[str_c(comparison_name,'dds',sep = '_')]]
+  vst <- vst_list[[str_c(comparison_name,'vst',sep = '_')]]
+  design_formula <- comparison_table %>% filter(comparison==comparison_name) %>% pull(formula) %>% as.formula()
   
   camera_results <- list_of_gene_sets[category] %>%
     map(function(category_gene_sets) {
-      get_camera_results(dds, category_gene_sets, gene_info)
+      get_camera_results(vst, design_formula, category_gene_sets, gene_info)
     })
   
   de_res <- result_tbl %>% dplyr::select(
@@ -35,9 +36,7 @@ run_gene_set_analysis <- function(job_string, result_tbl, dds_list, list_of_gene
   camera_results[[category]]
 }
 
-get_camera_results <- function(dds, gene_sets, gene_info) {
-  vst <- dds %>% varianceStabilizingTransformation
-  design_formula <- dds %>% design()
+get_camera_results <- function(vst, design_formula, gene_sets, gene_info) {
   expression_data <- vst %>% assay
   
   ids <- expression_data %>% 

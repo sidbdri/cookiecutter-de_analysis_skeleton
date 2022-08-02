@@ -49,6 +49,7 @@ run_deseq <- function(comparison_name, results_tbl, fpkms, species, qSVA, use_tx
   list(comparison_name = comparison_name,
        res = res$res,
        dds = res$dds,
+       vst = res$vst,
        results_tb = results_tb,
        summary_tb = res$summary_tb_row,
        p_plot = p_plot,
@@ -154,7 +155,7 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
       nrow()
   )
 
-  list(res=res, dds=dds, summary_tb_row=summary_tb_row)
+  list(res=res, dds=dds, vst=vst, summary_tb_row=summary_tb_row)
 }
 
 get_total_dds <- function(sample_data, species, filter_low_counts = FALSE, qSVA = FALSE, design_formula = ~1) {

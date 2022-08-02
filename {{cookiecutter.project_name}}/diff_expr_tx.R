@@ -29,8 +29,10 @@ qSVA <- FALSE
 OUTPUT_DIR <- file.path('results','differential_expression_tx')
 DE_OUT_DIR=file.path(OUTPUT_DIR, "de_tx")
 GRAPHS_DIR <- file.path(OUTPUT_DIR, "graphs")
+LOG_DIR=file.path('results','logs','R','diff_expr_tx')
 dir.create(DE_OUT_DIR, recursive = TRUE)
 dir.create(GRAPHS_DIR, recursive = TRUE)
+dir.create(LOG_DIR, recursive = TRUE)
 
 #### Differential gene expression ####
 
@@ -176,7 +178,8 @@ lapply(comparisons_results, function(cmp) {
   # commnet out for now.
   # see https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/83
   # cmp$res %>% set_global(cmp$comparison %>% str_c('res', sep = '_'))
-  cmp$dds %>% set_global(cmp$comparison %>% str_c('dds', sep = '_'))
+  # cmp$dds %>% set_global(cmp$comparison %>% str_c('dds', sep = '_'))
+  cmp$vst %>% set_global(cmp$comparison %>% str_c('vst', sep = '_'))
   cmp$misassignment_percentage %>% set_global(cmp$comparison %>% str_c('misassignment_percentage', sep = '_'))
   'success'
 })
@@ -197,7 +200,7 @@ results %<>% rename_at(.vars = vars(contains('_fpkm')),.funs=function(x){gsub(x 
 
 
 if (COMPARISON_TABLE %>% pull(group) %>% unique() %>% length() > 1) {
-  save_results_by_group(results)
+  save_results_by_group(results,use_tx=T)
 }
 
 results %>%
@@ -239,7 +242,8 @@ if(!TX_LEVEL){
                                   p.adj.cutoff = P.ADJ.CUTOFF,
                                   expressed_genes = expressed_genes,
                                   species = SPECIES,
-                                  out_dir = file.path(OUTPUT_DIR, "enrichment_tests"))
+                                  out_dir = file.path(OUTPUT_DIR, "enrichment_tests"),
+                                  log_dir=LOG_DIR)
 
   #### Reactome pathway analysis ####
 
@@ -251,7 +255,8 @@ if(!TX_LEVEL){
                                   p.adj.cutoff = P.ADJ.CUTOFF,
                                   expressed_genes = expressed_genes,
                                   species = SPECIES,
-                                  out_dir = file.path(OUTPUT_DIR, "reactome"))
+                                  out_dir = file.path(OUTPUT_DIR, "reactome"),
+                                  log_dir=LOG_DIR)
 
   #### Gene set enrichment analysis ####
 
@@ -266,13 +271,15 @@ if(!TX_LEVEL){
     run_jobs_with_separate_memory(job_function = 'run_gene_set_analysis',
                                   job_source = 'gene_set_tests.R',
                                   result_tbl = results,
-                                  dds_list = str_c(COMPARISON_TABLE %>% pull(comparison), 'dds', sep = '_') %>%
+                                  comparison_table = COMPARISON_TABLE,
+                                  vst_list = str_c(COMPARISON_TABLE %>% pull(comparison), 'vst', sep = '_') %>%
                                     set_names(.) %>%
                                     lapply(get_global),
                                   list_of_gene_sets = list_of_gene_sets,
                                   gene_info = gene_info,
                                   species = SPECIES,
-                                  out_dir = file.path(OUTPUT_DIR, "gene_set_tests"))
+                                  out_dir = file.path(OUTPUT_DIR, "gene_set_tests"),
+                                  log_dir=LOG_DIR)
 
   gene_set_analysis_heatmaps <- gene_set_analysis_results %>%
     names %>%

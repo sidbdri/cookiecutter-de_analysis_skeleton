@@ -14,13 +14,15 @@ run_jobs_with_shared_memory <- function(job_strings,
 run_jobs_with_separate_memory <- function(job_strings, 
                                           job_function='run_topgo',
                                           job_source = NULL,
+                                          log_dir=NULL,
                                           ...) {
-  run_jobs(job_strings, job_function, job_source, "SnowParam", ...)
+  run_jobs(job_strings, job_function, job_source, log_dir, "SnowParam", ...)
 }
 
 run_jobs <- function(job_strings, 
                      job_function='run_topgo',
                      job_source = NULL,
+                     log_dir=NULL,
                      parallelParam=c('SnowParam','MulticoreParam')[1],
                      nc=NUM_CORES, # might be better to pass the NUM_CORES
                      ...) {
@@ -28,7 +30,8 @@ run_jobs <- function(job_strings,
   message(length(job_strings),' jobs received for ', job_function)
   print(job_strings)
   
-  log_dir <- file.path('results/logs/R/BioParallel', job_function)
+  if(is.null(log_dir))
+    log_dir <- file.path('results/logs/R/BioParallel', job_function)
   message('logs can be found at ', log_dir)
   dir.create(log_dir, recursive = T, showWarnings = F)
   
@@ -52,7 +55,7 @@ run_jobs <- function(job_strings,
       # we start the workers this way so we can reuse them to hopefully decrease some overhead of loading packages
       # need to load package, as in SOCK mode, workers are independent
       # if we are reusing a worker, we don't need to repeat the package load
-      prepare_worker <- function(...) {
+      prepare_worker <- function(job_index,job_source) {
         source('load_packages.R')
         source('utility_functions.R')
         
@@ -66,7 +69,7 @@ run_jobs <- function(job_strings,
       message('preloading packages and sourcing required functions in workers...')
       loadpackage <- tryCatch(
         {
-          bplapply(c(1:nc), prepare_worker, BPPARAM = para)
+          bplapply(c(1:nc), prepare_worker, job_source=job_source, BPPARAM = para)
         },
         error = function(e){ bpstop(para); e}
       )

@@ -469,9 +469,11 @@ plot_scatter_fpkm <- function(results){
   COMPARISON_TABLE %>% pull(comparison) %>% set_names(.) %>% lapply(function(comparison_name){
     x <- COMPARISON_TABLE %>% filter(comparison == comparison_name)
     same_in_base <- SAMPLE_DATA %>%
+      filter(!!parse_expr(x$filter)) %>%
       filter(!!parse_expr(x$condition_name) == x$condition_base) %>%
       pull(sample_name) %>% str_c('_fpkm',sep = '')
     same_in_condition <- SAMPLE_DATA %>%
+      filter(!!parse_expr(x$filter)) %>%
       filter(!!parse_expr(x$condition_name) == x$condition) %>%
       pull(sample_name) %>% str_c('_fpkm',sep = '')
     
@@ -485,9 +487,12 @@ plot_scatter_fpkm <- function(results){
     result_for_plot$avg_fpkm_condition <- result_for_plot %>% dplyr::select(one_of(same_in_condition)) %>%
       mutate(avg_1 = rowMeans(.)) %>% pull(avg_1)
     
+    result_for_plot %<>% filter(avg_fpkm_condition > 0 & avg_fpkm_base > 0)
+    
     start_plot(str_c("scatter_fpkm_", x$comparison))
     p <- result_for_plot %>%
       ggplot(aes(x = avg_fpkm_condition, y = avg_fpkm_base)) +
+      geom_point(data = result_for_plot %>% dplyr::filter(is.na(padj)), shape = 4, colour = "grey", alpha = 0.5) +
       geom_point(data = result_for_plot %>% dplyr::filter(padj >= P.ADJ.CUTOFF), shape = 4, colour = "black", alpha = 0.25) +
       geom_point(data = result_for_plot %>% dplyr::filter(padj < P.ADJ.CUTOFF & l2fc > 0), shape = 4, colour = "red") +
       geom_point(data = result_for_plot %>% dplyr::filter(padj < P.ADJ.CUTOFF & l2fc < 0), shape = 4, colour = "blue") +
@@ -561,4 +566,31 @@ plot_pvalue_distribution <- function(results, pvalue_column) {
   
   print(p)
   p
+}
+
+plot_volcano <- function(results_table, comparison_name) {
+  results_table %<>% 
+    mutate(l2fc = !!sym(str_c(comparison_name, ".l2fc")),
+           minus_log10_pval = -log10(!!sym(str_c(comparison_name, ".padj"))),
+           sig = case_when(
+             l2fc < 0 & minus_log10_pval > -log10(P.ADJ.CUTOFF) ~ "down",
+             l2fc > 0 & minus_log10_pval > -log10(P.ADJ.CUTOFF) ~ "up",
+             TRUE ~ "notsig")) 
+  
+  top_5_down <- results_table %>% filter(l2fc < 0 & gene_name != "") %>% arrange(desc(minus_log10_pval)) %>% slice_head(n = 5)
+  top_5_up <- results_table %>% filter(l2fc > 0 & gene_name != "") %>% arrange(desc(minus_log10_pval)) %>% slice_head(n = 5)
+  
+  p <- results_table %>% 
+    ggplot(aes(x = l2fc, y = minus_log10_pval, color = sig)) +
+    geom_point(alpha = 0.5) + 
+    geom_hline(yintercept = -log10(P.ADJ.CUTOFF), color = "grey", linetype = "dashed") + 
+    geom_vline(xintercept = 0, color = "grey", linetype = "dashed") + 
+    scale_color_manual(values = c("blue", "black", "red")) + 
+    geom_text_repel(data = top_5_down, aes(label = gene_name), color = "black", force_pull = 0.5) +
+    geom_text_repel(data = top_5_up, aes(label = gene_name), color = "black", force_pull = 0.5) +
+    xlab("Log2 fold change") + ylab("Adjusted p-value") +
+    theme_classic() + 
+    theme(legend.position = "none")
+  
+  print(p)
 }

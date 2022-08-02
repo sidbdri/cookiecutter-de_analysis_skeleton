@@ -84,7 +84,11 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
     txi <- get_tximport(sample_data, species, tx_level)
     dds <- DESeqDataSetFromTximport(txi, sample_data, x$formula %>% as.formula())
     dds <- dds[rowSums(counts(dds)) > 1, ]
-    dds <- DESeq(dds, betaPrior = TRUE)
+    
+    betaPrior <- TRUE
+    if (any(dds %>% design() %>% terms.formula %>% attr( "order") > 1)) betaPrior <- FALSE
+    
+    dds <- DESeq(dds, betaPrior = betaPrior)
   }else{
     dds <- sample_data %>%
       row.names() %>%

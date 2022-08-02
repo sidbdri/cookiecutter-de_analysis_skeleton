@@ -171,6 +171,11 @@ lapply(comparisons_results, function(cmp) {
   start_plot(str_c('top_de_genes_fpkm_',cmp$comparison_name))
   plot_genes_fpkm(results,results %>% arrange(across(str_c(cmp$comparison_name,'.padj',sep = ''))) %>% head(4) %>% pull(gene),print_fpkm_table = F)
   end_plot()
+  
+  # volcano plot for each comparison - top 5 up and down regulated genes are labelled
+  start_plot(str_c('volcano_plot_', cmp$comparison_name))
+  plot_volcano(cmp$results_tb, cmp$comparison_name)
+  end_plot()
 
   # export the res and dds
   # commnet out for now.

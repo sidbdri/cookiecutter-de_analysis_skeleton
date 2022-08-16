@@ -558,8 +558,8 @@ ontology_find_all_children_terms <- function(term, parent2children){
 
 plot_pvalue_distribution <- function(results, pvalue_column) {
   pvals <- results %>%
-    filter_(str_c("!is.na(", pvalue_column, ")")) %>%
-    dplyr::select_(pvalue_column)
+    filter_at(c(pvalue_column),~ !is.na(.)) %>%
+    dplyr::select(pvalue_column)
   
   p <- ggplot(pvals, aes_string(pvalue_column)) + 
     geom_histogram(binwidth = 0.025) 

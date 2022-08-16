@@ -7,8 +7,9 @@ set_num_cores <- function(cores) {
 run_jobs_with_shared_memory <- function(job_strings, 
                                         job_function='run_topgo',
                                         job_source = NULL,
+                                        log_dir=NULL,
                                         ...) {
- run_jobs(job_strings, job_function, job_source, "MulticoreParam", ...)
+ run_jobs(job_strings, job_function, job_source, log_dir,"MulticoreParam", ...)
 }
 
 run_jobs_with_separate_memory <- function(job_strings, 

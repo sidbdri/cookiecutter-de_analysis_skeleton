@@ -72,7 +72,7 @@ check_comparison_name <- function(){
     cat(COMPARISON_TABLE %>% pull(comparison) %>% extract(which(invalid)) %>% paste(collapse = '\n'))
   }
 
-  invalid <- COMPARISON_TABLE %>% pull(comparison) %>% grepl('+-', x = ., perl = T)
+  invalid <- COMPARISON_TABLE %>% pull(comparison) %>% grepl('[+-]', x = ., perl = T)
   if (any(invalid)) {
     message('It is not recommanded to have +/- symbol in comparison name. The following comparison names are not recommanded: ')
     cat(COMPARISON_TABLE %>% pull(comparison) %>% extract(which(invalid)) %>% paste(collapse = '\n'))

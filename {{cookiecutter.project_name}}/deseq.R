@@ -126,6 +126,28 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
                           extract2("sample_info"))
   end_plot()
 
+  # plot pca for all feature in the sample_data table
+  # https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/198
+  plot_name=str_c("pca_all_features_",comparison_name,sep = '')
+  start_plot(plot_name,num_plots = num_features)
+
+  if (global_exists(plot_name)) {
+    rm_global(plot_name)
+  }
+
+  sample_data %>% dplyr::select(-species,-sample_name) %>% colnames() %>%
+    walk(function(feature) {
+      # only including features which aren't the same for all samples in that comparison
+      if(sample_data %>% pull(feature) %>% unique() %>% length() > 1){
+        vst %>%
+          plot_pca(intgroup = c(feature), FALSE) %>%
+          add_to_patchwork(plot_var_name = plot_name)
+      }
+    })
+
+  get(plot_name) %>% print
+  end_plot()
+
   summary_tb_row <- list(
     Comparison = x$comparison,
     DESeq_model_formula = design(dds) %>% format(),

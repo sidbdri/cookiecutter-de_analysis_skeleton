@@ -95,7 +95,7 @@ perform_pathway_enrichment <- function(significant_genes, expressed_genes,
   if (pathways %>% nrow() > 0) {
     pathways %>%
       dplyr::select(ID, Description, GeneRatio, BgRatio, odds_ratio, pvalue, p.adjust, geneID) %>%
-      write_csv(file.path(top_dir, str_c(comparison_name, file_prefix, "_reactome.csv")), na = "")
+      write_csv(file.path(top_dir, str_c(comparison_name, "_", file_prefix, "_reactome.csv")), na = "")
 
     ret <- pathways %>% dplyr::select(ID, Description, GeneRatio, BgRatio, odds_ratio, pvalue, p.adjust, geneID)
   }

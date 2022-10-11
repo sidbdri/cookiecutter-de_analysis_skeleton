@@ -356,7 +356,7 @@ save_results_by_group <- function(results,use_tx=FALSE) {
           gene_name, chromosome, description, entrez_id, gene_type, everything(),
           -dplyr::contains("_tpm"), -dplyr::ends_with(".stat"),
           -matches(n_comparisons), -all_of((samples_to_exclude))) %>%
-        write_csv(file.path(DE_OUT_DIR, str_c(g, "_deseq2_results_count_", SPECIES, "_tx_salmon.csv")), na="")
+        write_csv(file.path(DE_OUT_DIR, str_c(g, "_deseq2_results_count_", SPECIES, ".csv")), na="")
       
       tpm_output <- results %>%
         dplyr::select(
@@ -380,10 +380,10 @@ save_results_by_group <- function(results,use_tx=FALSE) {
         tpm_output %<>% dplyr::select(-one_of(avg_to_exclude %>% str_c('_avg_tpm')))
       }
       
-      tpm_output %>% write_csv(file.path(DE_OUT_DIR, str_c(g ,"_deseq2_results_tpm_", SPECIES, "_tx_salmon.csv")), na="")
+      tpm_output %>% write_csv(file.path(DE_OUT_DIR, str_c(g ,"_deseq2_results_tpm_", SPECIES, ".csv")), na="")
       
       SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
-        write_csv(file.path(DE_OUT_DIR, str_c(g ,"_de_summary_", SPECIES, "_tx_salmon.csv")), na="")
+        write_csv(file.path(DE_OUT_DIR, str_c(g ,"_de_summary_", SPECIES, ".csv")), na="")
     }else{
       # non-tx
       results %>%

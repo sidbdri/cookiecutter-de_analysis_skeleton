@@ -956,3 +956,15 @@ get_misassignment_percentages <- function(comparison_name, gene_lengths) {
   }
   ret
 }
+
+# function to generate plot to check the interaction effect
+# like the one https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#interactions
+# plot_interaction(dds,gene='ENSMUSG00000035486',group=c("condition","genotype"))
+plot_interaction <- function(dds, gene='ENSMUSG00000035486',group=c("condition","genotype")){
+  d <- plotCounts(dds, gene=gene, intgroup=group, returnData=TRUE)
+  ggplot(d, aes_string(x=group[2], y="count",group=group[1])) +
+    facet_wrap(as.formula(paste("~", group[1]))) +
+    geom_point(position=position_jitter(w=0.1,h=0)) + ggtitle('ENSMUSG00000035486') +
+    xlab(group[2]) + ylab("log2(counts+1)") +
+    stat_summary(fun.y=mean, geom="line", colour="red", size=0.8)
+}

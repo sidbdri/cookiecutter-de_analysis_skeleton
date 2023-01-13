@@ -65,7 +65,7 @@ generate_rmats_cmd <- function(sample_data,species,cmp_name){
   # we need to remove this folder because the 'segmentation fault' error
   # when running rmats with more than 1 core in a folder which container pervious rmats runs
   if (dir.exists(top_dir)){
-    message('Found pervious rMATS folder for comparison ',cmp_name,' at ', topdir,'. Removing it to avoid segmentation fault error!')
+    message('Found pervious rMATS folder for comparison ',cmp_name,' at ', top_dir,'. Removing it to avoid segmentation fault error!')
     unlink(top_dir,recursive = TRUE,force = TRUE)
   }
   dir.create(tmp_dir,recursive=TRUE)

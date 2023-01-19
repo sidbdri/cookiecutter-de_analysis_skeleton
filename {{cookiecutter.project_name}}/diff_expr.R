@@ -31,7 +31,8 @@ dir.create(DE_OUT_DIR, recursive = TRUE)
 dir.create(GRAPHS_DIR, recursive = TRUE)
 dir.create(LOG_DIR, recursive = TRUE)
 
-
+### Save sample data ###
+SAMPLE_DATA %>% write_csv(file.path(OUTPUT_DIR, str_c("sample_data", ".csv")), na = "")
 
 #### Differential gene expression ####
 

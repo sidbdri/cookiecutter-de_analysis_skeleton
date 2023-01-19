@@ -87,6 +87,33 @@ Rscript diff_expr_{{ s }}.R | tee ${LOG_DIR}/diff_expr_{{ s }}.log
 Rscript diff_expr_tx_{{ s }}.R | tee ${LOG_DIR}/diff_expr_tx_{{ s }}.log
 {% endfor %}
 
+#### creating deliverable results in zip file #### 
+yyyymmdd=$(date '+%Y%m%d')
+dir_name=${yyyymmdd}.{{cookiecutter.project_name}}.results
+TEMP_DIR=${MAIN_DIR}/${dir_name}
+mkdir -p ${TEMP_DIR}
+
+if [[ -f "${MAIN_DIR}/sessionInfo.txt" ]]; then
+        cp ${MAIN_DIR}/sessionInfo.txt ${TEMP_DIR}/
+fi
+
+if [ -f "${RESULTS_DIR}/multiqc_report.html" ]; then
+        cp ${RESULTS_DIR}/multiqc_report.html ${TEMP_DIR}/
+elif [ -f "${MAIN_DIR}/multiqc_report.html" ]; then
+        cp ${MAIN_DIR}/multiqc_report.html ${TEMP_DIR}/
+fi
+
+cp -r ${RESULTS_DIR}/differential_expression* ${TEMP_DIR}/
+cp -r ${RESULTS_DIR}/read_counts ${TEMP_DIR}/
+
+find ${TEMP_DIR} -name "*count*.csv" -exec rm {} \;
+find ${TEMP_DIR} -name "*genes_in_sets*.csv" -exec rm {} \;
+
+tar cfz results/${dir_name}.tar.gz -P ${TEMP_DIR}
+rm -r ${TEMP_DIR}
+
+
+
 {% for s in cookiecutter.species.split(' ') %}
 #Rscript rMATS_{{ s }}.R | tee ${LOG_DIR}/rMATS_{{ s }}.log
 {% endfor %}

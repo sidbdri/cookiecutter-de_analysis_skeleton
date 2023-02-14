@@ -31,6 +31,14 @@ dir.create(DE_OUT_DIR, recursive = TRUE)
 dir.create(GRAPHS_DIR, recursive = TRUE)
 dir.create(LOG_DIR, recursive = TRUE)
 
+# https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/210
+# add mitocondiral gene count percentage in SAMPLE_DATA for PCR plot later
+gene_info <- get_gene_info(SPECIES)
+mitochondrial_genes <- gene_info %>% filter(chromosome == 'MT') %>% pull(gene)
+nuclear_encoded_mitochondrial_genes <- get_nuclear_encoded_mitochondrial_genes()
+gene_list = c(mitochondrial_genes, nuclear_encoded_mitochondrial_genes)
+SAMPLE_DATA$mt=read_mitochondrial_gene_percent(SAMPLE_DATA$sample_name, gene_list)
+
 ### Save sample data ###
 SAMPLE_DATA %>% write_csv(file.path(OUTPUT_DIR, str_c("sample_data", ".csv")), na = "")
 
@@ -103,10 +111,6 @@ plot_count_distribution(total_dds_data, norm = F)
 end_plot()
 
 ## Plot percentage of mitochondrial RNA in each sample
-
-gene_info <- get_gene_info(SPECIES)
-mitochondrial_genes <- gene_info %>% filter(chromosome == 'MT') %>% pull(gene)
-nuclear_encoded_mitochondrial_genes <- get_nuclear_encoded_mitochondrial_genes()
 
 start_plot('mitochondrial_gene_count')
 plot_gene_percentage(counts(total_dds_data), 

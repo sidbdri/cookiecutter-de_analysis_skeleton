@@ -90,3 +90,14 @@ read_median_5prime_to_3prime_bias <- function(samples = c()) {
       pull(MEDIAN_5PRIME_TO_3PRIME_BIAS)
   }) %>% unlist() %>% setNames(samples)
 }
+
+read_mitochondrial_gene_percent <- function(samples = c(), gene_list){
+  COUNT_MATRIX <- file.path('results/', 'read_counts')
+  mt_counts <- samples %>% lapply(function(sample) {
+    total_counts = read.table(file.path(COUNT_MATRIX,str_c(sample,".",SPECIES,".counts")), header=F, row.names=1) %>% sum()
+    read.table(file.path(COUNT_MATRIX,str_c(sample,".",SPECIES,".counts")), header=F, row.names=1) %>%
+      as.data.frame() %>% mutate_all(as.numeric) %>% dplyr::filter(rownames(.) %in% gene_list) %>%
+      summarise(across(everything(), ~ sum(., is.na(.), 0))) %>% mutate(ratio = .[,1]/total_counts) %>% .[,2]
+  }) %>% unlist() %>% setNames(samples)
+}
+

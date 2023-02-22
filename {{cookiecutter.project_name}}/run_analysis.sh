@@ -87,6 +87,14 @@ Rscript diff_expr_{{ s }}.R | tee ${LOG_DIR}/diff_expr_{{ s }}.log
 Rscript diff_expr_tx_{{ s }}.R | tee ${LOG_DIR}/diff_expr_tx_{{ s }}.log
 {% endfor %}
 
+{% for s in cookiecutter.species.split(' ') %}
+#Rscript rMATS_{{ s }}.R | tee ${LOG_DIR}/rMATS_{{ s }}.log
+{% endfor %}
+
+{% for s in cookiecutter.species.split(' ') %}
+#Rscript wgcna_{{ s }}.R  | tee ${LOG_DIR}/wgcna_{{ s }}.log
+{% endfor %}
+
 #### creating deliverable results in zip file #### 
 yyyymmdd=$(date '+%Y%m%d')
 dir_name=${yyyymmdd}.{{cookiecutter.project_name}}.results
@@ -111,16 +119,6 @@ find ${TEMP_DIR} -name "*genes_in_sets*.csv" -exec rm {} \;
 
 tar cfz results/${dir_name}.tar.gz -P ${TEMP_DIR}
 rm -r ${TEMP_DIR}
-
-
-
-{% for s in cookiecutter.species.split(' ') %}
-#Rscript rMATS_{{ s }}.R | tee ${LOG_DIR}/rMATS_{{ s }}.log
-{% endfor %}
-
-{% for s in cookiecutter.species.split(' ') %}
-#Rscript wgcna_{{ s }}.R  | tee ${LOG_DIR}/wgcna_{{ s }}.log
-{% endfor %}
 
 # Generate Shiny app
 echo Generating Shiny app

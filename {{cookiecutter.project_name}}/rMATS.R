@@ -84,7 +84,7 @@ generate_rmats_cmd <- function(sample_data,species,cmp_name){
     mutate(bam_file=str_c("results/final_bams/",tmp_row_names,".",species,".bam",sep = '') %>% normalizePath)
 
   # check if this comparison has sample level pairing
-  sample_pairing <- RMAT_SAMPLE_PARI_TABLE %>% filter(comparison==cmp_name) %>% pull(pair_column)
+  sample_pairing <- RMATS_SAMPLE_PAIR_TABLE %>% filter(comparison==cmp_name) %>% pull(pair_column)
   if(length(sample_pairing)>0){
     #this will order the samples by the 'pair' column so the bam file are in order
     reps %<>% arrange_at(sample_pairing,.by_group = TRUE)

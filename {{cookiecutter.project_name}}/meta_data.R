@@ -3,25 +3,25 @@ source("meta_data_functions.R")
 #### Sample definition ####
 
 SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
-  outer(c(rep1, rep2, etc), str_c, sep="todo") %>%
+  outer(c(rep1, rep2, etc), str_c, sep = "todo") %>%
   t %>%
   as.vector
 
 # Remember to order the samples sensibly for output in results spreadsheets (i.e. appropriately
 # grouped by some combination of conditions).
 SAMPLE_DATA <- data.frame(
-  condition=...,
-  species=SPECIES,
-  row.names=SAMPLE_NAMES
+  condition = ...,
+  species = SPECIES,
+  row.names = SAMPLE_NAMES
 ) %>% 
   tibble::rownames_to_column(var = "tmp_row_names") %>%
-  filter(species==!!SPECIES) %>%
+  filter(species == !!SPECIES) %>%
   arrange(TODO) %>% 
   tibble::column_to_rownames(var = "tmp_row_names")
 
 # https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/103
 # read in picard alignment matrix and extract the MEDIAN_5PRIME_TO_3PRIME_BIAS column for PCA plot later
-SAMPLE_DATA$read_bias=read_median_5prime_to_3prime_bias(SAMPLE_DATA$sample_name)
+SAMPLE_DATA$read_bias <- read_median_5prime_to_3prime_bias(SAMPLE_DATA$sample_name)
 
 #### Average FPKM groups ####
 
@@ -67,7 +67,7 @@ INTERACTION_TABLE <- tribble(
 
 # tell rMATS which comparison contains paired samples, and the column name in the SAMPLE_DATA which indicates the pairing
 # only need to include those comparisons which have sample level pairing
-RMAT_SAMPLE_PARI_TABLE <- tribble(
+RMATS_SAMPLE_PAIR_TABLE <- tribble(
   ~comparison, ~pair_column,
   # "P10_Ctx_KO_vs_WT","pair"
 )
@@ -91,7 +91,7 @@ check_samples()
 # <comparison_name>.percentage_misassignment_condition, and 
 # <comparison_name>.percentage_misassignment_condition_base
 #
-# The floowing explaintion take the HMR example from the paper,
+# The following explanation takes the HMR example from the paper,
 # where we want to estimate the rat reads misassigned from human/mouse
 # the reference samples are the co-cultures(HM), the target samples are the triple co-culture(HMR).
 #

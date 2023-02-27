@@ -60,10 +60,10 @@ SAMPLES=SAMPLES.split()
 READ1_SUFFIX = ''
 READ2_SUFFIX = ''
 read_identifiers =  ["{{ cookiecutter.read1_identifier }}", "{{ cookiecutter.read2_identifier }}"]
-no_identity=[i == '*' for i in read_identifiers]
-if all(no_identity):
-    READ1_SUFFIX=''
-    READ2_SUFFIX=''
+
+if IS_PAIRED_END == "yes":
+    READ1_SUFFIX = '*'
+    READ1_SUFFIX = ''
 else:
     READ1_SUFFIX = read_identifiers[0]
     READ2_SUFFIX = read_identifiers[1]

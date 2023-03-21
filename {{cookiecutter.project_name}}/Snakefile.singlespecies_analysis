@@ -15,7 +15,8 @@ rule star:
         star = STAR_EXECUTABLE,
         output_dir = lambda wildcards, output: os.path.join(os.path.dirname(output.bam),  wildcards.sample),
         read1_suffix=READ1_SUFFIX,
-        read2_suffix=READ2_SUFFIX
+        read2_suffix=READ2_SUFFIX,
+        is_paired_end=IS_PAIRED_END
     log: "results/logs/star/{sample}.log"
     threads: NUM_THREADS_PER_SAMPLE 
     shell:

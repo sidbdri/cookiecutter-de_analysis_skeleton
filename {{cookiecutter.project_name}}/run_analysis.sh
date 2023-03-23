@@ -80,6 +80,7 @@ if [ ! `echo -n "${strandness_qc}" | wc -l` = 0 ]; then
     exit
 fi
 
+# NB. remove this exit line before committing project to a GitHub repo
 exit;
 
 {% for s in cookiecutter.species.split(' ') %}

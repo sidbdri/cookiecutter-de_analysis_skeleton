@@ -20,7 +20,6 @@ rule star:
     log: "results/logs/star/{sample}.log"
     threads: NUM_THREADS_PER_SAMPLE 
     shell:
-
         """
         forward_reads=`ls {input.fastq} | grep {params.read1_suffix}'.{{ cookiecutter.fastq_suffix }}' || printf ' '`
         forward_reads=`echo "$forward_reads" | paste -d "," -s -`

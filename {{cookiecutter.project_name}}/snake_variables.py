@@ -64,9 +64,6 @@ read_identifiers =  ["{{ cookiecutter.read1_identifier }}", "{{ cookiecutter.rea
 if IS_PAIRED_END == "yes":
     READ1_SUFFIX = read_identifiers[0]
     READ2_SUFFIX = read_identifiers[1]
-else:
-    READ1_SUFFIX = '*'
-    READ2_SUFFIX = ''
 
 
 

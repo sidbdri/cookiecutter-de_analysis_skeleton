@@ -594,3 +594,77 @@ plot_volcano <- function(results_table, comparison_name) {
   
   print(p)
 }
+
+
+plot_expression_heatmap <- function(comparison_name = 'endothelial_Saline_KO_vs_FLOX',
+                                    top = 50,
+                                    p_cutoff = P.ADJ.CUTOFF,
+                                    sample_data = SAMPLE_DATA,
+                                    comparison_table = COMPARISON_TABLE,
+                                    results_tb = results) {
+
+  # Filter comparison_table based on comparison_name
+  x <- comparison_table %>% filter(comparison == comparison_name)
+
+  # Filter sample_data and mutate columns as factors with specified levels defined in the comparison table
+  sample_data <- sample_data %>%
+    filter(!!parse_expr(x$filter)) %>%
+    mutate_at(vars(x$condition_name), ~factor(., levels = c(x$condition_base, x$condition))) %>%
+    arrange_at(.vars = x$condition_name)
+
+  # Select relevant columns from results_tb and filter based on p_cutoff
+  results_tb %<>%
+    dplyr::select(gene, entrez_id, description, gene_name, sample_data$sample_name, contains(comparison_name)) %>%
+    filter(!!sym(paste0(comparison_name, '.padj')) <= p_cutoff) %>%
+    arrange(!!sym(paste0(comparison_name, '.l2fc'))) %>%
+    # make a cloumn for the DE direction
+    mutate(direction = case_when(
+      !!sym(paste0(comparison_name, '.l2fc')) < 0 ~ "down",
+      !!sym(paste0(comparison_name, '.l2fc')) >= 0 ~ "up"
+    )) %>%
+    # take top n rows of each direction
+    group_by(direction) %>%
+    slice_head(n = top) %>%
+    ungroup()
+
+  # Produce the gene expression heatmap using ComplexHeatmap package
+  require(ComplexHeatmap)
+  # make matrix with relevent columns
+  m <- results_tb %>%
+    dplyr::select(!contains('fpkm')) %>%
+    dplyr::select(gene_name, sample_data$sample_name) %>%
+    tibble::column_to_rownames('gene_name') %>%
+    as.matrix
+
+  # Normalize the matrix by dividing each row by the corresponding row mean,
+  # and then take the logarithm base 2 of the result
+  m <- t(sweep(t(m), 2, rowMeans(m), FUN = '/')) %>% log2
+
+  # Replace non-finite values in the matrix with NaN, for plotting
+  m[!is.finite(m)] <- NaN
+
+  # order the sample in the plot
+  sample2genotype <- sample_data %>%
+    filter(sample_name %in% colnames(m)) %>%
+    dplyr::select(sample_name, one_of(x$condition_name)) %>%
+    mutate_all(as.vector) %>%
+    tibble::deframe() %>%
+    extract(colnames(m))
+
+
+  p <- Heatmap(m,
+               cluster_rows = FALSE,
+               cluster_columns = FALSE,
+               show_row_names = TRUE,
+               show_column_names = TRUE,
+               left_annotation = HeatmapAnnotation(which = 'row', log2fc = anno_points(results_tb[, paste0(comparison_name, '.l2fc')], height = unit(2, "cm"), axis_param = list(side = "bottom"))),
+               right_annotation = HeatmapAnnotation(which = 'row', pvalue = anno_points(results_tb[, paste0(comparison_name, '.padj')])),
+               column_km = 1,
+               column_split = sample2genotype %>% as.factor() %>% relevel(x$condition_base),
+               row_km = 1,
+               row_split = results_tb$direction,
+               show_heatmap_legend = FALSE
+  ) %>% suppressMessages
+
+  p
+}

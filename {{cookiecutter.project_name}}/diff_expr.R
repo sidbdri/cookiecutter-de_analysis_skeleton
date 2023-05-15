@@ -202,6 +202,17 @@ end_plot()
 
 plot_scatter_fpkm(results)
 
+
+## Plot gene expression heatmap for each comparison
+
+start_plot("gene_expression_heatmap")
+for(comparison_name in COMPARISON_TABLE %>% pull(comparison)) {
+  plot_expression_heatmap(comparison_name = comparison_name,top = 50) %>%
+    draw(column_title=comparison_name,column_title_gp=grid::gpar(fontsize=16))
+}
+end_plot()
+
+
 ## Save results to file
 
 if (COMPARISON_TABLE %>% pull(group) %>% unique() %>% length() > 1) {

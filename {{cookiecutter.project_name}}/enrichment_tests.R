@@ -120,4 +120,32 @@ get_significant_genes <- function(term, GOdata, gene_info) {
     paste(collapse = ", ")
 }
 
+test_enrichment <- function(df, selection_criteria_1, selection_criteria_2) {
+  selection_criteria_1 <- enquo(selection_criteria_1) 
+  selection_criteria_2 <- enquo(selection_criteria_2) 
+  
+  selection_both <- df %>%
+    filter(!!selection_criteria_1 & !!selection_criteria_2) %>% nrow()
+  
+  selection_one <- df %>%
+    filter(!!selection_criteria_1 & (!!selection_criteria_2 != TRUE)) %>% nrow()
+  
+  selection_two <- df %>%
+    filter((!!selection_criteria_1 != TRUE) & !!selection_criteria_2) %>% nrow()
+  
+  selection_neither <- df %>%
+    filter((!!selection_criteria_1 != TRUE) & (!!selection_criteria_2 != TRUE)) %>% nrow()
+  
+  contingency_matrix <- matrix(c(selection_both, selection_one,
+                                 selection_two, selection_neither),
+                               nrow = 2,
+                               dimnames = list(Selection_Two = c("Yes", "No"),
+                                               Selection_One = c("Yes", "No")))
+  contingency_matrix %>% print()
+  
+  test_res <- fisher.test(contingency_matrix)
+  
+  test_res %>% print()
+}
+
 

@@ -523,6 +523,7 @@ plot_gene_percentage <- function(count_matrix,gene_set_list,use_percentage=TRUE)
     mutate(others = total - rowSums(across(head(names(gene_set_list), 1):tail(names(gene_set_list), 1)), na.rm = T)) %>%
     dplyr::select(-total) %>%
     tidyr::pivot_longer(cols = -sample, names_to = 'type',values_to = 'count') %>%
+    mutate_at(vars(sample), ~factor(., levels = colnames(count_matrix))) %>%
     ggplot(aes(fill = type, y = count, x = sample)) +
     geom_bar(position = bar_position, stat = "identity") +
     scale_y_continuous(expand = expansion(mult = c(0, .05))) +

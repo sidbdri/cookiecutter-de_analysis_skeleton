@@ -203,7 +203,7 @@ get_deseq2_dataset <- function(count_data, sample_data, filter_low_counts = TRUE
   dds <- DESeqDataSetFromMatrix(countData=count_data, colData=sample_data, design=design_formula)
 
   if (filter_low_counts) {
-    dds <- dds[rowSums(counts(dds)) > 1, ]
+    dds <- dds[rowSums(counts(dds)) > 10, ]
   }
 
   if(qSVA) {

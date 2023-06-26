@@ -126,9 +126,15 @@ generate_rmats_cmd <- function(sample_data,species,cmp_name){
 
 
 # we generate the bash script for rMATS commands
-write('#!/bin/bash
+write('
+#!/bin/bash
 #trap "exit" INT TERM
-#trap "kill 0" EXIT',tmp_script)
+#trap "kill 0" EXIT
+export WORKON_HOME=${HOME}/{{cookiecutter.virtualenv_home}}
+export PROJECT_HOME=${HOME}/{{cookiecutter.projects_base}}
+source /usr/local/bin/virtualenvwrapper.sh
+workon {{cookiecutter.project_name}}
+',tmp_script)
 
 
 # Write command to bash script

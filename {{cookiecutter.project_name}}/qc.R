@@ -628,10 +628,11 @@ plot_expression_heatmap <- function(comparison_name = 'endothelial_Saline_KO_vs_
     slice_head(n = top) %>%
     ungroup()
 
-  # Produce the gene expression heatmap using ComplexHeatmap package
-  require(ComplexHeatmap)
+
   # make matrix with relevent columns
   m <- results_tb %>%
+    # if gene_name contains NA, we use ensembl id
+    mutate(gene_name = ifelse(is.na(gene_name), gene, gene_name)) %>%
     dplyr::select(!contains('fpkm')) %>%
     dplyr::select(gene_name, sample_data$sample_name) %>%
     tibble::column_to_rownames('gene_name') %>%
@@ -653,7 +654,7 @@ plot_expression_heatmap <- function(comparison_name = 'endothelial_Saline_KO_vs_
     extract(colnames(m))
 
 
-  p <- Heatmap(m,
+  p <- ComplexHeatmap::Heatmap(m,
                cluster_rows = FALSE,
                cluster_columns = FALSE,
                show_row_names = TRUE,

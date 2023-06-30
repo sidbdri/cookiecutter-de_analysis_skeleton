@@ -230,7 +230,7 @@ plot_significant_set_heatmap <- function(job_string,gs_result,list_of_gene_set,r
       range <- min(max_data, min_data)
       
       start_plot(prefix = gs_name, path = heatmap_path)
-      pheatmap(heatmap_data,
+      pheatmap::pheatmap(heatmap_data,
                breaks = seq(-range, range, length.out = 100),
                cluster_rows = FALSE, cluster_cols = FALSE,
                border_color = NA, show_rownames = (heatmap_data %>% nrow()) < 100,

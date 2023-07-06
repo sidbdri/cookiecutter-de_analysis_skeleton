@@ -274,3 +274,46 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
 SUMMARY_TB %>%
   dplyr::select(-DESeq_model_formula) %>%
   write_csv(file.path(output_folder,str_c("AS_summary_",SPECIES,".csv")),na = "")
+
+
+# # maser package is useful to inspect rMATS results
+# library(maser)
+# library(rtracklayer)
+#
+# # function to load rMATS results for a comparison
+# load_rmats_results<-function(comparison_name,rmats_res_ftype='JCEC'){
+#   x=COMPARISON_TABLE %>% dplyr::filter(comparison==comparison_name)
+#   rmats_res_path=file.path('results','rMATS',SPECIES,x$comparison)
+#   rmats_res_conditions=c(x$condition, x$condition_base)
+#   rmats_res<-maser(rmats_res_path, rmats_res_conditions, ftype = rmats_res_ftype)
+#   return(rmats_res)
+# }
+#
+# # load gtf file
+# ens_gtf <- str_c("data/",dir(path = "data/", pattern = str_c(SPECIES,"_ensembl_*"))) %>%
+#   list.files(pattern = '.gtf',full.names = T) %>% normalizePath %>%
+#   rtracklayer::import.gff()
+#
+# # load rMATS results
+# rmats_res<-load_rmats_results('KO_vs_WT')
+#
+# # inspect rMATS results
+# # head(summary(rmats_res, type = "SE")[, 1:8])
+#
+# # filter out rMATS results with low coverage
+# rmats_res_filt <- filterByCoverage(rmats_res, avg_reads = 5)
+# maser::volcano(rmats_res_filt, fdr = 0.05, deltaPSI = 0.1, type = "SE")
+#
+# # get top events
+# rmats_res_top <- topEvents(rmats_res_filt, fdr = 0.05, deltaPSI = 0.1)
+# maser::dotplot(rmats_res_top, type = "SE")
+#
+# # get events for a specific gene
+# rmats_res_UNC13A <- geneEvents(rmats_res_filt, geneS = "UNC13A", fdr = 0.05, deltaPSI = 0.1)
+# maser::display(rmats_res_UNC13A, "SE")
+# plotGenePSI(rmats_res_UNC13A, type = "SE", show_replicates = TRUE)
+#
+# # find event id in the list of events
+# rmats_res_UNC13A@SE_events
+# # plot specific event
+# maser::plotTranscripts(rmats_res_UNC13A, type = "SE", event_id = 86072,gtf = ens_gtf, zoom = FALSE, show_PSI = TRUE)

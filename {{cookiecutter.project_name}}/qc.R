@@ -616,7 +616,7 @@ plot_expression_heatmap <- function(comparison_name = 'endothelial_Saline_KO_vs_
   results_tb %<>%
     dplyr::select(gene, entrez_id, description, gene_name, sample_data$sample_name, contains(comparison_name)) %>%
     filter(!!sym(paste0(comparison_name, '.padj')) <= p_cutoff) %>%
-    arrange(!!sym(paste0(comparison_name, '.l2fc'))) %>%
+    arrange(desc(abs(!!sym(paste0(comparison_name, '.l2fc'))))) %>%
     # make a cloumn for the DE direction
     mutate(direction = case_when(
       !!sym(paste0(comparison_name, '.l2fc')) < 0 ~ "down",

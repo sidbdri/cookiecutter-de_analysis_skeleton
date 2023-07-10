@@ -523,6 +523,7 @@ plot_gene_percentage <- function(count_matrix,gene_set_list,use_percentage=TRUE)
     mutate(others = total - rowSums(across(head(names(gene_set_list), 1):tail(names(gene_set_list), 1)), na.rm = T)) %>%
     dplyr::select(-total) %>%
     tidyr::pivot_longer(cols = -sample, names_to = 'type',values_to = 'count') %>%
+    mutate_at(vars(sample), ~factor(., levels = colnames(count_matrix))) %>%
     ggplot(aes(fill = type, y = count, x = sample)) +
     geom_bar(position = bar_position, stat = "identity") +
     scale_y_continuous(expand = expansion(mult = c(0, .05))) +
@@ -627,10 +628,11 @@ plot_expression_heatmap <- function(comparison_name = 'endothelial_Saline_KO_vs_
     slice_head(n = top) %>%
     ungroup()
 
-  # Produce the gene expression heatmap using ComplexHeatmap package
-  require(ComplexHeatmap)
+
   # make matrix with relevent columns
   m <- results_tb %>%
+    # if gene_name contains NA, we use ensembl id
+    mutate(gene_name = ifelse(is.na(gene_name), gene, gene_name)) %>%
     dplyr::select(!contains('fpkm')) %>%
     dplyr::select(gene_name, sample_data$sample_name) %>%
     tibble::column_to_rownames('gene_name') %>%
@@ -652,7 +654,7 @@ plot_expression_heatmap <- function(comparison_name = 'endothelial_Saline_KO_vs_
     extract(colnames(m))
 
 
-  p <- Heatmap(m,
+  p <- ComplexHeatmap::Heatmap(m,
                cluster_rows = FALSE,
                cluster_columns = FALSE,
                show_row_names = TRUE,

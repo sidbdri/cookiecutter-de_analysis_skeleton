@@ -116,6 +116,7 @@ generate_rmats_cmd <- function(sample_data,species,cmp_name){
                 "--readLength", rMAT_PARA_readLength,
                 "--tmp",tmp_dir %>% normalizePath(),
                 "--libType",libType,
+                "--novelSS", # this is to allow rMATS to detect novel splice site that is not in the GTF file
                 ifelse(length(sample_pairing)>0,'--paired-stats',''),
                 ifelse(rMAT_PARA_veriable_readLength,'--variable-read-length',''),
                 sep = " "

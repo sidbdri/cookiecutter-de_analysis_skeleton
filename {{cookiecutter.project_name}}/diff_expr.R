@@ -205,12 +205,12 @@ plot_scatter_fpkm(results)
 
 ## Plot gene expression heatmap for each comparison
 
-start_plot("gene_expression_heatmap")
 for(comparison_name in COMPARISON_TABLE %>% pull(comparison)) {
+  start_plot(str_c('gene_expression_heatmap_',comparison_name,sep = ''))
   plot_expression_heatmap(comparison_name = comparison_name,top = 50) %>%
     ComplexHeatmap::draw(column_title=comparison_name,column_title_gp=grid::gpar(fontsize=16))
+  end_plot()
 }
-end_plot()
 
 
 ## Save results to file

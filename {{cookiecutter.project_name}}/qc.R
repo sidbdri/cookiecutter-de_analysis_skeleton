@@ -615,9 +615,11 @@ plot_expression_heatmap <- function(comparison_name = 'endothelial_Saline_KO_vs_
 
   # Select relevant columns from results_tb and filter based on p_cutoff
   results_tb %<>%
-    dplyr::select(gene, entrez_id, description, gene_name, sample_data$sample_name, contains(comparison_name)) %>%
-    filter(!!sym(paste0(comparison_name, '.padj')) <= p_cutoff) %>%
-    arrange(desc(abs(!!sym(paste0(comparison_name, '.l2fc'))))) %>%
+    rowwise() %>%
+    mutate(total_avg = sum(c_across(contains("avg")))) %>%
+    group_by(gene_name) %>%
+    arrange(desc(total_avg),.by_group=T)%>% slice_head(n = 1) %>% ungroup()  %>%
+    arrange(desc(abs(!!sym(paste0(comparison_name, '.l2fc')))))
     # make a cloumn for the DE direction
     mutate(direction = case_when(
       !!sym(paste0(comparison_name, '.l2fc')) < 0 ~ "down",
@@ -659,8 +661,8 @@ plot_expression_heatmap <- function(comparison_name = 'endothelial_Saline_KO_vs_
                cluster_columns = FALSE,
                show_row_names = TRUE,
                show_column_names = TRUE,
-               left_annotation = HeatmapAnnotation(which = 'row', log2fc = anno_points(results_tb[, paste0(comparison_name, '.l2fc')], height = unit(2, "cm"), axis_param = list(side = "bottom"))),
-               right_annotation = HeatmapAnnotation(which = 'row', pvalue = anno_points(results_tb[, paste0(comparison_name, '.padj')])),
+               left_annotation = ComplexHeatmap::HeatmapAnnotation(which = 'row', log2fc = ComplexHeatmap::anno_points(results_tb[, paste0(comparison_name, '.l2fc')], height = unit(2, "cm"), axis_param = list(side = "bottom"))),
+               right_annotation = ComplexHeatmap::HeatmapAnnotation(which = 'row', pvalue = ComplexHeatmap::anno_points(results_tb[, paste0(comparison_name, '.padj')])),
                column_km = 1,
                column_split = sample2genotype %>% as.factor() %>% relevel(x$condition_base),
                row_km = 1,

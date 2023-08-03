@@ -96,30 +96,30 @@ Rscript diff_expr_tx_{{ s }}.R | tee ${LOG_DIR}/diff_expr_tx_{{ s }}.log
 #Rscript wgcna_{{ s }}.R  | tee ${LOG_DIR}/wgcna_{{ s }}.log
 {% endfor %}
 
-#### creating deliverable results in zip file #### 
-yyyymmdd=$(date '+%Y%m%d')
-dir_name=${yyyymmdd}.{{cookiecutter.project_name}}.results
-TEMP_DIR=${MAIN_DIR}/${dir_name}
-mkdir -p ${TEMP_DIR}
+#### Create deliverable results in gzipped tar archive
+dated_results_name=$(date '+%Y%m%d').{{cookiecutter.project_name}}.results
+mkdir -p ${dated_results_name}
 
-if [[ -f "${MAIN_DIR}/sessionInfo.txt" ]]; then
-        cp ${MAIN_DIR}/sessionInfo.txt ${TEMP_DIR}/
+if [ -f "${RESULTS_DIR}/sessionInfo.txt" ]; then
+        cp ${RESULTS_DIR}/sessionInfo.txt ${dated_results_name}/
+elif [ -f "${MAIN_DIR}/sessionInfo.txt" ]; then
+        cp ${MAIN_DIR}/sessionInfo.txt ${dated_results_name}/
 fi
 
 if [ -f "${RESULTS_DIR}/multiqc_report.html" ]; then
-        cp ${RESULTS_DIR}/multiqc_report.html ${TEMP_DIR}/
+        cp ${RESULTS_DIR}/multiqc_report.html ${dated_results_name}/
 elif [ -f "${MAIN_DIR}/multiqc_report.html" ]; then
-        cp ${MAIN_DIR}/multiqc_report.html ${TEMP_DIR}/
+        cp ${MAIN_DIR}/multiqc_report.html ${dated_results_name}/
 fi
 
-cp -r ${RESULTS_DIR}/differential_expression* ${TEMP_DIR}/
-cp -r ${RESULTS_DIR}/read_counts ${TEMP_DIR}/
+cp -r ${RESULTS_DIR}/differential_expression* ${dated_results_name}/
+cp -r ${RESULTS_DIR}/read_counts ${dated_results_name}/
 
-find ${TEMP_DIR} -name "*count*.csv" -exec rm {} \;
-find ${TEMP_DIR} -name "*genes_in_sets*.csv" -exec rm {} \;
+find ${dated_results_name} -name "*count*.csv" -exec rm {} \;
+find ${dated_results_name} -name "*genes_in_sets*.csv" -exec rm {} \;
 
-tar cfz results/${dir_name}.tar.gz -P ${TEMP_DIR}
-rm -r ${TEMP_DIR}
+tar cfz results/${dated_results_name}.tar.gz -P ${dated_results_name}
+rm -r ${dated_results_name}
 
 # Generate Shiny app
 echo Generating Shiny app

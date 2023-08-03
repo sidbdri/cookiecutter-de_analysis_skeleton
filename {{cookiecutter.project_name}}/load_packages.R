@@ -27,6 +27,7 @@ library(Rsamtools)
 library(GenomicAlignments)
 library(BiocParallel)
 library(zeallot)
+library(ComplexHeatmap)
 
 conflict_prefer("desc", "dplyr")
 conflict_prefer("setdiff", "dplyr")

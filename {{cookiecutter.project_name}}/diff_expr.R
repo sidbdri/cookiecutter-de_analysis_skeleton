@@ -35,7 +35,7 @@ dir.create(LOG_DIR, recursive = TRUE)
 # add mitocondiral gene count percentage in SAMPLE_DATA for PCR plot later
 gene_info <- get_gene_info(SPECIES)
 mitochondrial_genes <- gene_info %>% filter(chromosome == 'MT') %>% pull(gene)
-nuclear_encoded_mitochondrial_genes <- get_nuclear_encoded_mitochondrial_genes()
+nuclear_encoded_mitochondrial_genes <- get_nuclear_encoded_mitochondrial_genes(gene_info)
 gene_list <- c(mitochondrial_genes, nuclear_encoded_mitochondrial_genes)
 SAMPLE_DATA$mt <- read_mitochondrial_gene_percent(SAMPLE_DATA$sample_name, gene_list)
 

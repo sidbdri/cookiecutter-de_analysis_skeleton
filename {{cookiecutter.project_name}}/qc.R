@@ -532,20 +532,24 @@ plot_gene_percentage <- function(count_matrix,gene_set_list,use_percentage=TRUE)
   p
 }
 
-get_nuclear_encoded_mitochondrial_genes <- function() {
+get_nuclear_encoded_mitochondrial_genes <- function(gene_info) {
   mitochondrial_terms <- c('GO:0005739', 
                            ontology_find_all_children_terms('GO:0005739', as.list(GO.db::GOCCCHILDREN))) %>% 
     unique()
   
-  topGO::annFUN.org("CC", 
-                      mapping = switch(SPECIES, 
-                                       mouse = "org.Mm.eg.db", 
-                                       rat = "org.Rn.eg.db", 
-                                       human = "org.Hs.eg.db"), 
-                      ID = "ensembl") %>%
+  annotated_genes <- topGO::annFUN.org("CC", 
+                                       mapping = switch(SPECIES, 
+                                                        mouse = "org.Mm.eg.db", 
+                                                        rat = "org.Rn.eg.db", 
+                                                        human = "org.Hs.eg.db"), 
+                                       ID = "ensembl") %>%
     extract(mitochondrial_terms) %>% 
     unlist() %>% 
     unique()
+  
+  mitochondrial_genes <- gene_info %>% filter(chromosome == 'MT') %>% pull(gene)
+  
+  setdiff(annotated_genes, mitochondrial_genes)
 }
 
 ontology_find_all_children_terms <- function(term, parent2children){

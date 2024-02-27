@@ -623,7 +623,7 @@ plot_expression_heatmap <- function(comparison_name = 'endothelial_Saline_KO_vs_
     mutate(total_avg = sum(c_across(contains("avg")))) %>%
     group_by(gene_name) %>%
     arrange(desc(total_avg),.by_group=T)%>% slice_head(n = 1) %>% ungroup()  %>%
-    arrange(desc(abs(!!sym(paste0(comparison_name, '.l2fc')))))
+    arrange(desc(abs(!!sym(paste0(comparison_name, '.l2fc'))))) %>%
     # make a cloumn for the DE direction
     mutate(direction = case_when(
       !!sym(paste0(comparison_name, '.l2fc')) < 0 ~ "down",

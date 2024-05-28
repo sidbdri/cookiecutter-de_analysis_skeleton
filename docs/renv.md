@@ -43,9 +43,9 @@ In order to have renv manage your R package dependencies in your project. you wi
 ONCE**:
 
 ```
-echo ‘export RENV_PATHS_CACHE="~/.cache/R/renv/cache:/srv/data/renv/cache"’ >> ~/.bashrc
+echo export RENV_PATHS_CACHE="~/.cache/R/renv/cache:/srv/data/renv/cache" >> ~/.bashrc
 ## if you use zsh, also uncomment and run below
-# echo ‘export RENV_PATHS_CACHE="~/.cache/R/renv/cache:/srv/data/renv/cache"’ >> ~/.zshrc
+# echo export RENV_PATHS_CACHE="~/.cache/R/renv/cache:/srv/data/renv/cache" >> ~/.zshrc
 ```
 
 This will create the multiple cache setup for renv so that when you run R, it knows where to look for the R packages.

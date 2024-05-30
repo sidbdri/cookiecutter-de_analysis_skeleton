@@ -50,3 +50,41 @@ echo export RENV_PATHS_CACHE="~/.cache/R/renv/cache:/srv/data/renv/cache" >> ~/.
 
 This will create the multiple cache setup for renv so that when you run R, it knows where to look for the R packages.
 
+# renv usage
+
+For every new project created, an renv.lock file will be located in the project root folder.
+
+The first time you run R in the project folder, renv will:
+
+- Detect the renv settings files in the root folder.
+- Identify any libraries listed in the .lock file that are missing from your project library folder.
+
+For the missing packages, renv will:
+
+- Link the packages found in the local/global cache to the project folder.
+- Install the packages not found in any cache into the local cache folder, and then link them to the project folder.
+
+The below command will tell renv to link/install all the packages listed in the lock file into the project library
+folder:
+
+```R
+renv::restore(prompt = FALSE)
+```
+
+When you installed new packages or change any package version in the project, before you commit the code to Github, you
+will need to update the lock file by running:
+
+```R
+renv::snapshot()
+```
+
+You can manually inspect any change of your project library compared to your .lock file by running:
+
+```R
+renv::status()
+```
+
+If you want to exclude some package from getting into the lock file:
+```R
+renv::restore(exclude = c("package1", "package2"))
+```

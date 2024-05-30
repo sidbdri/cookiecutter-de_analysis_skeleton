@@ -86,3 +86,7 @@ mkdir -p ${HUMAN_ENSEMBL_DIR}
 ## Instead of using the genes.tsv from ${GENOME_DATA_DIR}, we download it from Ensembl
 download_gene_tb human {{cookiecutter.ensembl_version}} > ${HUMAN_ENSEMBL_DIR}/genes.tsv
 {% endif %}
+
+## if we have a lock file but the project library is not set up, we set it up
+echo "checking renv setup..."
+[ ! -d "renv/library" ] && [ -f "renv.lock" ] && echo "setting up renv" &&  R -e 'renv::restore(prompt = FALSE)' && echo "new renv initialized base on .lock file" || echo "renv has already been setup. do nothing."

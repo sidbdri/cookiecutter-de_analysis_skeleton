@@ -11,3 +11,8 @@ README
 __pycache__
 sidbdri-utils
 strand.txt
+/renv/*
+!/renv/activate.R
+!/renv/settings.json
+!.Rprofile
+!renv.lock

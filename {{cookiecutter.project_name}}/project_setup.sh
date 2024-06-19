@@ -51,5 +51,11 @@ rm -- "$0"
 #echo "Rename self to project_setup.sh.bk"
 #mv "$0" "$0.bk"
 
+# code to init renv
+echo "##########################"
+echo "Init renv, this will restore the project to the state of the renv.lock file"
+R -e "renv::restore(prompt=F)"
+echo "##########################"
+
 echo "# project setup finish."
 echo "##########################"

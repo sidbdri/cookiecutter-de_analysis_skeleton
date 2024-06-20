@@ -750,7 +750,7 @@
     },
     "Matrix": {
       "Package": "Matrix",
-      "Version": "1.6-3",
+      "Version": "1.6-1",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -763,7 +763,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "1d1b6901cf9b6b1b446bc56a7d47efa4"
+      "Hash": "cb6855ac711958ca734b75e631b2035d"
     },
     "MatrixGenerics": {
       "Package": "MatrixGenerics",
@@ -774,6 +774,19 @@
         "methods"
       ],
       "Hash": "0b6a466982071e55981cf5dd8d1c3ceb"
+    },
+    "PAIRADISE": {
+      "Package": "PAIRADISE",
+      "Version": "1.0",
+      "Source": "Repository",
+      "Repository": "BioCsoft",
+      "Requirements": [
+        "R",
+        "doParallel",
+        "foreach",
+        "nloptr"
+      ],
+      "Hash": "340bbe3a2a2e043c5e176c8deb9dc026"
     },
     "PKI": {
       "Package": "PKI",
@@ -3570,6 +3583,16 @@
         "utils"
       ],
       "Hash": "2769a88be217841b1f33ed469675c3cc"
+    },
+    "nloptr": {
+      "Package": "nloptr",
+      "Version": "2.0.3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "testthat"
+      ],
+      "Hash": "277c67a08f358f42b6a77826e4492f79"
     },
     "nnet": {
       "Package": "nnet",

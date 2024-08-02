@@ -30,7 +30,7 @@ matplotlib==3.3.4
 multiqc==1.10
 networkx==2.5
 numpy==1.22.0
-packaging==20.9
+packaging==22.0
 pandas==1.2.3
 Pillow==9.0.1
 pluggy==0.13.1

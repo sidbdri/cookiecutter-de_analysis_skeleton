@@ -8,7 +8,7 @@
     "paired_end_read": "yes",
     "read1_identifier": "_1",
     "read2_identifier": "{{ cookiecutter.read1_identifier|replace('1', '2') }}",
-    "ensembl_version": "110",
+    "ensembl_version": "112",
     "msigdb_version": "7.5.1",
     "number_threads_per_sample": 8,
     "number_total_threads": 32,

@@ -68,15 +68,18 @@ check_samples <- function(){
 check_comparison_name <- function(){
   invalid <- COMPARISON_TABLE %>% pull(comparison) %>% grepl('^[0-9]', x = ., perl = T)
   if (any(invalid)) {
-    message('Comparison cannot start with a number. The following comparison names are invalid: ')
-    cat(COMPARISON_TABLE %>% pull(comparison) %>% extract(which(invalid)) %>% paste(collapse = '\n'))
+    stop(
+      'Comparison cannot start with a number. The following comparison names are invalid: ',
+      COMPARISON_TABLE %>% pull(comparison) %>% extract(which(invalid)) %>% paste(collapse = '\n')
+    )
   }
 
-  invalid <- COMPARISON_TABLE %>% pull(comparison) %>% grepl('[+-]', x = ., perl = T)
+  invalid <- COMPARISON_TABLE %>% pull(comparison) %>% grepl('[+-:]', x = ., perl = T)
   if (any(invalid)) {
-    message('It is not recommanded to have +/- symbol in comparison name. The following comparison names are not recommanded: ')
-    cat(COMPARISON_TABLE %>% pull(comparison) %>% extract(which(invalid)) %>% paste(collapse = '\n'))
-  }
+   stop(
+      "Comparison cannot contain '+' or '-' or ':'. The following comparison names are invalid: : ",
+      COMPARISON_TABLE %>% pull(comparison) %>% extract(which(invalid)) %>% paste(collapse = '\n')
+    )
 }
 
 # read picard qc matrix for rna degradation

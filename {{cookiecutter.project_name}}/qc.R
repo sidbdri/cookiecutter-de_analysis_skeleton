@@ -632,7 +632,9 @@ plot_expression_heatmap <- function(comparison_name = 'endothelial_Saline_KO_vs_
     # take top n rows of each direction
     group_by(direction) %>%
     slice_head(n = top) %>%
-    ungroup()
+    ungroup() %>%
+    # remove NA direction
+    filter(!is.na(direction))
 
 
   # make matrix with relevent columns

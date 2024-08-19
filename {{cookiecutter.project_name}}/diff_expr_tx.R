@@ -167,7 +167,7 @@ lapply(comparisons_results, function(cmp) {
   add_to_patchwork(cmp$p_plot, plot_var_name = 'all_comparison_pvalue_distribution')
 
   # plot top DE gene for each comparison
-  start_plot(str_c('top_de_genes_fpkm_',cmp$comparison_name))
+  start_plot(str_c('top_de_genes_fpkm_',cmp$comparison_name),path=file.path(GRAPHS_DIR,cmp$comparison_name))
   # we fake a 'gene' column from the transcript column to trick the function
   plot_genes_fpkm(results %>% dplyr::rename(gene_id=gene,gene=transcript),
                   results %>% dplyr::rename(gene_id=gene,gene=transcript) %>% arrange(across(str_c(cmp$comparison_name,'.padj',sep = ''))) %>% head(4) %>% pull(gene),

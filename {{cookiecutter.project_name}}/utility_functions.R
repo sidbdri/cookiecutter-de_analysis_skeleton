@@ -40,6 +40,10 @@ get_gene_lengths <- function(species) {
 }
 
 start_plot <- function(prefix, width = 12, height = 12, path = GRAPHS_DIR, num_plots = 1) {
+  if (!dir.exists(path)) {
+    dir.create(path, recursive = TRUE)
+  }
+
   .adjust_pdf_size <- function(num_plots) {
     num_features <- num_plots
     num_row <- sqrt(num_features) %>% ceiling()

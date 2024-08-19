@@ -489,7 +489,7 @@ plot_scatter_fpkm <- function(results){
     
     result_for_plot %<>% filter(avg_fpkm_condition > 0 & avg_fpkm_base > 0)
     
-    start_plot(str_c("scatter_fpkm_", x$comparison))
+    start_plot(str_c("scatter_fpkm_", x$comparison),path=file.path(GRAPHS_DIR, x$comparison))
     p <- result_for_plot %>%
       ggplot(aes(x = avg_fpkm_base, y = avg_fpkm_condition)) +
       geom_point(data = result_for_plot %>% dplyr::filter(is.na(padj)), shape = 4, colour = "grey", alpha = 0.5) +

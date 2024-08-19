@@ -192,12 +192,12 @@ lapply(comparisons_results, function(cmp) {
   add_to_patchwork(cmp$p_plot, plot_var_name = 'all_comparison_pvalue_distribution')
 
   # plot top DE gene for each comparison
-  start_plot(str_c('top_de_genes_fpkm_',cmp$comparison_name))
+  start_plot(str_c('top_de_genes_fpkm_',cmp$comparison_name),path=file.path(GRAPHS_DIR,cmp$comparison_name))
   plot_genes_fpkm(results,results %>% arrange(across(str_c(cmp$comparison_name,'.padj',sep = ''))) %>% head(4) %>% pull(gene),print_fpkm_table = F)
   end_plot()
   
   # volcano plot for each comparison - top 5 up and down regulated genes are labelled
-  start_plot(str_c('volcano_plot_', cmp$comparison_name))
+  start_plot(str_c('volcano_plot_', cmp$comparison_name),path=file.path(GRAPHS_DIR,cmp$comparison_name))
   plot_volcano(cmp$results_tb, cmp$comparison_name)
   end_plot()
 
@@ -225,7 +225,7 @@ plot_scatter_fpkm(results)
 ## Plot gene expression heatmap for each comparison
 
 for(comparison_name in COMPARISON_TABLE %>% pull(comparison)) {
-  start_plot(str_c('gene_expression_heatmap_',comparison_name,sep = ''))
+  start_plot(str_c('gene_expression_heatmap_',comparison_name,sep = ''),path=file.path(GRAPHS_DIR,comparison_name))
   plot_expression_heatmap(comparison_name = comparison_name,top = 50) %>%
     ComplexHeatmap::draw(column_title=comparison_name,column_title_gp=grid::gpar(fontsize=16))
   end_plot()

@@ -115,11 +115,11 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
                                                      sample_name_tmp, sep = ":")) %>%
                           extract2("sample_info"))
 
-  start_plot(str_c("pca_", x$comparison))
-  vst %>% plot_pca(intgroup=x$condition_name,output_data_table_path=file.path(GRAPHS_DIR,str_c("pca_", x$comparison,'_',SPECIES,'.csv'))) %>% print()
+  start_plot(str_c("pca_", x$comparison),path=file.path(GRAPHS_DIR,x$comparison))
+  vst %>% plot_pca(intgroup=x$condition_name,output_data_table_path=file.path(GRAPHS_DIR,x$comparison,str_c("pca_", x$comparison,'_',SPECIES,'.csv'))) %>% print()
   end_plot()
 
-  start_plot(str_c("heatmap_", x$comparison))
+  start_plot(str_c("heatmap_", x$comparison),path=file.path(GRAPHS_DIR,x$comparison))
   vst %>% plot_heat_map(sample_data %>%
                           tidyr::unite(col = 'sample_info',c(sample_name_tmp,x$condition_name),
                                        sep = ":", remove = FALSE) %>%
@@ -129,7 +129,7 @@ get_res <- function(comparison_name, tpms, species, qSVA=FALSE,
   # plot pca for all feature in the sample_data table
   # https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/198
   plot_name=str_c("pca_all_features_",comparison_name,sep = '')
-  start_plot(plot_name,num_plots = num_features)
+  start_plot(plot_name,path=file.path(GRAPHS_DIR,comparison_name),num_plots = num_features)
 
   if (global_exists(plot_name)) {
     rm_global(plot_name)

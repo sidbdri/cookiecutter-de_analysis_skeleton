@@ -80,6 +80,7 @@ check_comparison_name <- function(){
       "Comparison cannot contain '+' or '-' or ':'. The following comparison names are invalid: : ",
       COMPARISON_TABLE %>% pull(comparison) %>% extract(which(invalid)) %>% paste(collapse = '\n')
     )
+  }
 }
 
 # read picard qc matrix for rna degradation

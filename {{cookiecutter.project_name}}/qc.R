@@ -606,7 +606,8 @@ plot_expression_heatmap <- function(comparison_name = 'endothelial_Saline_KO_vs_
                                     p_cutoff = P.ADJ.CUTOFF,
                                     sample_data = SAMPLE_DATA,
                                     comparison_table = COMPARISON_TABLE,
-                                    results_tb = results) {
+                                    results_tb = results,
+                                    remove_na_direction=TRUE) {
 
   # Filter comparison_table based on comparison_name
   x <- comparison_table %>% filter(comparison == comparison_name)
@@ -619,10 +620,10 @@ plot_expression_heatmap <- function(comparison_name = 'endothelial_Saline_KO_vs_
 
   # Select relevant columns from results_tb and filter based on p_cutoff
   results_tb %<>%
-    rowwise() %>%
-    mutate(total_avg = sum(c_across(contains("avg")))) %>%
+    mutate(total_avg = rowSums(across(contains("avg")))) %>%
     group_by(gene_name) %>%
-    arrange(desc(total_avg),.by_group=T)%>% slice_head(n = 1) %>% ungroup()  %>%
+    slice_max(total_avg, n = 1) %>%
+    ungroup() %>%
     arrange(desc(abs(!!sym(paste0(comparison_name, '.l2fc'))))) %>%
     # make a cloumn for the DE direction
     mutate(direction = case_when(
@@ -634,6 +635,9 @@ plot_expression_heatmap <- function(comparison_name = 'endothelial_Saline_KO_vs_
     slice_head(n = top) %>%
     ungroup()
 
+    if(remove_na_direction)
+        # remove NA direction
+        results_tb %<>% filter(!is.na(direction))
 
   # make matrix with relevent columns
   m <- results_tb %>%

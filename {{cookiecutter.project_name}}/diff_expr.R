@@ -39,6 +39,9 @@ nuclear_encoded_mitochondrial_genes <- get_nuclear_encoded_mitochondrial_genes(g
 gene_list <- c(mitochondrial_genes, nuclear_encoded_mitochondrial_genes)
 SAMPLE_DATA$mt <- read_mitochondrial_gene_percent(SAMPLE_DATA$sample_name, gene_list)
 
+choroid_plexus_genes <- GENE_MARKERS_CHOROID_PLEXUS %>% pull(SPECIES) # "Ttr", "Folr1", "Prlr"
+SAMPLE_DATA$choroid_plexus_pct <- read_mitochondrial_gene_percent(SAMPLE_DATA$sample_name, choroid_plexus_genes) * 100
+
 ### Save sample data ###
 SAMPLE_DATA %>% write_csv(file.path(OUTPUT_DIR, str_c("sample_data", ".csv")), na = "")
 
@@ -123,6 +126,22 @@ plot_gene_percentage(counts(total_dds_data),
                      list(MT_mito = mitochondrial_genes, NUC_mito = nuclear_encoded_mitochondrial_genes),
                      use_percentage = TRUE) %>% print
 end_plot()
+
+
+## Plot percentage of choroid plexus gene in each sample
+
+start_plot('choroid_plexus_gene_count')
+plot_gene_percentage(counts(total_dds_data),
+                     list(choroid_plexus = choroid_plexus_genes),
+                     use_percentage = FALSE) %>% print
+end_plot()
+
+start_plot('choroid_plexus_gene_percentage')
+plot_gene_percentage(counts(total_dds_data),
+                     list(choroid_plexus = choroid_plexus_genes),
+                     use_percentage = TRUE) %>% print
+end_plot()
+
 
 ## Initialise a D.E. results object containing gene information, counts and FPKMs
 

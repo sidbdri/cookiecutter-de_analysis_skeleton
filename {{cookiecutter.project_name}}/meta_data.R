@@ -200,6 +200,14 @@ GENE_MARKERS <- tribble(
   "ENSG00000229807", "ENSMUSG00000086503", "", "Xist", "sex"
 )
 
+GENE_MARKERS_CHOROID_PLEXUS <- tribble(
+    ~human, ~mouse,~rat, ~gene_name, ~cell_type,
+    "ENSG00000118271","ENSMUSG00000061808","ENSRNOG00000016275","Ttr","choroid_plexus",
+    "ENSG00000110195","ENSMUSG00000001827","ENSRNOG00000019902","Folr1","choroid_plexus",
+    "ENSG00000113494","ENSMUSG00000005268","ENSRNOG00000057557","Prlr","choroid_plexus"
+)
+
+
 #### WGCNA ####
 
 # After performing WGCNA, look for correlations between module eigengenes etc. and these variables from

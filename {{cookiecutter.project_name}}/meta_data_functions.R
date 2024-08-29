@@ -74,7 +74,7 @@ check_comparison_name <- function(){
     )
   }
 
-  invalid <- COMPARISON_TABLE %>% pull(comparison) %>% grepl('[+-:]', x = ., perl = T)
+  invalid <- COMPARISON_TABLE %>% pull(comparison) %>% grepl('[-+:]', x = ., perl = T)
   if (any(invalid)) {
    stop(
       "Comparison cannot contain '+' or '-' or ':'. The following comparison names are invalid: : ",

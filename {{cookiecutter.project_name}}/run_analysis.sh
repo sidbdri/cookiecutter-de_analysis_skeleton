@@ -65,20 +65,10 @@ python3 -m snakemake -s Snakefile.common all_qsva
 [[ ! -s multiqc_data/multiqc_picard_RnaSeqMetrics.txt ]] && echo "Error: multiqc_picard_RnaSeqMetrics.txt not found. Cannot perform strandness check." && exit
 
 strandedness=`head -1 strand.txt`
-strandness_qc=`cat multiqc_data/multiqc_picard_RnaSeqMetrics.txt | \
-               awk -F '\t' 'NR==1 { for (i=1; i<=NF; i++) { f[$i] = i}}
-                            NR>1  { print $(f["Sample"])"\t"$(f["PCT_R2_TRANSCRIPT_STRAND_READS"])}' | \
-               awk -v s=$strandedness -F '\t' '{ if (s==0 && ($2<=45 || $2>=55))
-                                                    print $1"\t"$2;
-                                                 else if (s==1 && $2>=5)
-                                                    print $1"\t"$2;
-                                                 else if (s==2 && $2<=95)
-                                                    print $1"\t"$2};'`
-if [ ! `echo -n "${strandness_qc}" | wc -l` = 0 ]; then
-    echo "Error: The following sample may have the wrong strandedness setting:"
-    echo "${strandness_qc}"
-    exit
-fi
+
+python strandness_qc.py
+# Check if the Python script returned an error
+[[ $? -ne 0 ]] && echo "Error: strandness_qc.py failed. Exiting." && exit 1
 
 # NB. remove this exit line before committing project to a GitHub repo
 exit;

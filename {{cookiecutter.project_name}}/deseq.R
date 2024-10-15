@@ -1,7 +1,7 @@
 SALMON <- "salmon"
 
 run_deseq <- function(comparison_name, results_tbl, fpkms, species, qSVA, use_tx=FALSE, tx_level=FALSE, ...){
-
+  futile.logger::flog.info(paste0("Running DESeq2 analysis for comparison: ", comparison_name))
   res <- get_res(comparison_name, fpkms, species, qSVA = qSVA, use_tx=use_tx, tx_level=tx_level)
 
   results_tb <- results_tbl %>%

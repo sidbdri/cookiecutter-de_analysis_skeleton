@@ -63,12 +63,17 @@ ln -s ${GENOME_DATA_DIR}/msigdb ${ENSEMBL_DIR}
 ## Instead of using the genes.tsv from ${GENOME_DATA_DIR}, we download it from Ensembl
 for i in 1 2 3 4 5; do
   download_gene_tb {{ s }} {{cookiecutter.ensembl_version}} > ${ENSEMBL_DIR}/genes.tsv
-  # we make sure it is downloaded, otherwise, terminate the script.
-  [[ -s ${ENSEMBL_DIR}/genes.tsv ]] && break
+  if [[ $(wc -l < ${ENSEMBL_DIR}/genes.tsv) -gt 1000 ]]; then
+    break
+  fi
   echo "error downloading ${ENSEMBL_DIR}/genes.tsv, retry "${i}" out of 5 times."
   sleep 1;
 done
-[[ ! -s ${ENSEMBL_DIR}/genes.tsv ]] && echo "Error: ${ENSEMBL_DIR}/genes.tsv download fail. exit!" && exit 1
+
+if [[ $(wc -l < ${ENSEMBL_DIR}/genes.tsv) -le 1000 ]]; then
+  echo "Error: ${ENSEMBL_DIR}/genes.tsv download failed. Exiting!"
+  exit 1
+fi
 
 # Generating refFlat file for Picard RNA-seq metrics
 generate_picard_refFlat ${PICARD_DATA}/{{ s }} {{ s }} {{cookiecutter.ensembl_version}} ${GTF_FILE} &

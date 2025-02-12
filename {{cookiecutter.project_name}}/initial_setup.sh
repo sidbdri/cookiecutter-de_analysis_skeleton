@@ -11,7 +11,7 @@ mkproject -f -p python3.8 {{cookiecutter.project_name}}
 
 source config.sh
 
-pip install -I --requirement requirements.txt
+pip install --requirement requirements.txt
 pip install git+https://github.com/sidbdri/transcript-utils.git@${transcript_utils_hash}
 {% if cookiecutter.sargasso == "yes" %}
 pip install git+https://github.com/biomedicalinformaticsgroup/Sargasso.git@${sargasso_hash}

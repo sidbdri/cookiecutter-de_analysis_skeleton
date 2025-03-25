@@ -777,16 +777,19 @@
     },
     "PAIRADISE": {
       "Package": "PAIRADISE",
-      "Version": "1.0",
-      "Source": "Repository",
-      "Repository": "BioCsoft",
+      "Version": "1.12.0",
+      "Source": "Bioconductor",
       "Requirements": [
+        "BiocParallel",
         "R",
-        "doParallel",
-        "foreach",
-        "nloptr"
+        "S4Vectors",
+        "SummarizedExperiment",
+        "abind",
+        "methods",
+        "nloptr",
+        "stats"
       ],
-      "Hash": "340bbe3a2a2e043c5e176c8deb9dc026"
+      "Hash": "0a9fe933a4987ceda78d8b77ffe8af80"
     },
     "PKI": {
       "Package": "PKI",
@@ -1258,6 +1261,20 @@
         "utils"
       ],
       "Hash": "4c46104c0ed7a1650ee2e386e8dcbc1f"
+    },
+    "SoupX": {
+      "Package": "SoupX",
+      "Version": "1.6.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "Matrix",
+        "R",
+        "Seurat",
+        "ggplot2",
+        "methods"
+      ],
+      "Hash": "6fc80c34fe3ded25ba2d9e2b53e8da4f"
     },
     "SparseM": {
       "Package": "SparseM",

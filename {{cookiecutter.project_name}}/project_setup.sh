@@ -52,6 +52,15 @@ rm -- "$0"
 #mv "$0" "$0.bk"
 
 # code to init renv
+
+# if renv.lock file not exists, we copy relevent files from /srv/data/renv/setup_R_4.2
+if [ ! -f renv.lock ]; then
+    echo "renv.lock not found, copy from /srv/data/renv/setup_R_4.2"
+    cp /srv/data/renv/setup_R_4.2/renv.lock .
+    cp /srv/data/renv/setup_R_4.2/.Rprofile .
+    cp -r /srv/data/renv/setup_R_4.2/renv .
+fi
+
 echo "##########################"
 echo "Init renv, this will restore the project to the state of the renv.lock file"
 R -e "renv::restore(prompt=F)"

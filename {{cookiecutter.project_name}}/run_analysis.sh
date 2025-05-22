@@ -62,7 +62,6 @@ python3 -m snakemake -s Snakefile.common all_qsva
 #### we check if all the sample are the same strandness settings
 #### https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/127
 [[ ! -s strand.txt ]] && echo "Error: strand.txt not found. Cannot perform strandness check." && exit
-[[ ! -s multiqc_data/multiqc_picard_RnaSeqMetrics.txt ]] && echo "Error: multiqc_picard_RnaSeqMetrics.txt not found. Cannot perform strandness check." && exit
 
 strandedness=`head -1 strand.txt`
 

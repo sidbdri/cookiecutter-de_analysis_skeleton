@@ -5512,6 +5512,19 @@
         "utils"
       ],
       "Hash": "5c715954112b45499fb1dadc6ee6ee3e"
+    },
+    "RGF": {
+      "Package": "RGF",
+      "Version": "1.1.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "Matrix",
+        "R",
+        "R6",
+        "reticulate"
+      ],
+      "Hash": "88e628da961fcf7dee2f70dff96c0776"
     }
   }
 }

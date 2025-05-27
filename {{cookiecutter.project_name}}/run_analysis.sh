@@ -10,7 +10,7 @@ trap cleanup EXIT
 
 export WORKON_HOME=${HOME}/{{cookiecutter.virtualenv_home}}
 export PROJECT_HOME=${HOME}/{{cookiecutter.projects_base}}
-export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3.8
+export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3.10
 source /usr/local/bin/virtualenvwrapper.sh
 
 NUM_TOTAL_THREADS={{cookiecutter.number_total_threads}}
@@ -56,7 +56,7 @@ python3 -m snakemake -s Snakefile.singlespecies_analysis multiqc -j $NUM_TOTAL_T
 {% endif %}
 
 {% if cookiecutter.qSVA == "yes" %}
-python3 -m snakemake -s Snakefile.common all_qsva
+python3 -m snakemake -s Snakefile.common all_qsva -j 1
 {% endif %}
 
 #### we check if all the sample are the same strandness settings

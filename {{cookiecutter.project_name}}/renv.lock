@@ -889,6 +889,19 @@
       ],
       "Hash": "47f648d288079d0c696804ad4e55197e"
     },
+    "RGF": {
+      "Package": "RGF",
+      "Version": "1.1.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "Matrix",
+        "R",
+        "R6",
+        "reticulate"
+      ],
+      "Hash": "88e628da961fcf7dee2f70dff96c0776"
+    },
     "ROCR": {
       "Package": "ROCR",
       "Version": "1.0-11",
@@ -1010,6 +1023,16 @@
         "stats"
       ],
       "Hash": "225157373f361daf85198a8d1ddaa733"
+    },
+    "RcppParallel": {
+      "Package": "RcppParallel",
+      "Version": "5.1.10",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "34ee3ba92c1b2df651980325523ed22a"
     },
     "RcppProgress": {
       "Package": "RcppProgress",
@@ -4026,6 +4049,19 @@
       ],
       "Hash": "1cba04a4e9414bdefc9dcaa99649a8dc"
     },
+    "qs2": {
+      "Package": "qs2",
+      "Version": "0.1.5",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "Rcpp",
+        "RcppParallel",
+        "stringfish"
+      ],
+      "Hash": "9e7ed4d4fdc5aef4ac2e729cc123d326"
+    },
     "qvalue": {
       "Package": "qvalue",
       "Version": "2.28.0",
@@ -4877,6 +4913,18 @@
       ],
       "Hash": "26e158d12052c279bdd4ba858b80fb1f"
     },
+    "stringfish": {
+      "Package": "stringfish",
+      "Version": "0.16.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "Rcpp",
+        "RcppParallel"
+      ],
+      "Hash": "b7eb79470319ae71d4b5ed9cd7bf7294"
+    },
     "stringi": {
       "Package": "stringi",
       "Version": "1.8.4",
@@ -5512,19 +5560,6 @@
         "utils"
       ],
       "Hash": "5c715954112b45499fb1dadc6ee6ee3e"
-    },
-    "RGF": {
-      "Package": "RGF",
-      "Version": "1.1.1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "Matrix",
-        "R",
-        "R6",
-        "reticulate"
-      ],
-      "Hash": "88e628da961fcf7dee2f70dff96c0776"
     }
   }
 }

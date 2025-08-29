@@ -777,19 +777,16 @@
     },
     "PAIRADISE": {
       "Package": "PAIRADISE",
-      "Version": "1.12.0",
-      "Source": "Bioconductor",
+      "Version": "1.0",
+      "Source": "Repository",
+      "Repository": "BioCsoft",
       "Requirements": [
-        "BiocParallel",
         "R",
-        "S4Vectors",
-        "SummarizedExperiment",
-        "abind",
-        "methods",
-        "nloptr",
-        "stats"
+        "doParallel",
+        "foreach",
+        "nloptr"
       ],
-      "Hash": "0a9fe933a4987ceda78d8b77ffe8af80"
+      "Hash": "340bbe3a2a2e043c5e176c8deb9dc026"
     },
     "PKI": {
       "Package": "PKI",

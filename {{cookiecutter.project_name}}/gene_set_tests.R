@@ -1,5 +1,10 @@
 get_gene_sets <- function(species, gene_set_name) {
-  str_c("data/",species,"_ensembl_{{cookiecutter.ensembl_version}}/msigdb/v{{cookiecutter.msigdb_version}}/", gene_set_name, ".all.v{{cookiecutter.msigdb_version}}.entrez.gmt.Rdata") %>% readRDS
+  file_path <- str_c("data/",species,"_ensembl_{{cookiecutter.ensembl_version}}/msigdb/v{{cookiecutter.msigdb_version}}/", gene_set_name, ".all.v{{cookiecutter.msigdb_version}}.entrez.gmt.Rdata")
+  if (!file.exists(file_path)) {
+    message(paste0("msigdb file not found for gene set: ", gene_set_name, " in species: ", species, ". Skipping. File path: ", file_path))
+    return(NULL)
+  }
+  readRDS(file_path)
 }
 
 get_run_gene_set_analysis_job_strings <- function(comparison_table, gene_set_categories) {

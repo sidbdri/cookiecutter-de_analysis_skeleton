@@ -264,7 +264,7 @@ if(!TX_LEVEL){
 
   list_of_gene_sets <- gene_set_categories %>%
     set_names(.) %>%
-    lapply(function(category, ...) get_gene_sets(SPECIES, category))
+    lapply(function(category, ...) get_gene_sets(SPECIES, category)) %>% discard(is.null)
 
   gene_set_analysis_results <- COMPARISON_TABLE %>%
     get_run_gene_set_analysis_job_strings(gene_set_categories) %>%

@@ -48,15 +48,15 @@ for species in ${!SPECIES[@]}; do
 done
 
 {% if cookiecutter.sargasso == "yes" %}
-python3 -m snakemake -s Snakefile.multispecies_analysis bams -j $NUM_TOTAL_THREADS
-python3 -m snakemake -s Snakefile.multispecies_analysis multiqc -j $NUM_TOTAL_THREADS
+python3 -m snakemake -s Snakefile.multispecies_analysis bams --cores $NUM_TOTAL_THREADS
+python3 -m snakemake -s Snakefile.multispecies_analysis multiqc --cores $NUM_TOTAL_THREADS
 {% else %}
-python3 -m snakemake -s Snakefile.singlespecies_analysis bams -j $NUM_TOTAL_THREADS
-python3 -m snakemake -s Snakefile.singlespecies_analysis multiqc -j $NUM_TOTAL_THREADS
+python3 -m snakemake -s Snakefile.singlespecies_analysis bams --cores $NUM_TOTAL_THREADS
+python3 -m snakemake -s Snakefile.singlespecies_analysis multiqc --cores $NUM_TOTAL_THREADS
 {% endif %}
 
 {% if cookiecutter.qSVA == "yes" %}
-python3 -m snakemake -s Snakefile.common all_qsva -j 1
+python3 -m snakemake -s Snakefile.common all_qsva --cores $NUM_TOTAL_THREADS
 {% endif %}
 
 #### we check if all the sample are the same strandness settings

@@ -293,7 +293,7 @@ Reactome_results <- COMPARISON_TABLE %>%
 
 #### Gene set enrichment analysis ####
 
-gene_set_categories <- list("CURATED", "MOTIF", "GO", "CELL_TYPE", "MSIGDB_CELL_TYPE")
+gene_set_categories <- list("CURATED", "MOTIF", "GO", "MSIGDB_CELL_TYPE")
 
 list_of_gene_sets <- gene_set_categories %>%
   set_names(.) %>% 

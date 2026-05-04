@@ -5,7 +5,7 @@ check_formulas <- function() {
     condition <- row$condition_name
 
     # we check factor in the design has more than 1 levels
-    sample_data <- SAMPLE_DATA %>% filter(!!parse_expr(row$filter))
+    sample_data <- SAMPLE_DATA %>% filter(!!parse_expr(row$filter)) %>% droplevels()
     f_levels_chec <- sapply(labels(f)[which(attr(f,"order")==1)], function(x) {sample_data %>% pull(x) %>% unique()}, simplify = F)
     if (any(sapply(f_levels_chec, length) == 1)) {
       print(f_levels_chec)
@@ -41,7 +41,7 @@ check_formulas <- function() {
 check_samples <- function(){
   COMPARISON_TABLE %>% pull(comparison) %>% lapply(function(comparison_name){
     x <- COMPARISON_TABLE %>% filter(comparison == comparison_name)
-    sample_data <- SAMPLE_DATA %>% filter(!!parse_expr(x$filter))
+    sample_data <- SAMPLE_DATA %>% filter(!!parse_expr(x$filter)) %>% droplevels()
     list(
       Comparison = x$comparison,
       Total_samples = sample_data %>% nrow(),

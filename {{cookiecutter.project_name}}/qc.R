@@ -532,6 +532,31 @@ plot_gene_percentage <- function(count_matrix,gene_set_list,use_percentage=TRUE)
   p
 }
 
+
+plot_plexus_contamination_percentage <- function(count_matrix,gene_set_list){
+  total_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
+    summarise(across(everything(), ~ sum(., is.na(.), 0)))
+  
+  tb <- total_count_per_sample %>% tidyr::pivot_longer(cols = everything(), names_to = 'sample', values_to = 'total')
+  for (gs in names(gene_set_list)) {
+    total_goi_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
+      dplyr::filter(rownames(.) %in% gene_set_list[[gs]]) %>%
+      summarise(across(everything(), ~ sum(., is.na(.), 0)))
+    tb %<>% left_join(total_goi_count_per_sample %>% tidyr::pivot_longer(cols = everything(), names_to = 'sample', values_to = gs))
+  }
+  
+  p <- tb %>%
+    mutate(pct = 100 * choroid_plexus / total) %>%
+    ggplot(aes(x = sample, y = pct)) +
+    geom_col() +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
+    # optional: scale_y_continuous(limits = c(0, NA))  # auto-zoom to max
+    ylab("Choroid plexus (%)") +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) 
+  p
+}
+
 get_nuclear_encoded_mitochondrial_genes <- function(gene_info) {
   mitochondrial_terms <- c('GO:0005739', 
                            ontology_find_all_children_terms('GO:0005739', as.list(GO.db::GOCCCHILDREN))) %>% 

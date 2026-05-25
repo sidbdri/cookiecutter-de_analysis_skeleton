@@ -137,9 +137,8 @@ plot_gene_percentage(counts(total_dds_data),
 end_plot()
 
 start_plot('choroid_plexus_gene_percentage')
-plot_gene_percentage(counts(total_dds_data),
-                     list(choroid_plexus = choroid_plexus_genes),
-                     use_percentage = TRUE) %>% print
+plot_plexus_contamination_percentage(counts(total_dds_data),
+                     list(choroid_plexus = choroid_plexus_genes)) %>% print
 end_plot()
 
 

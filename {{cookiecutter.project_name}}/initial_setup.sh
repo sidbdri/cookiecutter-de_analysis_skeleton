@@ -71,8 +71,14 @@ for i in 1 2 3 4 5; do
 done
 
 if [[ $(wc -l < ${ENSEMBL_DIR}/genes.tsv) -le 1000 ]]; then
-  echo "Error: ${ENSEMBL_DIR}/genes.tsv download failed. Exiting!"
-  exit 1
+  if [[ -f "${GENOME_DATA_DIR}/genes.tsv" ]]; then
+    echo "Download failed; using fallback ${GENOME_DATA_DIR}/genes.tsv"
+    cp "${GENOME_DATA_DIR}/genes.tsv" "${ENSEMBL_DIR}/genes.tsv"
+  fi
+  if [[ $(wc -l < ${ENSEMBL_DIR}/genes.tsv) -le 1000 ]]; then
+    echo "Error: ${ENSEMBL_DIR}/genes.tsv download failed and no valid fallback. Exiting!"
+    exit 1
+  fi
 fi
 
 # Generating refFlat file for Picard RNA-seq metrics
@@ -82,6 +88,7 @@ generate_picard_refFlat ${PICARD_DATA}/{{ s }} {{ s }} {{cookiecutter.ensembl_ve
 [[ -f "${GENOME_DATA_DIR}/gene_lengths.csv" ]] && ln -s ${GENOME_DATA_DIR}/gene_lengths.csv ${ENSEMBL_DIR}
 [[ -f "${GENOME_DATA_DIR}/tx2gene.tsv" ]] && ln -s ${GENOME_DATA_DIR}/tx2gene.tsv ${ENSEMBL_DIR}
 {% endfor %}
+wait
 
 
 {% if "human" not in cookiecutter.species.split(' ') %}

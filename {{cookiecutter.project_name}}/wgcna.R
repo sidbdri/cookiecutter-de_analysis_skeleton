@@ -16,12 +16,13 @@ dir.create(RESULTS_DIR, recursive = TRUE)
 ########################################
 
 get_dds <- function() {
-  count_data <- SAMPLE_NAMES %>%
+  count_data <- SAMPLE_DATA %>%
+    pull(sample_name) %>%
     map(read_counts, SPECIES) %>%
     purrr::reduce(inner_join) %>%
     tibble::column_to_rownames(var="gene")
   
-  dds <- DESeqDataSetFromMatrix(countData = count_data, colData = SAMPLE_DATA, design = ~1)
+  dds <- DESeqDataSetFromMatrix(countData = count_data, colData = as_deseq_col_data(SAMPLE_DATA), design = ~1)
   dds <- dds[rowSums(counts(dds)) > 1, ]
   dds %>% DESeq
 }
@@ -175,7 +176,7 @@ plot_gene_module_variable_correlations <- function(
 }
 
 plot_module_eigengene_values <- function(module, module_eigengenes, var_name, write_to_file=FALSE) {
-  plot_info <- module_eigengenes %>% cbind(SAMPLE_DATA %>% tibble::rownames_to_column(var="name"))
+  plot_info <- module_eigengenes %>% cbind(SAMPLE_DATA %>% as.data.frame())
   
   if (write_to_file) {
     png(filename = str_c(RESULTS_DIR, "M", module, "_", var_name, "_eigengene_values.png"),
@@ -194,7 +195,7 @@ plot_module_eigengene_values <- function(module, module_eigengenes, var_name, wr
 }
 
 plot_module_eigengene_values_per_sample <- function(module, module_eigengenes, write_to_file=FALSE) {
-  plot_info <- module_eigengenes %>% cbind(SAMPLE_DATA %>% tibble::rownames_to_column(var="name"))
+  plot_info <- module_eigengenes %>% cbind(SAMPLE_DATA %>% as.data.frame())
   
   if (write_to_file) {
     png(filename = str_c(RESULTS_DIR, "M", module, "_eigengene_per_sample.png"),
@@ -237,7 +238,7 @@ perform_go_analyses <- function(significant_genes, expressed_genes, file_prefix)
 
 #####
 
-SAMPLE_NAMES <- rownames(SAMPLE_DATA)
+SAMPLE_NAMES <- SAMPLE_DATA %>% pull(sample_name)
 
 # Use DESeq2 to calculate normalised counts
 dds <- get_dds()

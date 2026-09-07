@@ -1,6 +1,6 @@
 check_formulas <- function() {
-  for (r in COMPARISON_TABLE %>% rownames()) {
-    row <- COMPARISON_TABLE[r,]
+  for (i in seq_len(nrow(COMPARISON_TABLE))) {
+    row <- COMPARISON_TABLE[i, ]
     f <- row$formula %>% as.formula() %>% terms()
     condition <- row$condition_name
 
@@ -65,6 +65,12 @@ check_samples <- function(){
   }) %>% reduce(rbind)
 }
 
+check_sample_name <- function() {
+  if (!"sample_name" %in% names(SAMPLE_DATA)) {
+    stop("SAMPLE_DATA must contain a sample_name column; sample IDs are no longer taken from rownames.")
+  }
+}
+
 check_comparison_name <- function(){
   invalid <- COMPARISON_TABLE %>% pull(comparison) %>% grepl('^[0-9]', x = ., perl = T)
   if (any(invalid)) {
@@ -98,10 +104,15 @@ read_median_5prime_to_3prime_bias <- function(samples = c()) {
 read_mitochondrial_gene_percent <- function(samples = c(), gene_list){
   COUNT_MATRIX <- file.path('results/', 'read_counts')
   mt_counts <- samples %>% lapply(function(sample) {
-    total_counts = read.table(file.path(COUNT_MATRIX,str_c(sample,".",SPECIES,".counts")), header=F, row.names=1) %>% sum()
-    read.table(file.path(COUNT_MATRIX,str_c(sample,".",SPECIES,".counts")), header=F, row.names=1) %>%
-      as.data.frame() %>% mutate_all(as.numeric) %>% dplyr::filter(rownames(.) %in% gene_list) %>%
-      summarise(across(everything(), ~ sum(., is.na(.), 0))) %>% mutate(ratio = .[,1]/total_counts) %>% .[,2]
+    counts <- read.table(
+      file.path(COUNT_MATRIX, str_c(sample, ".", SPECIES, ".counts")),
+      header = FALSE, col.names = c("gene", "count"), stringsAsFactors = FALSE
+    ) %>% mutate(count = as.numeric(count))
+    total_counts <- sum(counts$count, na.rm = TRUE)
+    counts %>%
+      dplyr::filter(gene %in% gene_list) %>%
+      summarise(ratio = sum(count, na.rm = TRUE) / total_counts) %>%
+      pull(ratio)
   }) %>% unlist() %>% setNames(samples)
 }
 

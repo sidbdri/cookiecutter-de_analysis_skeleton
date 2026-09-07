@@ -159,7 +159,11 @@ plot_significant_set_heatmap <- function(job_string,gs_result,list_of_gene_set,r
   
   c(comparison_name, gs_category) %<-% (strsplit(job_string, split = ';', fixed = T) %>% unlist())
 
-  significant_gs <- gs_result[[job_string]] %>% filter(FDR < 0.05) %>% rownames()
+  gs_tbl <- gs_result[[job_string]]
+  if (!"GeneSet" %in% names(gs_tbl)) {
+    gs_tbl <- gs_tbl %>% tibble::rownames_to_column("GeneSet")
+  }
+  significant_gs <- gs_tbl %>% filter(FDR < 0.05) %>% pull(GeneSet)
   significant_gs_entrezs <- list_of_gene_set[[gs_category]][significant_gs]
   
   #get the comparison criteria for this comparison

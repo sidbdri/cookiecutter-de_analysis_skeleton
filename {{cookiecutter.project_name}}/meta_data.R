@@ -10,14 +10,13 @@ SAMPLE_NAMES <- c(condition1, condition2, etc) %>%
 # Remember to order the samples sensibly for output in results spreadsheets (i.e. appropriately
 # grouped by some combination of conditions).
 SAMPLE_DATA <- data.frame(
+  sample_name = SAMPLE_NAMES,
   condition = ...,
   species = SPECIES,
-  row.names = SAMPLE_NAMES
-) %>% 
-  tibble::rownames_to_column(var = "tmp_row_names") %>%
+  stringsAsFactors = FALSE
+) %>%
   filter(species == !!SPECIES) %>%
-  arrange(TODO) %>% 
-  tibble::column_to_rownames(var = "tmp_row_names")
+  arrange(TODO)
 
 # https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/103
 # read in picard alignment matrix and extract the MEDIAN_5PRIME_TO_3PRIME_BIAS column for PCA plot later
@@ -75,6 +74,8 @@ RMATS_SAMPLE_PAIR_TABLE <- tribble(
 # to make sure comparison name does not start with a number https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/142
 check_comparison_name()
 
+check_sample_name()
+
 # This is to make sure the DESeq2 formulas are ordered so that the 'deciding' 
 # condition is the last item in the formula
 check_formulas()
@@ -82,6 +83,8 @@ check_formulas()
 # This is to check the samples in each comparison to make sure the 'filter'
 # is construct correctly in the COMPARISON_TABLE
 check_samples()
+
+check_sample_name()
 
 #### Sargasso misassignment table ####
 
@@ -213,3 +216,4 @@ GENE_MARKERS_CHOROID_PLEXUS <- tribble(
 # After performing WGCNA, look for correlations between module eigengenes etc. and these variables from
 # the SAMPLE_DATA table
 WGCNA_EXPERIMENTAL_VARIABLES = c("sex", "treatment")
+

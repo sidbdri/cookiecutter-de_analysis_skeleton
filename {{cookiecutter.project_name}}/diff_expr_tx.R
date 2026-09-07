@@ -85,8 +85,7 @@ end_plot()
 start_plot("heatmap_all_samples")
 total_vst %>% plot_heat_map(
   SAMPLE_DATA %>%
-    tibble::rownames_to_column("tmp_sample_name") %>%
-    tidyr::unite(col = 'sample_info', c(tmp_sample_name, FEATURES_FOR_ALL_SAMPLES_HEATMAP),
+    tidyr::unite(col = 'sample_info', c(sample_name, FEATURES_FOR_ALL_SAMPLES_HEATMAP),
                  sep = ":", remove = FALSE) %>%
     extract2("sample_info"))
 end_plot()

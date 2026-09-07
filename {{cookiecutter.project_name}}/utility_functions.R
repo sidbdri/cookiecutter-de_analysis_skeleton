@@ -23,6 +23,14 @@ remove_gene_column <- function(count_data) {
   count_data %>% tibble::column_to_rownames(var="gene")
 }
 
+# DESeq2 colData still needs rownames == count colnames. Keep sample_name as a
+# real column everywhere else; only materialise rownames at this boundary.
+as_deseq_col_data <- function(sample_data) {
+  sample_data <- as.data.frame(sample_data)
+  rownames(sample_data) <- sample_data$sample_name
+  sample_data
+}
+
 get_gene_info <- function(species) {
   species %>%
     str_c("data/", ., "_ensembl_{{cookiecutter.ensembl_version}}/genes.tsv") %>%

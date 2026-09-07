@@ -507,13 +507,20 @@ plot_scatter_fpkm <- function(results){
 }
 
 plot_gene_percentage <- function(count_matrix,gene_set_list,use_percentage=TRUE){
-  total_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
+  count_df <- count_matrix %>%
+    as.data.frame() %>%
+    tibble::rownames_to_column("gene") %>%
+    mutate(across(-gene, as.numeric))
+
+  total_count_per_sample <- count_df %>%
+    dplyr::select(-gene) %>%
     summarise(across(everything(), ~ sum(., is.na(.), 0)))
   
   tb <- total_count_per_sample %>% tidyr::pivot_longer(cols = everything(), names_to = 'sample', values_to = 'total')
   for (gs in names(gene_set_list)) {
-    total_goi_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
-      dplyr::filter(rownames(.) %in% gene_set_list[[gs]]) %>%
+    total_goi_count_per_sample <- count_df %>%
+      dplyr::filter(gene %in% gene_set_list[[gs]]) %>%
+      dplyr::select(-gene) %>%
       summarise(across(everything(), ~ sum(., is.na(.), 0)))
     tb %<>% left_join(total_goi_count_per_sample %>% tidyr::pivot_longer(cols = everything(), names_to = 'sample', values_to = gs))
   }
@@ -534,13 +541,20 @@ plot_gene_percentage <- function(count_matrix,gene_set_list,use_percentage=TRUE)
 
 
 plot_plexus_contamination_percentage <- function(count_matrix,gene_set_list){
-  total_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
+  count_df <- count_matrix %>%
+    as.data.frame() %>%
+    tibble::rownames_to_column("gene") %>%
+    mutate(across(-gene, as.numeric))
+
+  total_count_per_sample <- count_df %>%
+    dplyr::select(-gene) %>%
     summarise(across(everything(), ~ sum(., is.na(.), 0)))
   
   tb <- total_count_per_sample %>% tidyr::pivot_longer(cols = everything(), names_to = 'sample', values_to = 'total')
   for (gs in names(gene_set_list)) {
-    total_goi_count_per_sample <- count_matrix %>% as.data.frame() %>% mutate_all(as.numeric) %>%
-      dplyr::filter(rownames(.) %in% gene_set_list[[gs]]) %>%
+    total_goi_count_per_sample <- count_df %>%
+      dplyr::filter(gene %in% gene_set_list[[gs]]) %>%
+      dplyr::select(-gene) %>%
       summarise(across(everything(), ~ sum(., is.na(.), 0)))
     tb %<>% left_join(total_goi_count_per_sample %>% tidyr::pivot_longer(cols = everything(), names_to = 'sample', values_to = gs))
   }

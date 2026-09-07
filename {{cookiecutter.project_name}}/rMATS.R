@@ -79,9 +79,9 @@ generate_rmats_cmd <- function(sample_data,species,cmp_name){
   b2<-file.path(top_dir,"b2.txt") %>% normalizePath()
 
 
-  reps<-sample_data %>% tibble::rownames_to_column(var = "tmp_row_names") %>%
+  reps<-sample_data %>%
     group_by(!!parse_expr(x$condition_name)) %>%
-    mutate(bam_file=str_c("results/final_bams/",tmp_row_names,".",species,".bam",sep = '') %>% normalizePath)
+    mutate(bam_file=str_c("results/final_bams/",sample_name,".",species,".bam",sep = '') %>% normalizePath)
 
   # check if this comparison has sample level pairing
   sample_pairing <- RMATS_SAMPLE_PAIR_TABLE %>% filter(comparison==cmp_name) %>% pull(pair_column)
@@ -143,10 +143,8 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   x=COMPARISON_TABLE %>% filter(comparison==x)
   
   sample_data <- SAMPLE_DATA %>%
-    tibble::rownames_to_column(var = "tmp_row_names") %>%
     mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
-    filter(!!parse_expr(x$filter)) %>%
-    tibble::column_to_rownames(var = "tmp_row_names")
+    filter(!!parse_expr(x$filter))
 
   cmd = sample_data %>% generate_rmats_cmd(SPECIES, x$comparison)
   write(cmd,tmp_script,append = T)
@@ -173,17 +171,15 @@ results %<>%
   inner_join(gene_lengths)
 
 # We do not need counts for samples for rMATS output
-results %<>% dplyr::select(-one_of(SAMPLE_DATA %>% rownames()))
+results %<>% dplyr::select(-one_of(SAMPLE_DATA %>% pull(sample_name)))
 
 # Load rMATS results and join with result table
 COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
   x=COMPARISON_TABLE %>% filter(comparison==x)
 
   sample_data <- SAMPLE_DATA %>%
-    tibble::rownames_to_column(var = "tmp_row_names") %>%
     mutate(!!x$condition_name:= factor(!!parse_expr(x$condition_name))) %>%
-    filter(!!parse_expr(x$filter)) %>%
-    tibble::column_to_rownames(var = "tmp_row_names")
+    filter(!!parse_expr(x$filter))
 
   top_dir = str_c("results/rMATS/",SPECIES,"/",x$comparison)
   out_dir = str_c(output_folder,SPECIES,x$comparison,sep = '/')
@@ -219,14 +215,14 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
                 left_join(result.table,by='ID')
 
               #workout pre comparison avg fpkm
-              avg<- fpkms %>% dplyr::select(one_of(str_c(sample_data %>% rownames(),'_fpkm'))) %>%
+              avg<- fpkms %>% dplyr::select(one_of(str_c(sample_data %>% pull(sample_name),'_fpkm'))) %>%
                 mutate(avg_fpkm=rowMeans(.)) %>%
                 dplyr::pull(avg_fpkm)
 
               result.table <- get("results",envir=.GlobalEnv) %>%
                 dplyr::select(gene, gene_name, chromosome, description, entrez_id,
                               gene_type, gene_length, max_transcript_length,
-                              one_of(str_c(sample_data %>% rownames(),'_fpkm'))) %>%
+                              one_of(str_c(sample_data %>% pull(sample_name),'_fpkm'))) %>%
                 mutate(avg_fpkm=avg) %>%
                 inner_join(result.table,by=c('gene' = 'GeneID')) %>%
                 dplyr::select(everything(),-geneSymbol,-chr)
@@ -243,10 +239,10 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
                   Total_number_of_samples_data=sample_data %>% nrow(),
                   Base_level_condition=x$condition_base,
                   Number_of_samples_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% nrow(),
-                  Sample_names_in_base_level_condition=sample_data %>% tibble::rownames_to_column(var = "tmp_row_names") %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(tmp_row_names) %>% str_c(collapse = ','),
+                  Sample_names_in_base_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition_base)%>% pull(sample_name) %>% str_c(collapse = ','),
                   Comparison_level_condition=x$condition,
                   Number_of_samples_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% nrow(),
-                  Sample_names_in_comparison_level_condition=sample_data %>% tibble::rownames_to_column(var = "tmp_row_names") %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(tmp_row_names) %>% str_c(collapse = ','),
+                  Sample_names_in_comparison_level_condition=sample_data %>% filter(!!parse_expr(x$condition_name)==x$condition)%>% pull(sample_name) %>% str_c(collapse = ','),
                   p.adj.cutoff=P.ADJ.CUTOFF,
                   Up_regulated= result.table %>% filter(FDR < P.ADJ.CUTOFF & IncLevelDifference < 0 ) %>% nrow(),
                   Down_regulated=result.table %>% filter(FDR < P.ADJ.CUTOFF & IncLevelDifference > 0) %>% nrow(),
@@ -261,7 +257,7 @@ COMPARISON_TABLE %>% pull(comparison) %>% walk ( function(x){
               # save results
               result.table %>%
                 dplyr::select(-PValue,-FDR, everything(),
-                              -one_of(str_c(sample_data %>% rownames(),'_fpkm')),
+                              -one_of(str_c(sample_data %>% pull(sample_name),'_fpkm')),
                               -IncFormLen,-SkipFormLen) %>%
                 write_csv(file.path(out_dir,paste('AS_results_fpkm_',paste(type,event,SPECIES,sep='_'),".csv",sep='')),na = "")
             }else{

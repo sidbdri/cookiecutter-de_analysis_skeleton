@@ -60,15 +60,20 @@ ln -s ${GENOME_DATA_DIR}/BOWTIE2_indices ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/*orthologs.tsv  ${ENSEMBL_DIR}
 ln -s ${GENOME_DATA_DIR}/msigdb ${ENSEMBL_DIR}
 
-## Instead of using the genes.tsv from ${GENOME_DATA_DIR}, we download it from Ensembl
-for i in 1 2 3 4 5; do
-  download_gene_tb {{ s }} {{cookiecutter.ensembl_version}} > ${ENSEMBL_DIR}/genes.tsv
-  if [[ $(wc -l < ${ENSEMBL_DIR}/genes.tsv) -gt 1000 ]]; then
-    break
-  fi
-  echo "error downloading ${ENSEMBL_DIR}/genes.tsv, retry "${i}" out of 5 times."
-  sleep 1;
-done
+## Instead of using the genes.tsv from ${GENOME_DATA_DIR}, we download it from Ensembl 
+## https://github.com/sidbdri/cookiecutter-de_analysis_skeleton/issues/58
+if [[ -f ${ENSEMBL_DIR}/genes.tsv ]] && [[ $(wc -l < ${ENSEMBL_DIR}/genes.tsv) -gt 1000 ]]; then
+  echo "${ENSEMBL_DIR}/genes.tsv already exists, skipping download."
+else
+  for i in 1 2 3 4 5; do
+    download_gene_tb {{ s }} {{cookiecutter.ensembl_version}} > ${ENSEMBL_DIR}/genes.tsv
+    if [[ $(wc -l < ${ENSEMBL_DIR}/genes.tsv) -gt 1000 ]]; then
+      break
+    fi
+    echo "error downloading ${ENSEMBL_DIR}/genes.tsv, retry "${i}" out of 5 times."
+    sleep 1;
+  done
+fi
 
 if [[ $(wc -l < ${ENSEMBL_DIR}/genes.tsv) -le 1000 ]]; then
   if [[ -f "${GENOME_DATA_DIR}/genes.tsv" ]]; then
@@ -96,7 +101,11 @@ HUMAN_ENSEMBL_DIR=${DATA_DIR}/human_ensembl_{{cookiecutter.ensembl_version}}
 mkdir -p ${HUMAN_ENSEMBL_DIR}
 
 ## Instead of using the genes.tsv from ${GENOME_DATA_DIR}, we download it from Ensembl
-download_gene_tb human {{cookiecutter.ensembl_version}} > ${HUMAN_ENSEMBL_DIR}/genes.tsv
+if [[ -f ${HUMAN_ENSEMBL_DIR}/genes.tsv ]] && [[ $(wc -l < ${HUMAN_ENSEMBL_DIR}/genes.tsv) -gt 1000 ]]; then
+  echo "${HUMAN_ENSEMBL_DIR}/genes.tsv already exists, skipping download."
+else
+  download_gene_tb human {{cookiecutter.ensembl_version}} > ${HUMAN_ENSEMBL_DIR}/genes.tsv
+fi
 {% endif %}
 
 ## if we have a lock file but the project library is not set up, we set it up

@@ -1,7 +1,10 @@
 .R*
 *.Rproj
 .Rproj.user
-data
+data/*
+!data/*_ensembl_*/
+data/*_ensembl_*/*
+!data/*_ensembl_*/genes.tsv
 results
 multiqc*
 !multiqc_config.yaml

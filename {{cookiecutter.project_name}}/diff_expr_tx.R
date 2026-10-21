@@ -170,7 +170,8 @@ lapply(comparisons_results, function(cmp) {
   # we fake a 'gene' column from the transcript column to trick the function
   plot_genes_fpkm(results %>% dplyr::rename(gene_id=gene,gene=transcript),
                   results %>% dplyr::rename(gene_id=gene,gene=transcript) %>% arrange(across(str_c(cmp$comparison_name,'.padj',sep = ''))) %>% head(4) %>% pull(gene),
-                  print_fpkm_table = F)
+                  print_fpkm_table = F,
+                  comparison_name = cmp$comparison_name)
   end_plot()
 
   # export the res and dds

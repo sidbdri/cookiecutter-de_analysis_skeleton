@@ -170,7 +170,7 @@ plot_count_distribution <- function(dds, norm = T) {
   print(p)
 }
 
-plot_genes_fpkm <- function(result_table,genes,print_fpkm_table = FALSE) {
+plot_genes_fpkm <- function(result_table, genes, print_fpkm_table = FALSE, comparison_name = NULL) {
   num_genes <- length(genes)
   if (num_genes > 4) {
     warning('more than 4 genes are selected to plot gene fpkm across all samples! label might not be visible in the plot.')
@@ -184,7 +184,8 @@ plot_genes_fpkm <- function(result_table,genes,print_fpkm_table = FALSE) {
     plot_name <- str_c('fpkm_plot_', result_table %>% filter(gene == genes[index]) %>% pull(gene), sep = '')
     
     l <- plot_gene_fpkms(gene_identifier = genes[index],result_table = result_table,debug = FALSE, print_graph = FALSE,
-                         feature_group = TOPDEGENE_FEATURE_GROUP, plot_feature = TOPDEGENE_PLOT_FEATURE)
+                         feature_group = TOPDEGENE_FEATURE_GROUP, plot_feature = TOPDEGENE_PLOT_FEATURE,
+                         comparison_name = comparison_name)
     l$graph <- l$graph +
       geom_hline(yintercept = 0, color = "grey") +
       ylim(0, NA) +
@@ -202,6 +203,9 @@ plot_genes_fpkm <- function(result_table,genes,print_fpkm_table = FALSE) {
   options(ggrepel.max.overlaps = old.opt)
   if (num_genes > 1) {
     plot_statement %<>% str_c(" + plot_layout(ncol = ", round(num_genes/2), ", guides = \"collect\")")
+  }
+  if (!is.null(comparison_name)) {
+    plot_statement %<>% str_c(" + plot_annotation(caption = \"Black outline: samples in ", comparison_name, " comparison\")")
   }
   
   if (print_fpkm_table) {
@@ -327,6 +331,8 @@ check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
 #'   length of the vector should be the same as the feature_group.
 #' @param plot_label A string from feature_group. Which feature to be used as label for the points in the plot.
 #' @param plot_x A string from feature_group. Which feature to be used as the x-axis.
+#' @param comparison_name Comparison whose samples get a black outline. NULL leaves every point unmarked.
+#'   Samples are those passing that comparison's filter in COMPARISON_TABLE.
 #' @return A list containing two items: debug_inf and ggplot object with keys {'info', 'graph'}
 #' @examples
 #'plot_gene_fpkms('ENSMUSG00000029816', result_table=result_table,debug=FALSE,print_graph=FALSE,
@@ -355,7 +361,7 @@ check_cell_type <- function(result_table, fpkm_check_cutoff = 5,
 #' }
 plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE, print_graph = FALSE,
                             feature_group = c(), filter_string = '', plot_feature = c(), 
-                            plot_label = "", plot_x = "") {
+                            plot_label = "", plot_x = "", comparison_name = NULL) {
   
   if (is.null(result_table)) {
     result_table <- str_c('./results/differential_expression/de_gene/deseq2_results_fpkm_', SPECIES, '.csv')
@@ -450,6 +456,32 @@ plot_gene_fpkms <- function(gene_identifier, result_table = NULL, debug = FALSE,
       ggtitle(gene_identifier %>% str_c(gene_name, sep = ':')) + 
       theme(legend.position = "top") +
       theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+  }
+
+  # Outline the samples that entered this comparison. The plot still shows every
+  # sample in the project; the ring marks the ones in the contrast.
+  if (!is.null(comparison_name)) {
+    comparison_row <- COMPARISON_TABLE %>% filter(comparison == comparison_name) %>% dplyr::slice(1)
+    if (nrow(comparison_row) == 1) {
+      comparison_filter <- comparison_row$filter
+      comparison_samples <- if (length(comparison_filter) == 1 && !is.na(comparison_filter) && nzchar(comparison_filter)) {
+        SAMPLE_DATA %>% filter(!!parse_expr(comparison_filter)) %>% pull(sample_name) %>% as.character()
+      } else {
+        SAMPLE_DATA$sample_name %>% as.character()
+      }
+      in_comparison <- fpkm_debug_long %>%
+        filter(sub("_fpkm$", "", as.character(sample_meta)) %in% comparison_samples)
+      if (nrow(in_comparison) > 0) {
+        p <- p + geom_point(
+          data = in_comparison,
+          aes(x = sample_meta, y = fpkm),
+          inherit.aes = FALSE,
+          shape = 21, fill = NA, colour = "black",
+          size = 3, stroke = 1.1,
+          show.legend = FALSE
+        )
+      }
+    }
   }
   
   if (print_graph) {

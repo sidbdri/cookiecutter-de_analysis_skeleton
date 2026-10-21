@@ -191,7 +191,8 @@ lapply(comparisons_results, function(cmp) {
 
   # plot top DE gene for each comparison
   start_plot(str_c('top_de_genes_fpkm_',cmp$comparison_name),path=file.path(GRAPHS_DIR,cmp$comparison_name))
-  plot_genes_fpkm(results,results %>% arrange(across(str_c(cmp$comparison_name,'.padj',sep = ''))) %>% head(4) %>% pull(gene),print_fpkm_table = F)
+  plot_genes_fpkm(results,results %>% arrange(across(str_c(cmp$comparison_name,'.padj',sep = ''))) %>% head(4) %>% pull(gene),print_fpkm_table = F,
+                  comparison_name = cmp$comparison_name)
   end_plot()
   
   # volcano plot for each comparison - top 5 up and down regulated genes are labelled

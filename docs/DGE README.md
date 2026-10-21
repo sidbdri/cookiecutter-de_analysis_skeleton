@@ -96,9 +96,19 @@ The columns in these CSV files are:
 
 * **GeneSet**: Name of the set of interesting genes.
 * **NGenes**: Number of genes in the set.
-* **Direction**: Whether expression of the genes in this set is shifted up or down in this particular comparison of experimental conditions.
+* **Direction**: Whether expression of the genes in this set is shifted up or down, as a whole, in this particular comparison of experimental conditions. This is Camera's set-level call.
+* **NUp**: Number of genes in the set with a positive log2 fold change.
+* **NDown**: Number of genes in the set with a negative log2 fold change.
+* **MaxL2FCUp**: Largest positive log2 fold change among genes going up.
+* **MedianL2FCUp**: Median log2 fold change among genes going up.
+* **MeanL2FCUp**: Mean log2 fold change among genes going up.
+* **MaxL2FCDown**: Most negative log2 fold change among genes going down.
+* **MedianL2FCDown**: Median log2 fold change among genes going down.
+* **MeanL2FCDown**: Mean log2 fold change among genes going down.
 * **PValue**: Raw p-value for the significance of this shift.
 * **FDR**: p-value corrected for multiple testing (i.e. a false discovery rate). Only gene sets with FDR < 0.1 are included (hence all entries in these spreadsheets can be considered significant).
+
+**NUp** and **NDown** use the sign of the DESeq2-moderated log2 fold change (`<comparison_name>_l2fc`). They can add up to less than **NGenes**: genes with no finite fold change are left out, and a fold change of exactly zero is in neither count. Camera's **Direction** does not have to match the majority gene-level sign — a set can be called Up while some of its genes have negative fold changes. Fold-change summaries are empty when no gene in the set goes in that direction.
 
 In addition to the CSV files – *if requested* – each differential expression comparison subfolder has further subfolders corresponding to each of the gene set categories, which contain heatmaps of genes in each significant gene set. This allows visualisation of gene expression across genes in each significant set (relative to mean expression for each gene), and how they change as a group across samples included in the comparison. In addition (again, if requested), files can be provided which allow the behaviour of individual genes in each significant gene set to be analysed in depth – however, because these files are very large, they are not provided by default.
 

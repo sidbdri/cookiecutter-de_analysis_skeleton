@@ -91,6 +91,68 @@ get_gene_set_results_matrix <- function(results, gene_sets, gene_set_name) {
     dplyr::select(-gene)
 }
 
+# Per-gene direction counts and log2 fold-change stats for Camera sets.
+# Camera's Direction is the set-level call. NUp / NDown count genes in the set
+# with a finite positive / negative moderated log2 fold change (exact zeros and
+# missing fold changes are in neither). MaxL2FCDown is the most negative log2
+# fold change among genes going down.
+summarise_camera_gene_directions <- function(
+  de_results, gene_set_collection, gene_set_names, comparison_name) {
+  l2fc_col <- str_c(comparison_name, ".l2fc")
+
+  direction_row <- function(gene_set_name, up, down) {
+    stat <- function(x, f) if (length(x)) f(x) else NA_real_
+    tibble::tibble(
+      GeneSet = gene_set_name,
+      NUp = length(up),
+      NDown = length(down),
+      MaxL2FCUp = stat(up, max),
+      MedianL2FCUp = stat(up, stats::median),
+      MeanL2FCUp = stat(up, mean),
+      MaxL2FCDown = stat(down, min),
+      MedianL2FCDown = stat(down, stats::median),
+      MeanL2FCDown = stat(down, mean)
+    )
+  }
+
+  if (length(gene_set_names) == 0) {
+    return(tibble::tibble(
+      GeneSet = character(),
+      NUp = integer(),
+      NDown = integer(),
+      MaxL2FCUp = double(),
+      MedianL2FCUp = double(),
+      MeanL2FCUp = double(),
+      MaxL2FCDown = double(),
+      MedianL2FCDown = double(),
+      MeanL2FCDown = double()
+    ))
+  }
+
+  gene_set_names %>%
+    map_dfr(function(gene_set_name) {
+      entrez_ids <- gene_set_collection[[gene_set_name]]
+      if (is.null(entrez_ids)) {
+        row <- direction_row(gene_set_name, numeric(), numeric())
+        row$NUp <- NA_integer_
+        row$NDown <- NA_integer_
+        return(row)
+      }
+
+      l2fc <- de_results %>%
+        filter(entrez_id %in% entrez_ids) %>%
+        distinct(gene, .keep_all = TRUE) %>%
+        pull(!!sym(l2fc_col))
+      l2fc <- l2fc[is.finite(l2fc)]
+
+      direction_row(
+        gene_set_name,
+        l2fc[l2fc > 0],
+        l2fc[l2fc < 0]
+      )
+    })
+}
+
 write_camera_results <- function(
   gene_set_collection_name, gene_set_collection, comparison_name, species, de_results, camera_results,
   barcodeplots = FALSE, fdr_cutoff = 0.1, out_dir="results/differential_expression/gsa/") {
@@ -99,26 +161,32 @@ write_camera_results <- function(
   if (!dir.exists(top_dir)) {
     dir.create(top_dir, recursive = TRUE)
   }
-  
-  camera_results %>% 
-    tibble::rownames_to_column(var = "GeneSet") %>% 
-    filter(FDR < fdr_cutoff) %>%
+
+  sig_sets <- camera_results %>%
+    tibble::rownames_to_column(var = "GeneSet") %>%
+    filter(FDR < fdr_cutoff)
+
+  sig_sets <- sig_sets %>%
+    left_join(
+      summarise_camera_gene_directions(
+        de_results, gene_set_collection, sig_sets$GeneSet, comparison_name),
+      by = "GeneSet") %>%
+    dplyr::relocate(
+      NUp, NDown,
+      MaxL2FCUp, MedianL2FCUp, MeanL2FCUp,
+      MaxL2FCDown, MedianL2FCDown, MeanL2FCDown,
+      .after = Direction)
+
+  sig_sets %>%
     write_csv(file.path(top_dir, str_c(comparison_name, "-", gene_set_collection_name, "_sets.csv")), na = "")
   
-  ret <- list(enriched_sets = camera_results %>% 
-                tibble::rownames_to_column(var="GeneSet") %>% 
-                filter(FDR < fdr_cutoff))
+  ret <- list(enriched_sets = sig_sets)
   
-  # Save only the significant gene sets
-  camera_results %<>%
-    tibble::rownames_to_column(var="GeneSet") %>%
-    filter(FDR < fdr_cutoff)
-  
-  if ((camera_results %>% nrow) == 0) {
+  if ((sig_sets %>% nrow) == 0) {
     return()
   }
   
-  camera_results %>%
+  sig_sets %>%
     extract2("GeneSet") %>%
     walk(function(x) {
       # We do not save a CSV file for each gene set now...
@@ -137,7 +205,7 @@ write_camera_results <- function(
     })
   
   # Merge all GSA results into one file
-  gene_set_names <- camera_results %>% extract2("GeneSet") %>% sort(method = "radix")
+  gene_set_names <- sig_sets %>% extract2("GeneSet") %>% sort(method = "radix")
   gene_set_results <- gene_set_names %>%
     map_dfc(function(x) {
       de_results %>% get_gene_set_results_matrix(gene_set_collection, x)

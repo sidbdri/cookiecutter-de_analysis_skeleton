@@ -561,6 +561,7 @@ plot_plexus_contamination_percentage <- function(count_matrix,gene_set_list){
   
   p <- tb %>%
     mutate(pct = 100 * choroid_plexus / total) %>%
+    mutate_at(vars(sample), ~factor(., levels = colnames(count_matrix))) %>%
     ggplot(aes(x = sample, y = pct)) +
     geom_col() +
     scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +

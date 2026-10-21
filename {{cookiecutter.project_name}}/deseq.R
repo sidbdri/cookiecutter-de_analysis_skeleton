@@ -314,6 +314,15 @@ get_avg_tpm <- function(tpms) {
   get_avg_fpkm(tpms)
 }
 
+# Sort a results table by the first comparison's raw p-value. Column order follows
+# COMPARISON_TABLE, and group files have already dropped other groups, so the
+# first *.pval column is the first comparison saved in that file. NAs stay last.
+arrange_by_first_pval <- function(df) {
+  pval_col <- df %>% colnames() %>% str_subset("\\.pval$") %>% head(1)
+  if (length(pval_col) == 0) return(df)
+  df %>% arrange(across(all_of(pval_col)))
+}
+
 save_results_by_group <- function(results,use_tx=FALSE) {
   # This function will, for each group defined in the COMPARISON_TABLE, save the comparisons into
   # a CSV file, prefixed with the group name.
@@ -352,6 +361,7 @@ save_results_by_group <- function(results,use_tx=FALSE) {
           gene_name, chromosome, description, entrez_id, gene_type, everything(),
           -dplyr::contains("_tpm"), -dplyr::ends_with(".stat"),
           -matches(n_comparisons), -all_of((samples_to_exclude))) %>%
+        arrange_by_first_pval() %>%
         write_csv(file.path(DE_OUT_DIR, str_c(g, "_deseq2_results_count_", SPECIES, ".csv")), na="")
       
       tpm_output <- results %>%
@@ -376,7 +386,8 @@ save_results_by_group <- function(results,use_tx=FALSE) {
         tpm_output %<>% dplyr::select(-one_of(avg_to_exclude %>% str_c('_avg_tpm')))
       }
       
-      tpm_output %>% write_csv(file.path(DE_OUT_DIR, str_c(g ,"_deseq2_results_tpm_", SPECIES, ".csv")), na="")
+      tpm_output %>% arrange_by_first_pval() %>%
+        write_csv(file.path(DE_OUT_DIR, str_c(g ,"_deseq2_results_tpm_", SPECIES, ".csv")), na="")
       
       SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
         write_csv(file.path(DE_OUT_DIR, str_c(g ,"_de_summary_", SPECIES, ".csv")), na="")
@@ -388,6 +399,7 @@ save_results_by_group <- function(results,use_tx=FALSE) {
           gene_length, max_transcript_length, everything(),
           -dplyr::contains("_fpkm"), -dplyr::ends_with(".stat"),
           -matches(n_comparisons), -(samples_to_exclude)) %>%
+        arrange_by_first_pval() %>%
         write_csv(file.path(DE_OUT_DIR, str_c(g, "_deseq2_results_count_", SPECIES, ".csv")), na="")
 
       fpkm_output <- results %>%
@@ -412,7 +424,8 @@ save_results_by_group <- function(results,use_tx=FALSE) {
         fpkm_output %<>% dplyr::select(-one_of(avg_to_exclude %>% str_c('_avg_fpkm')))
       }
 
-      fpkm_output %>% write_csv(file.path(DE_OUT_DIR, str_c(g ,"_deseq2_results_fpkm_", SPECIES, ".csv")), na="")
+      fpkm_output %>% arrange_by_first_pval() %>%
+        write_csv(file.path(DE_OUT_DIR, str_c(g ,"_deseq2_results_fpkm_", SPECIES, ".csv")), na="")
 
       SUMMARY_TB %>% filter(Comparison %in% comparisons) %>%
         write_csv(file.path(DE_OUT_DIR, str_c(g ,"_de_summary_", SPECIES, ".csv")), na="")

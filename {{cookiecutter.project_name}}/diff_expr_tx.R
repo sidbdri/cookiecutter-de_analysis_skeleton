@@ -207,6 +207,7 @@ results %>%
     any_of(c('transcript', 'transcript_length', 'gene', 'number_of_transcript','gene_length','max_transcript_length')),
     gene_name, chromosome, description, entrez_id, gene_type,
     everything(), -dplyr::contains("_tpm"), -dplyr::ends_with(".stat")) %>%
+  arrange_by_first_pval() %>%
   write_csv(file.path(DE_OUT_DIR, str_c("deseq2_results_count_", SPECIES, ".csv")), na = "")
 
 
@@ -222,6 +223,7 @@ results %>%
       as.vector() %>%
       unique(),
     -dplyr::ends_with(".stat")) %>%
+  arrange_by_first_pval() %>%
   write_csv(file.path(DE_OUT_DIR, str_c("deseq2_results_tpm_", SPECIES, ".csv")), na = "")
 
 SUMMARY_TB %>%
